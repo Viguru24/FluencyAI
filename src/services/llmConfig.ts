@@ -301,6 +301,14 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
       }
     }
 
+    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    if (isHttps) {
+      return {
+        ok: false,
+        message: `Browser Mixed-Content Block: This page is hosted on secure HTTPS (${window.location.hostname}), but FreeLLMAPI is a local desktop application running on HTTP (127.0.0.1:31415). Web browsers strictly block HTTPS web pages from fetching local HTTP services. To use your local FreeLLMAPI gateway, please run the app locally on http://localhost:5173 or switch to the "Direct Gemini API" tab.`,
+      };
+    }
+
     return {
       ok: false,
       message: `Could not reach ${cleanBase}: ${lastNetworkErr || 'Failed to fetch'}. Ensure your FreeLLMAPI gateway is running on port 31415.`,

@@ -46,12 +46,18 @@ self.addEventListener('activate', (event) => {
 // Fetch Event - Stale While Revalidate / Cache First with Offline Fallback
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
-  // Never intercept API routes, FreeLLMAPI gateway, or WebSocket traffic
+  // Never intercept API routes, FreeLLMAPI gateway, models, or WebSocket traffic
   if (
     event.request.method !== 'GET' ||
     !url.startsWith('http') ||
     url.includes('/freellm-gateway') ||
+    url.includes('/v1/') ||
+    url.endsWith('/v1') ||
+    url.includes('/models') ||
+    url.includes('/chat/completions') ||
     url.includes('31415') ||
+    url.includes('127.0.0.1') ||
+    url.includes('localhost') ||
     url.includes('/api/') ||
     url.includes('cosmowhisper.com')
   ) {

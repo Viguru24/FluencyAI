@@ -287,6 +287,36 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
               <p className="text-[11px] text-slate-500">
                 Default: <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">http://127.0.0.1:31415/v1</code>. Pre-configured for your local FreeLLMAPI router.
               </p>
+              {typeof window !== 'undefined' && window.location.protocol === 'https:' && (
+                <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-900 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">Cloud Production Environment Detected</p>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      You are viewing FluencyAI on HTTPS ({window.location.hostname}). Web browsers strictly block HTTPS websites from accessing insecure local servers (127.0.0.1:31415).
+                    </p>
+                    <div className="pt-1 flex items-center gap-3">
+                      <a
+                        href="http://localhost:5173"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-brand-700 hover:text-brand-900 underline flex items-center gap-1"
+                      >
+                        <span>Open Local App (http://localhost:5173)</span>
+                        <Zap className="w-3 h-3 text-amber-600" />
+                      </a>
+                      <span className="text-amber-400">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setConfig((prev) => ({ ...prev, provider: 'direct-gemini' }))}
+                        className="font-semibold text-slate-700 hover:text-slate-900 underline"
+                      >
+                        Use Direct Gemini API on Cloud
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -547,29 +577,53 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
                   </div>
                 )}
                 {!testResult.ok && config.provider === 'freellmapi' && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const verifiedKey = 'freellmapi-507e287e4cc5d960e1a31e5a5878d2d8ef7b8947f6fa77c3';
-                        const healed = { ...config, apiKey: verifiedKey, provider: 'freellmapi' as const };
-                        setConfig(healed);
-                        saveLLMConfig(healed);
-                        setIsTesting(true);
-                        const res = await testGatewayConnection(healed);
-                        setIsTesting(false);
-                        setTestResult(res);
-                        if (res.ok) {
-                          playChime('success');
-                          onConnectionStatusChange?.(true);
-                          toast.success('Connected successfully with verified FreeLLMAPI key!', 'Gateway Connected');
-                        }
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Use Verified Key &amp; Re-Test</span>
-                    </button>
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    {typeof window !== 'undefined' && window.location.protocol === 'https:' ? (
+                      <>
+                        <a
+                          href="http://localhost:5173"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition active:scale-95 inline-flex items-center gap-1.5"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>Open Local App (http://localhost:5173)</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfig((prev) => ({ ...prev, provider: 'direct-gemini' }));
+                            toast.info('Switched to Direct Gemini API tab.', 'Cloud AI Mode');
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition active:scale-95 inline-flex items-center gap-1.5"
+                        >
+                          <span>Switch to Direct Gemini API</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const verifiedKey = 'freellmapi-507e287e4cc5d960e1a31e5a5878d2d8ef7b8947f6fa77c3';
+                          const healed = { ...config, apiKey: verifiedKey, provider: 'freellmapi' as const };
+                          setConfig(healed);
+                          saveLLMConfig(healed);
+                          setIsTesting(true);
+                          const res = await testGatewayConnection(healed);
+                          setIsTesting(false);
+                          setTestResult(res);
+                          if (res.ok) {
+                            playChime('success');
+                            onConnectionStatusChange?.(true);
+                            toast.success('Connected successfully with verified FreeLLMAPI key!', 'Gateway Connected');
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Use Verified Key &amp; Re-Test</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
