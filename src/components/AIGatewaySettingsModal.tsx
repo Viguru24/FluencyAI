@@ -12,7 +12,10 @@ import {
   Loader2,
   Cpu,
   Radio,
+  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
+
 import {
   getLLMConfig,
   saveLLMConfig,
@@ -229,10 +232,59 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
               {config.provider === 'freellmapi' ? (
                 <>Unified router key starting with <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded font-bold">freellma...</code> (also checked from <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">VITE_FREELLM_API_KEY</code>).</>
               ) : (
-                <>Your Google AI Studio API key starting with <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded font-bold">AIza...</code> (saved to <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">fluency_gemini_api_key</code>).</>
+                <>Your Google AI Studio API key starting with <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded font-bold">AIzaSy...</code> (39 characters).</>
               )}
             </p>
+
+            {/* Direct Gemini Guidance & Key Format Warning */}
+            {config.provider === 'direct-gemini' && (
+              <div className="space-y-2 pt-1">
+                {config.apiKey.trim().length > 0 && !config.apiKey.trim().startsWith('AIza') && (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Key format notice: </span>
+                      {config.apiKey.trim().startsWith('freellma') ? (
+                        <span>
+                          This key starts with <code>freellma</code>, which belongs to <strong>FreeLLMAPI</strong>. Switch to the <strong>FreeLLMAPI (Unified)</strong> tab above.
+                        </span>
+                      ) : config.apiKey.trim().startsWith('sk-') ? (
+                        <span>
+                          This key starts with <code>sk-</code> (OpenAI format). Gemini API keys always start with <code>AIzaSy...</code>.
+                        </span>
+                      ) : (
+                        <span>
+                          Google Gemini keys must start with <code>AIzaSy...</code>. Check that you copied the complete key.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-3 rounded-2xl bg-sky-50 border border-sky-200 text-xs text-sky-900 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="font-bold flex items-center gap-1.5 text-sky-950">
+                      <KeyRound className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />
+                      <span>Need a free Google Gemini key?</span>
+                    </div>
+                    <p className="text-[11px] text-sky-700 truncate">
+                      Generate a free key in Google AI Studio (takes 10 seconds).
+                    </p>
+                  </div>
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition active:scale-95 flex-shrink-0"
+                  >
+                    <span>Get Key</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
+
 
           {/* Model Selection */}
           <div className="space-y-1.5">

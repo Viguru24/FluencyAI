@@ -30,6 +30,21 @@ export const AVAILABLE_MODELS_DIRECT = [
 
 export const AVAILABLE_MODELS = AVAILABLE_MODELS_FREELLM;
 
+/**
+ * Sanitizes an API key by stripping quotes, whitespace, Bearer prefixes,
+ * zero-width invisible unicode characters, and line breaks.
+ */
+export function sanitizeApiKey(key: string): string {
+  if (!key) return '';
+  return key
+    .trim()
+    .replace(/^Bearer\s+/i, '')
+    .replace(/^key=/i, '')
+    .replace(/^["']|["']$/g, '')
+    .replace(/[^\x21-\x7E]/g, '') // strip invisible unicode, zero-width spaces, newlines, etc.
+    .trim();
+}
+
 export function getLLMConfig(): LLMConfig {
   let saved: Partial<LLMConfig> = {};
   if (typeof window !== 'undefined') {
@@ -51,7 +66,7 @@ export function getLLMConfig(): LLMConfig {
     '';
 
   const rawKey = saved.apiKey !== undefined && saved.apiKey !== '' ? saved.apiKey : fluencyKey || legacyKey || envKey;
-  const apiKey = (rawKey || '').trim().replace(/^["']|["']$/g, '');
+  const apiKey = sanitizeApiKey(rawKey || '');
   const baseUrl = (saved.baseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
   const provider: LLMProvider = saved.provider === 'direct-gemini' ? 'direct-gemini' : 'freellmapi';
   const model = saved.model || (provider === 'direct-gemini' ? 'gemini-2.5-flash' : DEFAULT_MODEL);
@@ -65,7 +80,7 @@ export function getLLMConfig(): LLMConfig {
 }
 
 export function saveLLMConfig(config: LLMConfig): void {
-  const cleanKey = config.apiKey.trim().replace(/^["']|["']$/g, '');
+  const cleanKey = sanitizeApiKey(config.apiKey);
   const model =
     config.provider === 'direct-gemini' && config.model === 'auto'
       ? 'gemini-2.5-flash'
@@ -113,7 +128,7 @@ export interface GatewayTestResult {
 export async function testGatewayConnection(config?: LLMConfig): Promise<GatewayTestResult> {
   const conf = config || getLLMConfig();
   const cleanBase = conf.baseUrl.trim().replace(/\/+$/, '');
-  const cleanKey = conf.apiKey.trim().replace(/^["']|["']$/g, '');
+  const cleanKey = sanitizeApiKey(conf.apiKey);
   const start = performance.now();
 
   if (!cleanKey) {
@@ -121,7 +136,7 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
       ok: false,
       message:
         conf.provider === 'direct-gemini'
-          ? 'API Key is empty. Please enter your Google Gemini API key (starts with AIza...).'
+          ? 'API Key is empty. Please enter your Google Gemini API key (starts with AIzaSy...).'
           : 'API Key is empty. Please enter your FreeLLMAPI unified key (starts with freellma...).',
     };
   }
@@ -222,8 +237,25 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
     }
   } else {
     // direct-gemini provider test
+
+    // Pre-check for wrong key types
+    if (cleanKey.startsWith('freellma')) {
+      return {
+        ok: false,
+        message:
+          'This key begins with "freellma", which is for the FreeLLMAPI router. Switch to the "FreeLLMAPI (Unified)" tab on the left to use this key.',
+      };
+    }
+    if (cleanKey.startsWith('sk-')) {
+      return {
+        ok: false,
+        message:
+          'This key begins with "sk-", which is an OpenAI key. Google Gemini API keys start with "AIzaSy...".',
+      };
+    }
+
     try {
-      // Validate key by querying Google's Gemini models endpoint
+      // Validate key by querying Google's official Gemini models endpoint
       const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`;
       const res = await fetch(url);
       const latencyMs = Math.round(performance.now() - start);
@@ -245,12 +277,12 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
           ok: true,
           status: res.status,
           latencyMs,
-          message: `Google Gemini API connected directly (${latencyMs}ms)! Key verified.`,
+          message: `Google Gemini API connected directly (${latencyMs}ms)! Key is verified & active.`,
           models: models.length > 0 ? models : undefined,
         };
       }
 
-      // Parse JSON error body from Google API to prevent blank statusText
+      // Parse JSON error body from Google API
       let errorDetail = `HTTP ${res.status}`;
       try {
         const errJson = await res.json();
@@ -258,6 +290,15 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
       } catch {
         const txt = await res.text();
         errorDetail = txt.slice(0, 200) || errorDetail;
+      }
+
+      if (res.status === 400 && errorDetail.includes('API key not valid')) {
+        return {
+          ok: false,
+          status: 400,
+          message:
+            'Google rejected this API key as invalid. Please check that you copied the complete key starting with "AIzaSy..." from https://aistudio.google.com/app/apikey with no missing characters.',
+        };
       }
 
       return {
@@ -269,7 +310,7 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
       const msg = err instanceof Error ? err.message : String(err);
       return {
         ok: false,
-        message: `Direct Gemini connection failed: ${msg}. Check network connectivity.`,
+        message: `Direct Gemini connection failed: ${msg}. Check your internet connection.`,
       };
     }
   }
