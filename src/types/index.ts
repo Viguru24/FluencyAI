@@ -30,6 +30,18 @@ export interface SavedMistake {
   dateSaved: string;
 }
 
+export interface SavedReviewPhrase {
+  id: string;
+  phrase: string;
+  ipa?: string;
+  usageContext?: string;
+  whatYouSaid?: string;
+  explanation?: string;
+  dateSaved: string;
+  scenarioTitle?: string;
+  translations?: Partial<Record<NativeLanguage, string>>;
+}
+
 export interface UserProgress {
   name: string;
   streakDays: number;
@@ -61,6 +73,8 @@ export interface ScaffoldingTargetPhrase {
   ipa: string;
   usageContext: string;
   translations: Partial<Record<NativeLanguage, string>>;
+  isSpacedRepetition?: boolean;
+  originalMistake?: string;
 }
 
 export interface HelpPhrase {
@@ -93,6 +107,9 @@ export interface LessonSessionResult {
   revealsUsed: number;
   helpRequests: number;
   aiTurnsHeard: number;
+  fluencyScore?: number;
+  dynamicUpgrades?: PhrasingUpgrade[];
+  phrasesToReview?: string[];
 }
 
 export interface KeyVocabItem {

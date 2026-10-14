@@ -38,15 +38,33 @@ export function speakEnglish(
   // Stop any currently playing audio
   window.speechSynthesis.cancel();
 
+  if (englishVoices.length === 0) {
+    const all = window.speechSynthesis.getVoices();
+    englishVoices = all.filter((v) => v.lang.toLowerCase().startsWith('en'));
+  }
+
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = options?.rate ?? 0.88; // gentle, encouraging cadence
+  utterance.rate = options?.rate ?? 0.85; // default 0.85x cadence
   utterance.pitch = options?.pitch ?? 1.0;
   utterance.lang = options?.accent === 'UK' ? 'en-GB' : 'en-US';
 
-  // Find preferred voice
-  const voice = englishVoices.find(v => 
-    options?.accent === 'UK' ? v.lang === 'en-GB' : v.lang === 'en-US'
-  ) || englishVoices[0];
+  // Find preferred voice (e.g. en-GB British or en-US American)
+  const isUK = options?.accent === 'UK' || !options?.accent;
+  const voice =
+    englishVoices.find((v) => {
+      const l = v.lang.replace('_', '-').toLowerCase();
+      if (isUK) {
+        return (
+          l === 'en-gb' ||
+          l.startsWith('en-gb') ||
+          /british|united kingdom|uk\b|george|hazel|daniel|arthur|oliver|kate|serena/i.test(v.name)
+        );
+      }
+      return l === 'en-us' || l.startsWith('en-us') || /united states|us\b/i.test(v.name);
+    }) ||
+    englishVoices.find((v) => (isUK ? v.lang.toLowerCase().includes('gb') : v.lang.toLowerCase().includes('us'))) ||
+    englishVoices.find((v) => v.lang.startsWith('en')) ||
+    englishVoices[0];
 
   if (voice) {
     utterance.voice = voice;

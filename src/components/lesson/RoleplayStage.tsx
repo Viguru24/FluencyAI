@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, Square, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2 } from 'lucide-react';
-import type { LessonPlan, NativeLanguage } from '../../types';
+import type { LessonPlan, NativeLanguage, PhrasingUpgrade } from '../../types';
 import { speakEnglish, stopSpeaking, playChime } from '../../services/speech';
 import { startRecognition, isRecognitionSupported, type RecognitionHandle } from '../../services/speechRecognition';
 import { AudioVisualizerController } from '../../services/audioVisualizer';
 import { WaveformVisualizer } from './WaveformVisualizer';
 import { HowDoISaySheet } from './HowDoISaySheet';
+import { generateTutorReply, generateScorecardAnalysis } from '../../services/geminiTutorService';
 
 interface Turn {
   id: string;
@@ -20,6 +21,9 @@ export interface RoleplayStats {
   revealsUsed: number;
   helpRequests: number;
   aiTurnsHeard: number;
+  fluencyScore?: number;
+  dynamicUpgrades?: PhrasingUpgrade[];
+  phrasesToReview?: string[];
 }
 
 interface Props {
@@ -31,6 +35,7 @@ interface Props {
 }
 
 const HOLD_THRESHOLD_MS = 350;
+const MAX_TURNS = 5;
 
 export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpeed, onMicDenied, onEnd }) => {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -38,6 +43,7 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAnalyzingScorecard, setIsAnalyzingScorecard] = useState(false);
   const [interim, setInterim] = useState('');
   const [bands, setBands] = useState<number[]>([]);
   const [revealAll, setRevealAll] = useState(false);
@@ -51,7 +57,9 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
   const userTurnCount = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const conversationOver = aiIndex >= plan.aiTurns.length;
+  const userTurnsCount = turns.filter((t) => t.speaker === 'user').length;
+  const currentTurn = Math.min(MAX_TURNS, userTurnsCount + 1);
+  const conversationOver = userTurnsCount >= MAX_TURNS || aiIndex >= plan.aiTurns.length;
 
   const speakAi = useCallback(
     (text: string) => {
@@ -77,7 +85,7 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
     [plan.aiTurns, speakAi]
   );
 
-  // Kick off with the AI's opening line
+  // Kick off with James's opening line
   useEffect(() => {
     const t = window.setTimeout(() => pushAiTurn(0), 500);
     const viz = vizRef.current;
@@ -107,7 +115,10 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
     setIsRecording(true);
     setInterim('');
     recRef.current = isRecognitionSupported()
-      ? startRecognition(plan.persona.accent === 'UK' ? 'en-GB' : 'en-US', setInterim)
+      ? startRecognition({
+          lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
+          onInterim: (text) => setInterim(text),
+        })
       : null;
   };
 
@@ -116,6 +127,7 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
     setIsRecording(false);
     setIsProcessing(true);
     vizRef.current.stopMicrophone();
+
     let heard: string | null = null;
     if (recRef.current) {
       heard = await recRef.current.stop();
@@ -125,13 +137,57 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
 
     const idx = userTurnCount.current++;
     const fallback = plan.mockUserReplies[idx % plan.mockUserReplies.length];
-    const text = heard && heard.length > 1 ? heard : fallback;
-    setTurns((t) => [...t, { id: `u-${idx}`, speaker: 'user', text, revealed: true, isMock: !heard }]);
+    const userSpokeReal = Boolean(heard && heard.trim().length > 0);
+    const text = userSpokeReal ? heard!.trim() : fallback;
 
-    window.setTimeout(() => {
+    const newTurns: Turn[] = [
+      ...turns,
+      { id: `u-${idx}`, speaker: 'user', text, revealed: true, isMock: !userSpokeReal },
+    ];
+    setTurns(newTurns);
+
+    const completedUserTurns = newTurns.filter((t) => t.speaker === 'user').length;
+    const isFinished = completedUserTurns >= MAX_TURNS;
+
+    try {
+      const historyForGemini = newTurns.map((t) => ({ speaker: t.speaker, text: t.text }));
+      let aiReply = '';
+
+      if (isFinished) {
+        // When 5 turns are completed, James warmly wraps up the first day sprint
+        aiReply = await generateTutorReply(
+          [
+            ...historyForGemini,
+            {
+              speaker: 'user',
+              text: '[Learner has completed all 5 roleplay turns. Conclude warmly in 1-2 British English sentences as James thanking them for their great first day and welcoming them to view their scorecard.]',
+            },
+          ],
+          plan.title,
+          ['Brilliant effort today! You’ve done wonderfully on your first day — let’s check out your scorecard.']
+        );
+      } else {
+        aiReply = await generateTutorReply(historyForGemini, plan.title, plan.aiTurns);
+      }
+
+      setTurns((prev) => [
+        ...prev,
+        { id: `ai-${Date.now()}`, speaker: 'ai', text: aiReply, revealed: false },
+      ]);
+      setAiIndex((i) => i + 1);
+      speakAi(aiReply);
+    } catch (err) {
+      console.warn('Error fetching tutor reply:', err);
+      const fallbackAi = plan.aiTurns[Math.min(aiIndex, plan.aiTurns.length - 1)] || 'Splendid! Lovely chatting with you.';
+      setTurns((prev) => [
+        ...prev,
+        { id: `ai-${Date.now()}`, speaker: 'ai', text: fallbackAi, revealed: false },
+      ]);
+      setAiIndex((i) => i + 1);
+      speakAi(fallbackAi);
+    } finally {
       setIsProcessing(false);
-      pushAiTurn(aiIndex);
-    }, 700);
+    }
   };
 
   // One button, two styles:
@@ -163,16 +219,36 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
     setTurns((t) => t.map((x) => (x.id === id ? { ...x, revealed: true } : x)));
   };
 
-  const endRoleplay = () => {
+  const endRoleplay = async () => {
     stopSpeaking();
     vizRef.current.stopMicrophone();
     recRef.current?.stop();
-    onEnd({
-      userTurns: turns.filter((t) => t.speaker === 'user').map((t) => t.text),
-      revealsUsed,
-      helpRequests,
-      aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
-    });
+
+    const userTurnsList = turns.filter((t) => t.speaker === 'user').map((t) => t.text);
+    setIsAnalyzingScorecard(true);
+
+    try {
+      const scorecard = await generateScorecardAnalysis(userTurnsList, plan.title, plan.upgrades);
+      onEnd({
+        userTurns: userTurnsList,
+        revealsUsed,
+        helpRequests,
+        aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
+        fluencyScore: scorecard?.fluencyScore,
+        dynamicUpgrades: scorecard?.grammarUpgrades,
+        phrasesToReview: scorecard?.phrasesToReview,
+      });
+    } catch (err) {
+      console.warn('Scorecard analysis error:', err);
+      onEnd({
+        userTurns: userTurnsList,
+        revealsUsed,
+        helpRequests,
+        aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
+      });
+    } finally {
+      setIsAnalyzingScorecard(false);
+    }
   };
 
   const mode = isRecording ? 'user' : isAiSpeaking ? 'ai' : 'idle';
@@ -188,10 +264,10 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
 
   return (
     <div className="relative flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
-      {/* Stage tag + reveal toggle */}
+      {/* Stage tag with Turn Count badge + reveal toggle */}
       <div className="flex items-center justify-between px-4 pt-3">
         <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
-          Stage 2 of 3 · Live Voice Roleplay
+          Stage 2 · Turn {currentTurn} of {MAX_TURNS}
         </span>
         <button
           onClick={() => {
@@ -221,11 +297,11 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
           </div>
         </div>
         <WaveformVisualizer mode={mode} bands={bands} />
-        <p className="text-sm font-semibold text-slate-600 -mt-2 px-6 text-center" aria-live="polite">{statusText}</p>
+        <p className="text-sm font-semibold text-slate-600 mb-2 px-6 text-center" aria-live="polite">{statusText}</p>
       </div>
 
-      {/* Live transcript */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+      {/* Live transcript with min-h-[140px], pt-4, and scrollbar-none to prevent top blur clipping */}
+      <div ref={scrollRef} className="flex-1 min-h-[140px] overflow-y-auto px-4 pt-4 pb-3 space-y-2.5 scrollbar-none no-scrollbar">
         {turns.map((t) => {
           const hidden = t.speaker === 'ai' && !t.revealed && !revealAll;
           return (
@@ -243,7 +319,7 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
                     className="text-left w-full"
                     aria-label={hidden ? 'Hidden text. Tap to reveal.' : t.text}
                   >
-                    <span className={`block transition-all duration-300 ${hidden ? 'blur-[6px] select-none' : ''}`}>{t.text}</span>
+                    <span className={`block py-0.5 transition-all duration-300 ${hidden ? 'blur-[5px] select-none' : ''}`}>{t.text}</span>
                     {hidden && <span className="block mt-1 text-[11px] font-bold text-brand-600">Listen first · tap to reveal</span>}
                   </button>
                 ) : (
@@ -300,7 +376,7 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
                 else startRecording();
               }
             }}
-            disabled={isProcessing || conversationOver}
+            disabled={isProcessing || isAnalyzingScorecard || conversationOver}
             className={`relative w-24 h-24 rounded-full flex items-center justify-center text-white shadow-fab transition-all active:scale-95 touch-none select-none disabled:opacity-40 ${
               isRecording ? 'bg-rose-500 scale-110' : 'bg-gradient-to-br from-brand-600 to-emerald-500'
             }`}
@@ -316,7 +392,11 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
             )}
           </button>
 
-          <button onClick={endRoleplay} className="flex flex-col items-center gap-1 w-20 text-slate-600">
+          <button
+            onClick={endRoleplay}
+            disabled={isAnalyzingScorecard}
+            className="flex flex-col items-center gap-1 w-20 text-slate-600"
+          >
             <span
               className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
                 conversationOver ? 'bg-emerald-500 text-white animate-bounce-subtle' : 'bg-slate-100 hover:bg-slate-200'
@@ -338,6 +418,19 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
           onClose={() => setHelpOpen(false)}
           onUsed={() => {}}
         />
+      )}
+
+      {/* Scorecard Grading Overlay with Gemini AI */}
+      {isAnalyzingScorecard && (
+        <div className="absolute inset-0 z-30 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600 mb-4 shadow-soft">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+          <h3 className="text-lg font-black text-slate-900">Grading Your Spoken Roleplay</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
+            James &amp; Gemini AI are evaluating your British phrasing, politeness, and natural office vocabulary…
+          </p>
+        </div>
       )}
     </div>
   );

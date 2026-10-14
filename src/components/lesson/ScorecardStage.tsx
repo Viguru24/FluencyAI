@@ -56,8 +56,23 @@ const Dial: React.FC<{ value: number }> = ({ value }) => {
 };
 
 export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alreadySavedIds, onSaveMistakes, onFinish }) => {
-  const scores = useMemo(() => computeScores(plan, result), [plan, result]);
-  const upgrades = useMemo(() => buildUpgrades(plan, result.userTurns), [plan, result.userTurns]);
+  const scores = useMemo(() => {
+    const base = computeScores(plan, result);
+    if (typeof result.fluencyScore === 'number') {
+      const fluency = Math.max(50, Math.min(100, Math.round(result.fluencyScore)));
+      const overall = Math.round(fluency * 0.45 + base.pronunciation * 0.35 + base.listening * 0.2);
+      return { ...base, fluency, overall };
+    }
+    return base;
+  }, [plan, result]);
+
+  const upgrades = useMemo(() => {
+    if (result.dynamicUpgrades && result.dynamicUpgrades.length > 0) {
+      return result.dynamicUpgrades;
+    }
+    return buildUpgrades(plan, result.userTurns);
+  }, [plan, result.dynamicUpgrades, result.userTurns]);
+
   const [saved, setSaved] = useState(() => upgrades.every((u) => alreadySavedIds.includes(u.id)));
 
   useEffect(() => {
@@ -140,6 +155,36 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
             </div>
           ))}
         </section>
+
+        {/* Dynamic Phrases to Review from Gemini analysis */}
+        {result.phrasesToReview && result.phrasesToReview.length > 0 && (
+          <section className="space-y-3">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Recommended Phrases to Review</h3>
+              <p className="text-xs text-slate-500">Essential British expressions to practice before your next session.</p>
+            </div>
+            <div className="space-y-2">
+              {result.phrasesToReview.map((phrase, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-xs font-black flex items-center justify-center flex-shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="text-xs font-bold text-slate-800 truncate">“{phrase}”</span>
+                  </div>
+                  <button
+                    onClick={() => speakEnglish(phrase, { rate: audioSpeed, accent: plan.persona.accent })}
+                    className="p-2 rounded-xl bg-slate-50 hover:bg-brand-50 text-brand-600 border border-slate-200 transition active:scale-95 flex-shrink-0"
+                    aria-label={`Listen to ${phrase}`}
+                    title="Listen with native British pronunciation"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       <div className="p-4 border-t border-slate-200 bg-white space-y-2">
