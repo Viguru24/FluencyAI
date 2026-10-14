@@ -318,7 +318,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
                   {p.ipa && <p className="text-xs font-mono text-slate-500">{p.ipa}</p>}
                 </div>
                 <button
-                  onClick={() => speakEnglish(p.phrase, { rate: audioSpeed, accent: plan.persona.accent })}
+                  onClick={() => speakEnglish(p.phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
                   className="flex-shrink-0 p-3 rounded-2xl bg-brand-100 hover:bg-brand-200 text-brand-700 active:scale-95 transition"
                   aria-label={`Listen to: ${p.phrase}`}
                 >

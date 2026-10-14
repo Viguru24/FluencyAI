@@ -137,6 +137,7 @@ export const RoleplayStage: React.FC<Props> = ({
       speakEnglish(cleaned, {
         rate: audioSpeed,
         accent: plan.persona.accent,
+        personaName: plan.persona.name,
         onStart: () => setIsAiSpeaking(true),
         onEnd: () => setIsAiSpeaking(false),
       });
@@ -508,7 +509,7 @@ export const RoleplayStage: React.FC<Props> = ({
     : 'Your turn — hold or tap the mic to speak';
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-6rem)] max-h-full min-h-0 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
+    <div className="relative flex flex-col h-[85vh] max-h-[85vh] flex-1 min-h-0 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
       {/* Stage tag with Turn Count badge + reveal toggle */}
       <div className="flex items-center justify-between px-4 sm:px-6 pt-3 flex-shrink-0">
         <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">

@@ -364,6 +364,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                               speakEnglish(item.word, {
                                 rate: audioSpeed,
                                 accent: plan.persona.accent,
+                                personaName: plan.persona.name,
                               })
                             }
                             className="p-1.5 rounded-xl bg-slate-50 hover:bg-brand-50 text-brand-700 border border-slate-200 active:scale-95 transition"
@@ -458,7 +459,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => speakEnglish(point.wordOrPhrase, { rate: audioSpeed, accent: plan.persona.accent })}
+                          onClick={() => speakEnglish(point.wordOrPhrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
                           className="p-1.5 rounded-lg bg-slate-50 hover:bg-brand-50 text-brand-700 border border-slate-200 active:scale-95 transition"
                           title="Listen with native British accent"
                         >
@@ -534,7 +535,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => speakEnglish(u.moreNatural, { rate: audioSpeed, accent: plan.persona.accent })}
+                        onClick={() => speakEnglish(u.moreNatural, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
                         className="p-1.5 rounded-lg bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-200 active:scale-95 transition"
                         aria-label={`Listen: ${u.moreNatural}`}
                         title="Listen with native British pronunciation"
@@ -598,7 +599,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                     <span className="text-xs font-bold text-slate-800 truncate">“{phrase}”</span>
                   </div>
                   <button
-                    onClick={() => speakEnglish(phrase, { rate: audioSpeed, accent: plan.persona.accent })}
+                    onClick={() => speakEnglish(phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
                     className="p-2 rounded-xl bg-slate-50 hover:bg-brand-50 text-brand-600 border border-slate-200 transition active:scale-95 flex-shrink-0"
                     aria-label={`Listen to ${phrase}`}
                     title="Listen with native British pronunciation"

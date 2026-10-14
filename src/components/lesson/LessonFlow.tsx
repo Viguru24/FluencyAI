@@ -58,8 +58,8 @@ export const LessonFlow: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-stretch sm:items-center justify-center sm:p-4 md:p-6 animate-fade-in">
-      <div className="relative w-full max-w-5xl h-full sm:h-[calc(100vh-2rem)] md:h-[calc(100vh-3rem)] bg-white sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fade-in">
+      <div className="relative w-full max-w-5xl h-[85vh] max-h-[85vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header with interactive stage stepper */}
         <header className="px-4 sm:px-6 py-3 bg-gradient-to-r from-brand-600 via-sky-600 to-emerald-600 text-white flex-shrink-0">
           <div className="flex items-center justify-between gap-3">

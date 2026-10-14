@@ -242,6 +242,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
         speakEnglish(scenario.greeting, {
           rate: currentSpeed,
           accent: 'UK',
+          personaName: 'James',
           onStart: () => setIsAiSpeaking(true),
           onEnd: () => setIsAiSpeaking(false),
         });
@@ -257,6 +258,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           speakEnglish(selectedScenario.greeting, {
             rate: currentSpeed,
             accent: 'UK',
+            personaName: 'James',
             onStart: () => setIsAiSpeaking(true),
             onEnd: () => setIsAiSpeaking(false),
           });
@@ -285,6 +287,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     speakEnglish(text, {
       rate: currentSpeed,
       accent: 'UK',
+      personaName: 'James',
       onStart: () => setIsAiSpeaking(true),
       onEnd: () => setIsAiSpeaking(false)
     });
@@ -571,8 +574,8 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-stretch sm:items-center justify-center sm:p-4 animate-fade-in">
-        <div className="relative w-full sm:max-w-2xl h-full sm:h-[94vh] bg-white sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+      <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+        <div className="relative w-full sm:max-w-2xl h-[85vh] max-h-[85vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
           
           {/* Header */}
           <header className="px-4 py-3 bg-gradient-to-r from-brand-700 via-indigo-700 to-sky-700 text-white flex-shrink-0 shadow-md">
