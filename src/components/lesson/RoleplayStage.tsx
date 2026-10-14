@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send } from 'lucide-react';
+import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send, Square } from 'lucide-react';
 import type { LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
-import { speakEnglish, stopSpeaking, playChime } from '../../services/speech';
+import { speakEnglish, stopSpeaking, playChime, isCurrentlySpeaking } from '../../services/speech';
 import {
   startRecognition,
   isRecognitionSupported,
@@ -17,6 +17,7 @@ import { HowDoISaySheet } from './HowDoISaySheet';
 import {
   generateJamesReply,
   generateGeminiScorecard,
+  cleanTextForTTS,
   type AudioAttachment,
 } from '../../services/geminiService';
 
@@ -104,9 +105,34 @@ export const RoleplayStage: React.FC<Props> = ({
   const currentTurn = userTurnsCount + 1;
 
 
+  const handleStopSpeaking = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    stopSpeaking();
+    setIsAiSpeaking(false);
+  }, []);
+
+  // Monitor active speech synthesis state to gracefully reset visualizer/button
+  useEffect(() => {
+    if (!isAiSpeaking) return;
+    const interval = window.setInterval(() => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        if (!window.speechSynthesis.speaking && !isCurrentlySpeaking()) {
+          setIsAiSpeaking(false);
+        }
+      }
+    }, 200);
+    return () => window.clearInterval(interval);
+  }, [isAiSpeaking]);
+
   const speakAi = useCallback(
     (text: string) => {
-      speakEnglish(text, {
+      // Clean any accidental thinking tags, system markers, or brackets before sending to TTS
+      const cleaned = cleanTextForTTS(text, plan.persona.name);
+      if (!cleaned) return;
+
+      speakEnglish(cleaned, {
         rate: audioSpeed,
         accent: plan.persona.accent,
         onStart: () => setIsAiSpeaking(true),
@@ -114,7 +140,7 @@ export const RoleplayStage: React.FC<Props> = ({
       });
       setIsAiSpeaking(true);
     },
-    [audioSpeed, plan.persona.accent]
+    [audioSpeed, plan.persona.accent, plan.persona.name]
   );
 
   const pushAiTurn = useCallback(
@@ -515,7 +541,24 @@ export const RoleplayStage: React.FC<Props> = ({
             </div>
           </div>
         </div>
-        <WaveformVisualizer mode={mode} bands={bands} />
+        {/* Active Audio Waveform Visualizer + Instant Stop Speaking Kill-Switch */}
+        <div className="relative flex items-center justify-center w-full max-w-lg px-4">
+          <WaveformVisualizer mode={mode} bands={bands} />
+
+          {/* Instant "Stop Speaking" kill-switch button */}
+          {isAiSpeaking && (
+            <button
+              onClick={handleStopSpeaking}
+              type="button"
+              className="absolute right-3 sm:right-6 md:right-8 flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs sm:text-sm font-black rounded-xl shadow-xl shadow-rose-600/35 border border-rose-400 transition-all duration-150 animate-pulse z-20 cursor-pointer"
+              title="Stop speaking immediately"
+              aria-label="Stop Speaking"
+            >
+              <Square className="w-3.5 h-3.5 fill-white flex-shrink-0" />
+              <span>Stop Speaking</span>
+            </button>
+          )}
+        </div>
         <p className="text-sm font-semibold text-slate-600 mb-2 px-6 text-center" aria-live="polite">
           {statusText}
         </p>

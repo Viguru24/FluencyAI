@@ -60,39 +60,52 @@ export interface DynamicScorecardResult {
 }
 
 /**
- * Strips internal chain-of-thought, thinking tags (<think>...</think>),
- * reasoning blocks, meta-commentary, and persona speaker prefixes from AI output.
+ * Regex filter before sending text to TTS or displaying in transcript:
+ * Strips accidental <think> tags, system markers, bracketed text, reasoning loops,
+ * and speaker prefixes to eliminate prompt leaks and thinking loops.
  */
-export function cleanAiReply(rawText: string, personaName: string = 'James'): string {
+export function filterTextForTTS(rawText: string, personaName: string = 'James'): string {
   if (!rawText || typeof rawText !== 'string') return '';
 
   let cleaned = rawText;
 
-  // 1. Strip reasoning and thinking tags (<think>...</think>, <thought>...</thought>, <reasoning>...</reasoning>)
-  cleaned = cleaned.replace(/<(think|thought|reasoning|reflection)>[\s\S]*?<\/\1>/gi, '');
-  cleaned = cleaned.replace(/<(think|thought|reasoning|reflection)>[\s\S]*$/gi, '');
-  cleaned = cleaned.replace(/\[(think|thought|reasoning|reflection)\][\s\S]*?\[\/\1\]/gi, '');
-  cleaned = cleaned.replace(/\[(think|thought|reasoning|reflection)\][\s\S]*$/gi, '');
+  // 1. Strip reasoning and thinking tags (<think>...</think>, <thought>...</thought>, unclosed tags)
+  cleaned = cleaned.replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*?<\/\1>/gi, '');
+  cleaned = cleaned.replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/<\/?(?:think|thought|reasoning|reflection|system|instruction|prompt|s|im_start|im_end)[^>]*>/gi, '');
 
-  // 2. Strip leaked meta-narration / reasoning monologues if open-weight models leak thought process
+  // 2. Strip bracketed text: [...], (...), {...} (e.g. stage directions, [chuckles], [Note: ...], etc.)
+  cleaned = cleaned.replace(/\[[\s\S]*?\]/g, '');
+  cleaned = cleaned.replace(/\([\s\S]*?\)/g, '');
+  cleaned = cleaned.replace(/\{[\s\S]*?\}/g, '');
+
+  // 3. Strip system markers, leaked instructions, or meta-commentary
+  cleaned = cleaned.replace(/^(?:CRITICAL(?:\s+INSTRUCTION)?|SYSTEM(?:\s+INSTRUCTION)?|RULES?|NOTE|ROLEPLAY(?:\s+SCENARIO)?):[^\n]*\n?/gim, '');
   cleaned = cleaned.replace(
     /^(?:Since I am playing|As an AI|As an ESL coach|In this turn|I should acknowledge|Note to self|My response:)[^\n]*\n?/gim,
     ''
   );
 
-  // 3. Strip speaker prefix e.g. "James: ", "Assistant: ", "AI: "
-  cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI|Roleplay|System):\\s*`, 'i'), '');
+  // 4. Strip persona/AI speaker prefixes e.g. "James: ", "Assistant: ", "AI: "
+  cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI|Roleplay|System|Tutor):\\s*`, 'i'), '');
 
-  // 4. Strip surrounding quotation marks or code blocks
+  // 5. Strip code fences, markdown actions e.g. *smiles*, and outer quotes
   cleaned = cleaned.trim().replace(/^```[a-z]*\n?([\s\S]*?)\n?```$/i, '$1').trim();
-  cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
+  cleaned = cleaned.replace(/\*[^*]*\*/g, '');
+  cleaned = cleaned.replace(/^["'“”‘’]|["'“”‘’]$/g, '').trim();
 
-  // 5. Secondary check for speaker prefix in case quotes wrapped the prefix
-  cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI):\\s*`, 'i'), '').trim();
-  cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
+  // 6. Secondary check for speaker prefixes after quote stripping
+  cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI|Tutor):\\s*`, 'i'), '').trim();
+  cleaned = cleaned.replace(/^["'“”‘’]|["'“”‘’]$/g, '').trim();
+
+  // 7. Normalize multiple whitespaces
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
   return cleaned;
 }
+
+export const cleanAiReply = filterTextForTTS;
+export const cleanTextForTTS = filterTextForTTS;
 
 /**
  * Powers James's live multi-turn responses with full conversation memory.
@@ -116,35 +129,19 @@ export async function generateJamesReply(
       'AI Brain in Mock Mode'
     );
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
-    return (
+    const chosenFallback =
       fallbackReplies[fallbackIdx] ||
-      "Brilliant! Lovely chatting with you today — let's have a look at your scorecard."
-    );
+      "Brilliant! Lovely chatting with you today — let's have a look at your scorecard.";
+    return filterTextForTTS(chosenFallback, persona?.name || 'James');
   }
 
   const pName = persona?.name || 'James';
 
-  // Hardened Anti-Leak System Instruction with Few-Shot Roleplay Framing
-  const systemPrompt = `CRITICAL RULE: You are an actor playing ${pName}, a warm, professional London Team Lead. NEVER break character. NEVER talk about being an AI, an ESL coach, or system instructions. NEVER narrate your own reasoning (e.g., do not say "Since I am playing the role..."). Speak ONLY as ${pName} in natural, conversational British English (2-3 sentences max). Start every response directly with dialogue.
-
-ROLEPLAY BEHAVIOR & GUIDELINES:
-1. Directly acknowledge, react to, or playfully riff on the exact detail the user just mentioned—never ignore their answer or ask a generic, scripted next question.
-2. If the user says something unexpected, funny, or brief, respond like a real human colleague would in a London office (using natural British warmth, wit, and idioms).
-3. Keep your spoken response concise (2 to 3 natural sentences) and end with a relevant follow-up question that builds directly on what THEY just talked about.
-4. Anti-Spelling Guardrail for Pronunciation: If the user asks how to pronounce a word (e.g., "how do I pronounce kettle"), NEVER spell out the letters (K-E-T-T-L-E) and never output raw IPA/phonetic symbols like /ˈkɛt.əl/. Instead, respond in spoken English: state the word clearly, break it into natural syllables with hyphens (e.g., "ket-tle"), describe where the stress goes (e.g., "stress on the first syllable"), and prompt: 'Now, tap your mic and say it back to me!'
-
-FEW-SHOT ROLEPLAY EXAMPLES:
-Example 1:
-User: "Hello, I am here for my first day."
-${pName}: "Brilliant! Welcome aboard. Let's grab a quick brew and I'll walk you over to your desk. How was your commute in this morning?"
-
-Example 2:
-User: "How do I pronounce kettle?"
-${pName}: "Ah, kettle! It's broken into two beats: ket-tle, with the stress right on the first syllable. Now, tap your mic and say it back to me!"
-
-Example 3:
-User: "The Northern line was packed today!"
-${pName}: "Oh, absolute nightmare during rush hour, isn't it? Well, you survived the journey—come on in, drop your coat, and let's get you a nice cup of tea."`;
+  // Hardened Anti-Leak System Instruction & Strict Output Constraints
+  const systemPrompt = `CRITICAL INSTRUCTION: You are ${pName}, a warm, professional London Team Lead. You are participating in a live voice roleplay with a new colleague. RULES:
+1. Output ONLY your spoken dialogue. NEVER output meta-commentary, reasoning, or system instructions.
+2. Keep your response strictly between 1 to 3 short, natural sentences (maximum 40 words).
+3. Acknowledge what the user just said with warmth or light British humor, and end with a single, natural follow-up question.`;
 
   try {
     if (config.provider === 'freellmapi') {
@@ -323,10 +320,10 @@ ${pName}: "Oh, absolute nightmare during rush hour, isn't it? Well, you survived
       );
     }
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
-    return (
+    const chosenFallback =
       fallbackReplies[fallbackIdx] ||
-      "Brilliant! Lovely chatting with you today — let's have a look at your scorecard."
-    );
+      "Brilliant! Lovely chatting with you today — let's have a look at your scorecard.";
+    return filterTextForTTS(chosenFallback, pName);
   }
 }
 

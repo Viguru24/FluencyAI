@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Volume2, Globe, Download, WifiOff, Check, Server } from 'lucide-react';
-import type { UserProgress, CEFRLevel, NativeLanguage } from '../types';
+import { Sparkles, Volume2, Globe, Download, WifiOff, Check, Server, User } from 'lucide-react';
+import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession } from '../types';
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
 import { playChime } from '../services/speech';
 import { getLLMConfig, testGatewayConnection, type LLMConfig } from '../services/llmConfig';
 import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
+import { UserProfileModal } from './UserProfileModal';
+import { authService } from '../services/authService';
 
 interface NavbarProps {
   progress: UserProgress;
@@ -24,6 +26,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showLevelMenu, setShowLevelMenu] = useState(false);
   const [showGatewayModal, setShowGatewayModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [authSession, setAuthSession] = useState<AuthSession | null>(() => authService.getSession());
   const [llmConfig, setLlmConfig] = useState<LLMConfig>(getLLMConfig);
   const [isGatewayConnected, setIsGatewayConnected] = useState<boolean>(() => {
     const conf = getLLMConfig();
@@ -67,8 +71,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     window.addEventListener('fluency_llm_config_changed', handleConfigChange);
 
+    const unsubAuth = authService.onAuthStateChange((sess) => {
+      setAuthSession(sess);
+    });
+
     return () => {
       unsub();
+      unsubAuth();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('fluency_llm_config_changed', handleConfigChange);
@@ -226,6 +235,44 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
+              {/* User Profile & VPS Cloud Sync Button */}
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  setShowProfileModal(true);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs ${
+                  authSession
+                    ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 text-brand-900 border-brand-200 hover:bg-brand-100'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                }`}
+                title={
+                  authSession
+                    ? `Signed in as ${authSession.user.name} • VPS Synced`
+                    : 'Sign in to sync your XP, streak, and level with VPS backend'
+                }
+              >
+                <div className="relative flex items-center justify-center w-5 h-5 rounded-lg bg-white border border-slate-200/80 text-xs shadow-2xs overflow-hidden flex-shrink-0">
+                  {authSession?.user?.picture ? (
+                    authSession.user.picture.startsWith('http') || authSession.user.picture.startsWith('data:') ? (
+                      <img src={authSession.user.picture} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{authSession.user.picture}</span>
+                    )
+                  ) : progress.avatar ? (
+                    <span>{progress.avatar}</span>
+                  ) : (
+                    <User className="w-3.5 h-3.5 text-brand-700" />
+                  )}
+                  {authSession && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
+                  )}
+                </div>
+                <span className="max-w-[80px] truncate font-extrabold text-slate-900">
+                  {authSession ? authSession.user.name : progress.name !== 'Alex' ? progress.name : 'Sign In'}
+                </span>
+              </button>
+
               {/* James Test Area Button */}
               {onOpenJamesTest && (
                 <button
@@ -314,6 +361,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           isOpen={showGatewayModal}
           onClose={() => setShowGatewayModal(false)}
           onConnectionStatusChange={(ok) => setIsGatewayConnected(ok)}
+        />
+      )}
+
+      {/* User Profile & VPS Cloud Sync Modal */}
+      {showProfileModal && (
+        <UserProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          progress={progress}
+          onUpdateProgress={onUpdateProgress}
         />
       )}
     </>

@@ -13,21 +13,26 @@ import { registerServiceWorker } from './pwa';
 import { RefreshCw, Sparkles, BookmarkCheck } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
 import { playChime } from './services/speech';
-
+import { authService, mergeUserProgressWithRemote } from './services/authService';
 
 const STORAGE_KEY = 'fluencyai_user_progress_v1';
 const DAILY_ID = 'daily-lesson-today';
 
 export function App() {
-  // Load saved progress or fallback to initial
+  // Load saved progress or fallback to initial, merging with remote authenticated profile if present
   const [progress, setProgress] = useState<UserProgress>(() => {
+    let local = initialUserProgress;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return { ...initialUserProgress, ...JSON.parse(saved) };
+      if (saved) local = { ...initialUserProgress, ...JSON.parse(saved) };
     } catch (e) {
       console.warn('Could not read user progress from localStorage', e);
     }
-    return initialUserProgress;
+    const currentUser = authService.getUser();
+    if (currentUser) {
+      return mergeUserProgressWithRemote(local, currentUser);
+    }
+    return local;
   });
 
   const [activePlan, setActivePlan] = useState<LessonPlan | null>(null);
@@ -36,12 +41,44 @@ export function App() {
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const [hasUpdate, setHasUpdate] = useState(false);
 
-  // Sync progress to localStorage
+  // Listen for auth state changes (login, logout, profile update)
+  useEffect(() => {
+    const unsub = authService.onAuthStateChange((session) => {
+      if (session?.user) {
+        setProgress((prev) => mergeUserProgressWithRemote(prev, session.user));
+      }
+    });
+    return unsub;
+  }, []);
+
+  // Sync progress to localStorage & VPS Cloud database
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
     } catch (e) {
       console.warn('Could not save user progress to localStorage', e);
+    }
+
+    if (authService.isAuthenticated()) {
+      const timer = setTimeout(() => {
+        authService
+          .syncProgress({
+            xp: progress.completedXP,
+            streak: progress.streakDays,
+            level: progress.level,
+            name: progress.name,
+            picture: progress.avatar,
+            progress_data: {
+              completedScenarioIds: progress.completedScenarioIds,
+              completedMinutes: progress.completedMinutes,
+              dailyGoalMinutes: progress.dailyGoalMinutes,
+              dailyGoalXP: progress.dailyGoalXP,
+              nativeLanguage: progress.nativeLanguage,
+            },
+          })
+          .catch((err) => console.warn('[App] Cloud sync error:', err));
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [progress]);
 

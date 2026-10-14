@@ -1,0 +1,903 @@
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  User,
+  Mail,
+  Lock,
+  Sparkles,
+  Server,
+  LogOut,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  ShieldCheck,
+  Flame,
+  Award,
+  Edit2,
+  Check,
+  Zap,
+} from 'lucide-react';
+import {
+  authService,
+  getAuthProviderUrl,
+  setAuthProviderUrl,
+  getAuthProviderType,
+  setAuthProviderType,
+  type AuthProviderType,
+} from '../services/authService';
+import type { AuthSession, UserProgress } from '../types';
+import { playChime } from '../services/speech';
+import { toast } from '../services/toast';
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  progress: UserProgress;
+  onUpdateProgress: (updater: (prev: UserProgress) => UserProgress) => void;
+}
+
+const AVATAR_PRESETS = ['🧑‍💼', '👩‍💼', '🎓', '🚀', '🌟', '🎧', '⚡', '☕', '🇬🇧', '🌍'];
+
+export const UserProfileModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  progress,
+  onUpdateProgress,
+}) => {
+  const [session, setSession] = useState<AuthSession | null>(() => authService.getSession());
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup' | 'otp' | 'server'>('signin');
+
+  // Sign In / Sign Up Form State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+
+  // Profile Edit State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState(() => authService.getUser()?.name || progress.name);
+  const [editAvatar, setEditAvatar] = useState(() => authService.getUser()?.picture || progress.avatar || '🧑‍💼');
+
+  // VPS Server Config State
+  const [serverUrl, setServerUrl] = useState(() => getAuthProviderUrl());
+  const [providerType, setProviderState] = useState<AuthProviderType>(() => getAuthProviderType());
+
+  // Loading & status states
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = authService.onAuthStateChange((newSession) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        setEditName(newSession.user.name || '');
+        setEditAvatar(newSession.user.picture || '🧑‍💼');
+      }
+    });
+    return unsub;
+  }, []);
+
+  if (!isOpen) return null;
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setErrorMessage('Please enter both email and password.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage(null);
+    playChime('tap');
+
+    try {
+      const { session: newSession } = await authService.loginWithPassword({ email, password });
+      playChime('success');
+      toast.success(`Welcome back, ${newSession.user.name}!`, 'Signed In');
+
+      // Update local state and sync progress
+      onUpdateProgress((prev) => ({
+        ...prev,
+        name: newSession.user.name || prev.name,
+        email: newSession.user.email,
+        id: newSession.user.id,
+        avatar: newSession.user.picture || prev.avatar,
+        level: newSession.user.level || prev.level,
+        completedXP: Math.max(prev.completedXP, newSession.user.xp ?? 0),
+        streakDays: Math.max(prev.streakDays, newSession.user.streak ?? 0),
+      }));
+
+      // Trigger immediate cloud sync
+      await authService.syncProgress({
+        xp: Math.max(progress.completedXP, newSession.user.xp ?? 0),
+        streak: Math.max(progress.streakDays, newSession.user.streak ?? 0),
+        level: progress.level,
+        name: newSession.user.name || progress.name,
+      });
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Login failed. Please check credentials.');
+      toast.error(err.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setErrorMessage('Please provide an email and password.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage(null);
+    playChime('tap');
+
+    try {
+      const { session: newSession } = await authService.signUp({
+        email,
+        password,
+        name: displayName.trim() || undefined,
+      });
+      playChime('success');
+      toast.success(`Account created! Welcome, ${newSession.user.name}!`, 'Account Created');
+
+      onUpdateProgress((prev) => ({
+        ...prev,
+        name: newSession.user.name || displayName || prev.name,
+        email: newSession.user.email,
+        id: newSession.user.id,
+        avatar: newSession.user.picture || prev.avatar,
+      }));
+
+      // Sync local progress to newly created VPS record
+      await authService.syncProgress({
+        xp: progress.completedXP,
+        streak: progress.streakDays,
+        level: progress.level,
+        name: newSession.user.name || displayName || progress.name,
+      });
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Account registration failed.');
+      toast.error(err.message || 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setErrorMessage('Please enter your email address.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage(null);
+    playChime('tap');
+
+    try {
+      const res = await authService.requestMagicOtp(email);
+      setOtpSent(true);
+      playChime('success');
+      toast.success(res.message, 'Code Sent');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to send security code.');
+      toast.error(err.message || 'Failed to send OTP');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !otpCode) {
+      setErrorMessage('Please enter the 6-digit security code.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage(null);
+    playChime('tap');
+
+    try {
+      const { session: newSession } = await authService.verifyMagicOtp({ email, code: otpCode });
+      playChime('success');
+      toast.success(`Signed in as ${newSession.user.name}!`, 'Magic Link Verified');
+
+      onUpdateProgress((prev) => ({
+        ...prev,
+        name: newSession.user.name || prev.name,
+        email: newSession.user.email,
+        id: newSession.user.id,
+        avatar: newSession.user.picture || prev.avatar,
+        level: newSession.user.level || prev.level,
+        completedXP: Math.max(prev.completedXP, newSession.user.xp ?? 0),
+        streakDays: Math.max(prev.streakDays, newSession.user.streak ?? 0),
+      }));
+
+      await authService.syncProgress({
+        xp: Math.max(progress.completedXP, newSession.user.xp ?? 0),
+        streak: Math.max(progress.streakDays, newSession.user.streak ?? 0),
+        level: progress.level,
+        name: newSession.user.name || progress.name,
+      });
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Verification failed. Code may be invalid or expired.');
+      toast.error(err.message || 'Verification failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    playChime('tap');
+    authService.loginWithGoogle();
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      toast.error('Display name cannot be empty');
+      return;
+    }
+    setIsLoading(true);
+    playChime('tap');
+
+    try {
+      await authService.updateProfile({
+        name: editName.trim(),
+        picture: editAvatar,
+      });
+
+      onUpdateProgress((prev) => ({
+        ...prev,
+        name: editName.trim(),
+        avatar: editAvatar,
+      }));
+
+      // Also sync current XP & streak alongside name
+      await authService.syncProgress({
+        name: editName.trim(),
+        picture: editAvatar,
+        xp: progress.completedXP,
+        streak: progress.streakDays,
+        level: progress.level,
+      });
+
+      setIsEditingProfile(false);
+      playChime('success');
+      toast.success('Profile updated and saved to VPS database!', 'Profile Saved');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    playChime('tap');
+
+    try {
+      const res = await authService.syncProgress({
+        xp: progress.completedXP,
+        streak: progress.streakDays,
+        level: progress.level,
+        name: session?.user?.name || progress.name,
+        picture: session?.user?.picture || progress.avatar,
+        progress_data: {
+          completedScenarioIds: progress.completedScenarioIds,
+          completedMinutes: progress.completedMinutes,
+          dailyGoalMinutes: progress.dailyGoalMinutes,
+          dailyGoalXP: progress.dailyGoalXP,
+          nativeLanguage: progress.nativeLanguage,
+        },
+      });
+
+      if (res.user) {
+        onUpdateProgress((prev) => ({
+          ...prev,
+          name: res.user!.name || prev.name,
+          completedXP: Math.max(prev.completedXP, res.user!.xp ?? 0),
+          streakDays: Math.max(prev.streakDays, res.user!.streak ?? 0),
+          level: res.user!.level || prev.level,
+        }));
+      }
+
+      playChime('success');
+      toast.success('XP, streak, and CEFR level synced with VPS database!', 'Cloud Sync Complete');
+    } catch (err: any) {
+      toast.error(err.message || 'Sync failed');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleLogout = () => {
+    playChime('tap');
+    authService.logout();
+    toast.success('Logged out from VPS account', 'Signed Out');
+  };
+
+  const handleSaveServerConfig = () => {
+    playChime('tap');
+    setAuthProviderUrl(serverUrl);
+    setAuthProviderType(providerType);
+    toast.success(`Connected to: ${serverUrl}`, 'Auth Endpoint Saved');
+    setActiveTab('signin');
+  };
+
+  const currentUser = session?.user;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-profile-title"
+      >
+        {/* Modal Top Header */}
+        <div className="relative px-6 py-5 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-emerald-400 flex items-center justify-center text-xl shadow-soft">
+              {currentUser?.picture ? (
+                currentUser.picture.startsWith('http') || currentUser.picture.startsWith('data:') ? (
+                  <img
+                    src={currentUser.picture}
+                    alt={currentUser.name}
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                ) : (
+                  <span>{currentUser.picture}</span>
+                )
+              ) : progress.avatar ? (
+                <span>{progress.avatar}</span>
+              ) : (
+                <User className="w-5 h-5 text-white" />
+              )}
+              {session && (
+                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h3 id="user-profile-title" className="text-base font-extrabold tracking-tight text-white">
+                  {currentUser ? currentUser.name : 'Account & Sync'}
+                </h3>
+                {session ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                    VPS Synced
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                    Local Only
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-300">
+                {currentUser?.email || 'Self-Hosted VPS Cloud Authentication'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition"
+            aria-label="Close profile modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto no-scrollbar">
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2 animate-slide-down">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div className="leading-tight flex-1">{errorMessage}</div>
+            </div>
+          )}
+
+          {/* VIEW 1: AUTHENTICATED USER DASHBOARD */}
+          {session ? (
+            <div className="space-y-4">
+              {/* Profile Card & Avatar */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-brand-50/40 border border-slate-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Profile Details
+                  </span>
+                  <button
+                    onClick={() => setIsEditingProfile(!isEditingProfile)}
+                    className="flex items-center gap-1 text-xs font-bold text-brand-600 hover:text-brand-800 transition"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>{isEditingProfile ? 'Cancel' : 'Edit Profile'}</span>
+                  </button>
+                </div>
+
+                {isEditingProfile ? (
+                  <div className="space-y-3 pt-1">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Display Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Your Name"
+                        className="w-full mt-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Pick Avatar Emoji or Icon
+                      </label>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {AVATAR_PRESETS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setEditAvatar(emoji)}
+                            className={`w-8 h-8 rounded-xl text-lg flex items-center justify-center transition ${
+                              editAvatar === emoji
+                                ? 'bg-brand-600 text-white shadow-xs scale-105'
+                                : 'bg-white hover:bg-slate-100 border border-slate-200'
+                            }`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleSaveProfile}
+                      disabled={isLoading}
+                      className="w-full py-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-1.5 active:scale-95 transition"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
+                      <span>Save Profile to VPS</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-inner flex items-center justify-center text-2xl flex-shrink-0">
+                      {currentUser?.picture ? (
+                        currentUser.picture.startsWith('http') || currentUser.picture.startsWith('data:') ? (
+                          <img
+                            src={currentUser.picture}
+                            alt={currentUser.name}
+                            className="w-full h-full object-cover rounded-2xl"
+                          />
+                        ) : (
+                          <span>{currentUser.picture}</span>
+                        )
+                      ) : progress.avatar ? (
+                        <span>{progress.avatar}</span>
+                      ) : (
+                        <span>🧑‍💼</span>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-slate-900">{currentUser?.name}</div>
+                      <div className="text-xs text-slate-500 font-medium">{currentUser?.email}</div>
+                      <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                        <span>Connected to VPS database</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Real-time Synced Stats Grid */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    <span>XP</span>
+                  </div>
+                  <div className="text-base font-black text-brand-600 mt-0.5">
+                    {progress.completedXP}
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-medium">Daily {progress.dailyGoalXP}</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
+                    <Flame className="w-3 h-3 text-amber-500" />
+                    <span>Streak</span>
+                  </div>
+                  <div className="text-base font-black text-amber-600 mt-0.5">
+                    {progress.streakDays} Days
+                  </div>
+                  <div className="text-[9px] text-emerald-600 font-medium">Active</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
+                    <Award className="w-3 h-3 text-emerald-500" />
+                    <span>CEFR</span>
+                  </div>
+                  <div className="text-base font-black text-emerald-600 mt-0.5">
+                    Level {progress.level}
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-medium">Fluency Target</div>
+                </div>
+              </div>
+
+              {/* VPS Server Connection Pill */}
+              <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Server className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="font-bold text-emerald-950">Ra Server (VPS Node JWT Auth)</div>
+                    <div className="text-[11px] font-mono text-emerald-700">{getAuthProviderUrl()}</div>
+                  </div>
+                </div>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-400 animate-pulse-subtle" />
+              </div>
+
+              {/* Action Buttons: Sync Now & Log Out */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={handleManualSync}
+                  disabled={isSyncing}
+                  className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Syncing with VPS…' : 'Sync Progress Now'}</span>
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  className="py-2.5 px-3.5 rounded-2xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* VIEW 2: SIGN IN / SIGN UP TABS */
+            <div className="space-y-4">
+              {/* Tab Selector */}
+              <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
+                <button
+                  onClick={() => {
+                    setActiveTab('signin');
+                    setErrorMessage(null);
+                  }}
+                  className={`py-1.5 rounded-xl transition ${
+                    activeTab === 'signin' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  Password
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('otp');
+                    setErrorMessage(null);
+                  }}
+                  className={`py-1.5 rounded-xl transition ${
+                    activeTab === 'otp' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  Magic OTP
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('signup');
+                    setErrorMessage(null);
+                  }}
+                  className={`py-1.5 rounded-xl transition ${
+                    activeTab === 'signup' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  Sign Up
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('server');
+                    setErrorMessage(null);
+                  }}
+                  className={`py-1.5 rounded-xl transition ${
+                    activeTab === 'server' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  VPS Endpoint
+                </button>
+              </div>
+
+              {/* TAB 1: PASSWORD LOGIN */}
+              {activeTab === 'signin' && (
+                <form onSubmit={handleLogin} className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-brand-600" />
+                      <span>Email Address</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@domain.com"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-brand-600" />
+                      <span>Password</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="w-4 h-4" />
+                    )}
+                    <span>Sign In to VPS</span>
+                  </button>
+                </form>
+              )}
+
+              {/* TAB 2: MAGIC OTP / CODE LOGIN */}
+              {activeTab === 'otp' && (
+                <div className="space-y-3.5">
+                  {!otpSent ? (
+                    <form onSubmit={handleSendOtp} className="space-y-3.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-brand-600" />
+                          <span>Email Address</span>
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@domain.com"
+                          className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                        />
+                        <p className="text-[11px] text-slate-500">
+                          We will send a 6-digit magic security code to your email.
+                        </p>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4" />
+                        )}
+                        <span>Send Magic Login Code</span>
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyOtp} className="space-y-3.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase">
+                          Enter 6-Digit Code sent to {email}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value)}
+                          placeholder="123456"
+                          className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-center font-mono text-lg font-bold tracking-widest text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOtpSent(false)}
+                          className="px-3 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold"
+                        >
+                          Change Email
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4" />
+                          )}
+                          <span>Verify &amp; Sign In</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: SIGN UP */}
+              {activeTab === 'signup' && (
+                <form onSubmit={handleSignUp} className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                      <User className="w-3 h-3 text-brand-600" />
+                      <span>Your Name / Display Name</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="e.g. Louis"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-brand-600" />
+                      <span>Email Address</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@domain.com"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-brand-600" />
+                      <span>Password</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    <span>Create Account on VPS</span>
+                  </button>
+                </form>
+              )}
+
+              {/* TAB 4: VPS SERVER ENDPOINT SETTINGS */}
+              {activeTab === 'server' && (
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                      <Server className="w-3 h-3 text-brand-600" />
+                      <span>Auth Provider URL (VITE_AUTH_PROVIDER_URL)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={serverUrl}
+                      onChange={(e) => setServerUrl(e.target.value)}
+                      placeholder="https://api.cosmowhisper.com"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Default: <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">https://api.cosmowhisper.com</code> or local LAN <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">http://192.168.1.28:5000</code>.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      Backend Backend Type
+                    </label>
+                    <select
+                      value={providerType}
+                      onChange={(e) => setProviderState(e.target.value as AuthProviderType)}
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none"
+                    >
+                      <option value="node-jwt">Node JWT Backend (Ra VPS / Express)</option>
+                      <option value="pocketbase">PocketBase (Self-Hosted)</option>
+                      <option value="supabase">Supabase (Self-Hosted)</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={handleSaveServerConfig}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-2 active:scale-95 transition"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Apply Server URL</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Divider & Google OAuth Option */}
+              {activeTab !== 'server' && (
+                <div className="pt-1 space-y-3">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200" />
+                    </div>
+                    <span className="relative px-3 bg-white text-[11px] font-bold uppercase text-slate-400">
+                      Or continue with
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold shadow-2xs flex items-center justify-center gap-2.5 active:scale-95 transition"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                    <span>Google OAuth Redirect</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

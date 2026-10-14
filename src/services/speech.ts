@@ -15,9 +15,18 @@ export const STORAGE_KEY_SELECTED_VOICE = 'fluency_selected_tts_voice';
 export function cleanTextForSpeech(raw: string): string {
   if (!raw) return '';
   return raw
+    // Strip <think> and reasoning tags
+    .replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*$/gi, '')
+    .replace(/<\/?(?:think|thought|reasoning|reflection|system|instruction|prompt|s|im_start|im_end)[^>]*>/gi, '')
+    // Strip system markers and prompt leaks
+    .replace(/^(?:CRITICAL(?:\s+INSTRUCTION)?|SYSTEM(?:\s+INSTRUCTION)?|RULES?|NOTE|ROLEPLAY(?:\s+SCENARIO)?):[^\n]*\n?/gim, '')
+    .replace(/^(?:Since I am playing|As an AI|As an ESL coach|In this turn|I should acknowledge|Note to self|My response:)[^\n]*\n?/gim, '')
+    // Strip bracketed text: [...], (...), {...}
+    .replace(/\[[\s\S]*?\]/g, '') // remove [context brackets]
+    .replace(/\([\s\S]*?\)/g, '') // remove (stage directions)
+    .replace(/\{[\s\S]*?\}/g, '') // remove {curly brackets}
     .replace(/\*.*?\*/g, '') // remove *stage directions* or markdown emphasis
-    .replace(/\[.*?\]/g, '') // remove [context brackets]
-    .replace(/\(.*?\)/g, '') // remove (stage directions)
     .replace(/\/.*?\//g, '') // remove /phonetic transcriptions/
     .replace(/[`_~#]/g, '')  // remove markdown formatting characters
     .replace(/https?:\/\/\S+/g, '') // remove URLs
