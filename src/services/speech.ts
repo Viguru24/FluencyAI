@@ -14,11 +14,30 @@ export const STORAGE_KEY_SELECTED_VOICE = 'fluency_selected_tts_voice';
  */
 export function cleanTextForSpeech(raw: string): string {
   if (!raw) return '';
-  return raw
-    // Strip <think> and reasoning tags
+  let cleaned = raw
+    // Strip <think> and reasoning XML tags
     .replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*?<\/\1>/gi, '')
     .replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*$/gi, '')
-    .replace(/<\/?(?:think|thought|reasoning|reflection|system|instruction|prompt|s|im_start|im_end)[^>]*>/gi, '')
+    .replace(/<\/?(?:think|thought|reasoning|reflection|system|instruction|prompt|s|im_start|im_end)[^>]*>/gi, '');
+
+  // Strip explicit Thinking Process blocks (e.g. "Thinking Process: ...")
+  if (/(?:Thinking Process|Thought Process|Reasoning Process|Chain of [Tt]hought|Internal Reasoning):/i.test(cleaned)) {
+    const responseMatch = cleaned.match(/(?:^|\r?\n)\s*(?:(?:Spoken )?Dialogue|(?:Final )?Spoken Reply|Spoken Response|James|Tutor):\s*([\s\S]*)$/i);
+    if (responseMatch && responseMatch[1]?.trim()) {
+      cleaned = responseMatch[1];
+    } else {
+      cleaned = cleaned.replace(/(?:Thinking Process|Thought Process|Reasoning Process|Chain of [Tt]hought|Internal Reasoning):[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|$)/i, '');
+    }
+  }
+
+  // Strip standalone numbered thinking steps e.g. "1. **Analyze...**"
+  cleaned = cleaned.replace(/^\s*\d+\.\s+\*\*(?:Analyze|Determine|Formulate|Identify|Consider|Acknowledge|Evaluate|Draft|Check|Plan|Context|Persona)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|^\s*\d+\.|$)/gim, '');
+
+  // Strip planning bullets like "* Role: James...", "* Start directly with dialogue..."
+  cleaned = cleaned.replace(/^\s*[*•-]\s+\*\*(?:Role|Scenario|Last interaction|Formulate|Tone|Plan)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|^\s*[*•-]|$)/gim, '');
+  cleaned = cleaned.replace(/^\s*[*•-]\s+(?:Role|Scenario|Last interaction|Acknowledge|Maintain|Keep it concise|Start directly with dialogue)[^\n]*\n?/gim, '');
+
+  return cleaned
     // Strip system markers and prompt leaks
     .replace(/^(?:CRITICAL(?:\s+INSTRUCTION)?|SYSTEM(?:\s+INSTRUCTION)?|RULES?|NOTE|ROLEPLAY(?:\s+SCENARIO)?):[^\n]*\n?/gim, '')
     .replace(/^(?:Since I am playing|As an AI|As an ESL coach|In this turn|I should acknowledge|Note to self|My response:)[^\n]*\n?/gim, '')

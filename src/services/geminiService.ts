@@ -98,36 +98,55 @@ export function filterTextForTTS(rawText: string, personaName: string = 'James')
 
   let cleaned = rawText;
 
-  // 1. Strip reasoning and thinking tags (<think>...</think>, <thought>...</thought>, unclosed tags)
+  // 1. Strip reasoning and thinking XML tags (<think>...</think>, <thought>...</thought>, unclosed tags)
   cleaned = cleaned.replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*?<\/\1>/gi, '');
   cleaned = cleaned.replace(/<(think|thought|reasoning|reflection|system|instruction|prompt)[^>]*>[\s\S]*$/gi, '');
   cleaned = cleaned.replace(/<\/?(?:think|thought|reasoning|reflection|system|instruction|prompt|s|im_start|im_end)[^>]*>/gi, '');
 
-  // 2. Strip bracketed text: [...], (...), {...} (e.g. stage directions, [chuckles], [Note: ...], etc.)
+  // 2. Strip explicit Thinking Process blocks (e.g. "Thinking Process: ...")
+  if (/(?:Thinking Process|Thought Process|Reasoning Process|Chain of [Tt]hought|Internal Reasoning):/i.test(cleaned)) {
+    // Look for explicit response marker on its own line: e.g. "\n\nDialogue: ...", "\nJames: ..."
+    const responseMatch = cleaned.match(/(?:^|\r?\n)\s*(?:(?:Spoken )?Dialogue|(?:Final )?Spoken Reply|Spoken Response|James|Tutor):\s*([\s\S]*)$/i);
+    if (responseMatch && responseMatch[1]?.trim()) {
+      cleaned = responseMatch[1];
+    } else {
+      // Strip everything from the header through all numbered/bulleted thinking steps until clean text
+      cleaned = cleaned.replace(/(?:Thinking Process|Thought Process|Reasoning Process|Chain of [Tt]hought|Internal Reasoning):[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|$)/i, '');
+    }
+  }
+
+  // 3. Strip standalone numbered thinking steps e.g. "1. **Analyze the User's Input:** ... 2. **Determine the Context:** ..."
+  cleaned = cleaned.replace(/^\s*\d+\.\s+\*\*(?:Analyze|Determine|Formulate|Identify|Consider|Acknowledge|Evaluate|Draft|Check|Plan|Context|Persona)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|^\s*\d+\.|$)/gim, '');
+
+  // 4. Strip planning bullets like "* Role: James...", "* Scenario: ...", "* Start directly with dialogue..."
+  cleaned = cleaned.replace(/^\s*[*•-]\s+\*\*(?:Role|Scenario|Last interaction|Formulate|Tone|Plan)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|^\s*[*•-]|$)/gim, '');
+  cleaned = cleaned.replace(/^\s*[*•-]\s+(?:Role|Scenario|Last interaction|Acknowledge|Maintain|Keep it concise|Start directly with dialogue)[^\n]*\n?/gim, '');
+
+  // 5. Strip bracketed text: [...], (...), {...} (e.g. stage directions, [chuckles], [Note: ...], etc.)
   cleaned = cleaned.replace(/\[[\s\S]*?\]/g, '');
   cleaned = cleaned.replace(/\([\s\S]*?\)/g, '');
   cleaned = cleaned.replace(/\{[\s\S]*?\}/g, '');
 
-  // 3. Strip system markers, leaked instructions, or meta-commentary
+  // 6. Strip system markers, leaked instructions, or meta-commentary
   cleaned = cleaned.replace(/^(?:CRITICAL(?:\s+INSTRUCTION)?|SYSTEM(?:\s+INSTRUCTION)?|RULES?|NOTE|ROLEPLAY(?:\s+SCENARIO)?):[^\n]*\n?/gim, '');
   cleaned = cleaned.replace(
     /^(?:Since I am playing|As an AI|As an ESL coach|In this turn|I should acknowledge|Note to self|My response:)[^\n]*\n?/gim,
     ''
   );
 
-  // 4. Strip persona/AI speaker prefixes e.g. "James: ", "Dr. Patel: ", "Sarah: ", "Emma: "
+  // 7. Strip persona/AI speaker prefixes e.g. "James: ", "Dr. Patel: ", "Sarah: ", "Emma: "
   cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI|Roleplay|System|Tutor):\\s*`, 'i'), '');
 
-  // 5. Strip code fences, markdown actions e.g. *smiles*, and outer quotes
+  // 8. Strip code fences, markdown actions e.g. *smiles*, and outer quotes
   cleaned = cleaned.trim().replace(/^```[a-z]*\n?([\s\S]*?)\n?```$/i, '$1').trim();
   cleaned = cleaned.replace(/\*[^*]*\*/g, '');
   cleaned = cleaned.replace(/^["'“”‘’]|["'“”‘’]$/g, '').trim();
 
-  // 6. Secondary check for speaker prefixes after quote stripping
+  // 9. Secondary check for speaker prefixes after quote stripping
   cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI|Tutor):\\s*`, 'i'), '').trim();
   cleaned = cleaned.replace(/^["'“”‘’]|["'“”‘’]$/g, '').trim();
 
-  // 7. Normalize multiple whitespaces
+  // 10. Normalize multiple whitespaces
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
   return cleaned;
@@ -184,10 +203,12 @@ export async function generateJamesReply(
   // Hardened Anti-Leak System Instruction & Strict Output Constraints
   const systemPrompt = `CRITICAL INSTRUCTION: You are ${pName} (${pRole}). Tone: ${pTone}. You are participating in a live British English voice roleplay: "${scenarioTitle}".
 ${levelInstruction}
-RULES:
-1. Output ONLY your spoken dialogue in character. NEVER output meta-commentary, thinking, reasoning, or speaker prefixes like "${pName}:".
-2. Keep your response strictly between 1 to 3 short, natural sentences (maximum 40 words).
-3. Acknowledge what the user just said with warmth or context-appropriate British professionalism, and end with a single, natural follow-up question or response to keep the simulation moving forward.`;
+STRICT OUTPUT RULES:
+1. Output ONLY your direct spoken dialogue in character.
+2. NEVER output internal thinking, reasoning steps, chain-of-thought, or analysis (such as "Thinking Process:", "1. Analyze:", or planning bullets).
+3. NEVER include labels or prefixes like "${pName}:" or "Dialogue:". Start immediately with your spoken words.
+4. Keep your response strictly between 1 to 3 short, natural sentences (maximum 40 words).
+5. Acknowledge what the user just said with warmth or context-appropriate British professionalism, and end with a single, natural follow-up question or response to keep the simulation moving forward.`;
 
   try {
     if (config.provider === 'freellmapi') {
@@ -234,7 +255,7 @@ RULES:
             model: config.model || 'auto',
             messages,
             temperature: 0.75,
-            max_tokens: 220,
+            max_tokens: 600,
           }),
         },
         config.baseUrl
@@ -315,7 +336,8 @@ RULES:
         });
       }
 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+      const directModel = config.model && config.model !== 'auto' ? config.model : 'gemini-2.5-flash';
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${directModel}:generateContent?key=${encodeURIComponent(
         apiKey
       )}`;
 
@@ -329,7 +351,10 @@ RULES:
           contents,
           generationConfig: {
             temperature: 0.75,
-            maxOutputTokens: 220,
+            maxOutputTokens: 600,
+            ...(directModel.includes('2.5') || directModel.includes('2.0')
+              ? { thinkingConfig: { thinkingBudget: 0 } }
+              : {}),
           },
         }),
       });
