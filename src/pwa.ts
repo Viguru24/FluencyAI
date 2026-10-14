@@ -13,8 +13,11 @@ export function registerServiceWorker(onUpdate?: () => void) {
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
+      // Resolves relative to current base path (works on localhost, custom domains, and GitHub Pages)
+      const swUrl = new URL('sw.js', window.location.href).pathname;
+
       navigator.serviceWorker
-        .register('/sw.js')
+        .register(swUrl)
         .then((reg) => {
           console.log('[FluencyAI PWA] Service worker registered with scope:', reg.scope);
 

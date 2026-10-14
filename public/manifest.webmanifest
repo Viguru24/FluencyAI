@@ -1,10 +1,10 @@
 {
-  "id": "/",
+  "id": "./",
   "name": "FluencyAI - AI English Language Tutor",
   "short_name": "FluencyAI",
   "description": "Mobile-first AI English tutoring platform with interactive voice roleplays, daily fluency goals, and pronunciation coaching.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#0ea5e9",
@@ -13,31 +13,31 @@
   "categories": ["education", "language", "productivity"],
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-maskable-192.png",
+      "src": "./icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-maskable-512.png",
+      "src": "./icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon.svg",
+      "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
@@ -48,15 +48,15 @@
       "name": "Start Daily Lesson",
       "short_name": "Daily Lesson",
       "description": "Quick 5-minute fluency sprint and vocabulary check",
-      "url": "/#daily-lesson",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "./#daily-lesson",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Conversational Roleplays",
       "short_name": "Roleplays",
       "description": "Practice realistic English conversations with AI personas",
-      "url": "/#roleplays",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "./#roleplays",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     }
   ],
   "prefer_related_applications": false
