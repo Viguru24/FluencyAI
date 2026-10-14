@@ -245,7 +245,7 @@ RULES:
         if (i === 0 && !isUser) {
           contents.push({
             role: 'user',
-            parts: [{ text: `[Roleplay Scenario: "${scenarioTitle}". ${pName} welcomes a new colleague.]` }],
+            parts: [{ text: `[Roleplay Scenario: "${scenarioTitle}". You are ${pName} (${pRole}).]` }],
           });
           contents.push({
             role: 'model',
