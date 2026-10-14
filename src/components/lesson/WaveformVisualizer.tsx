@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 export type VisualizerMode = 'idle' | 'ai' | 'user';
 
 interface Props {
-  mode: VisualizerMode;
+  mode?: VisualizerMode;
+  active?: boolean;
   /** Live 0..1 amplitudes from the microphone (used in 'user' mode) */
   bands?: number[];
 }
@@ -16,7 +17,8 @@ const BAR_COUNT = 16;
  *    goes dead during thinking pauses, blended with live mic amplitudes.
  *  - 'ai': Synthetic expressive speech envelope in emerald/brand accents while the AI speaks.
  */
-export const WaveformVisualizer: React.FC<Props> = ({ mode, bands = [] }) => {
+export const WaveformVisualizer: React.FC<Props> = ({ mode: rawMode, active, bands = [] }) => {
+  const mode: VisualizerMode = rawMode || (active ? 'user' : 'idle');
   const [pulseTick, setPulseTick] = useState(0);
 
   useEffect(() => {

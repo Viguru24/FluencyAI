@@ -13,6 +13,7 @@ interface NavbarProps {
   onUpdateProgress: (updater: (prev: UserProgress) => UserProgress) => void;
   onOpenInstallGuide: () => void;
   onOpenJamesTest?: () => void;
+  onOpenPlacement?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onUpdateProgress,
   onOpenInstallGuide,
   onOpenJamesTest,
+  onOpenPlacement,
 }) => {
   const [canInstall, setCanInstall] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -192,6 +194,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                         {progress.level === lvl && <Check className="w-3.5 h-3.5 text-brand-600" />}
                       </button>
                     ))}
+                    <div className="my-1 border-t border-slate-100" />
+                    <button
+                      onClick={() => {
+                        playChime('tap');
+                        setShowLevelMenu(false);
+                        onOpenPlacement?.();
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-bold text-brand-600 hover:bg-brand-50 transition flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Take Placement Check</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -371,6 +385,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClose={() => setShowProfileModal(false)}
           progress={progress}
           onUpdateProgress={onUpdateProgress}
+          onOpenPlacement={onOpenPlacement}
         />
       )}
     </>

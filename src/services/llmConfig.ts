@@ -132,6 +132,35 @@ export function saveLLMConfig(config: LLMConfig): void {
   }
 }
 
+/**
+ * Resolves operational gateway candidate URLs.
+ * In browser environments, Cross-Origin-Resource-Policy (CORP) or Private Network Access (PNA)
+ * can block direct loopback http://127.0.0.1:31415 requests from different origins.
+ * This provides automatic failover to the same-origin Vite proxy (/freellm-gateway/v1).
+ */
+export function getCandidateGatewayUrls(base?: string): string[] {
+  const primary = (base || (import.meta as any).env?.VITE_FREELLM_BASE_URL || DEFAULT_FREELLM_BASE_URL)
+    .trim()
+    .replace(/\/+$/, '');
+  const candidates: string[] = [primary];
+
+  if (typeof window !== 'undefined' && window.location) {
+    const origin = window.location.origin;
+    const proxyBase = `${origin}/freellm-gateway/v1`;
+    if (!candidates.includes(proxyBase)) {
+      candidates.push(proxyBase);
+    }
+    if (primary.includes('127.0.0.1:31415')) {
+      const localhostBase = primary.replace('127.0.0.1:31415', 'localhost:31415');
+      if (!candidates.includes(localhostBase)) candidates.push(localhostBase);
+    } else if (primary.includes('localhost:31415')) {
+      const ipBase = primary.replace('localhost:31415', '127.0.0.1:31415');
+      if (!candidates.includes(ipBase)) candidates.push(ipBase);
+    }
+  }
+  return candidates;
+}
+
 export interface GatewayTestResult {
   ok: boolean;
   status?: number;
@@ -169,99 +198,106 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
   }
 
   if (conf.provider === 'freellmapi') {
-    try {
-      // 1. Try pinging /models endpoint on FreeLLMAPI router
-      const modelsUrl = `${cleanBase}/models`;
-      const res = await fetch(modelsUrl, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${cleanKey}`,
-        },
-      });
+    const candidateBases = getCandidateGatewayUrls(cleanBase);
+    let lastNetworkErr = '';
 
-      const latencyMs = Math.round(performance.now() - start);
+    for (const base of candidateBases) {
+      try {
+        // 1. Try pinging /models endpoint on FreeLLMAPI router
+        const modelsUrl = `${base}/models`;
+        const res = await fetch(modelsUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${cleanKey}`,
+          },
+        });
 
-      if (res.ok) {
-        let models: string[] = [];
-        try {
-          const data = await res.json();
-          if (Array.isArray(data?.data)) {
-            models = data.data.map((m: any) => m.id || m.name).filter(Boolean);
+        const latencyMs = Math.round(performance.now() - start);
+
+        if (res.ok) {
+          let models: string[] = [];
+          try {
+            const data = await res.json();
+            if (Array.isArray(data?.data)) {
+              models = data.data.map((m: any) => m.id || m.name).filter(Boolean);
+            }
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
+          return {
+            ok: true,
+            status: res.status,
+            latencyMs,
+            message: `Connected successfully (${latencyMs}ms)! FreeLLMAPI router online.`,
+            models: models.length > 0 ? models : undefined,
+          };
         }
-        return {
-          ok: true,
-          status: res.status,
-          latencyMs,
-          message: `Connected successfully (${latencyMs}ms)! FreeLLMAPI router online.`,
-          models: models.length > 0 ? models : undefined,
-        };
-      }
 
-      // If auth failure on FreeLLMAPI
-      if (res.status === 401 || res.status === 403) {
-        let errDetail = 'Invalid API key';
+        // If auth failure on FreeLLMAPI
+        if (res.status === 401 || res.status === 403) {
+          let errDetail = 'Invalid API key';
+          try {
+            const errData = await res.json();
+            errDetail = errData?.error?.message || errDetail;
+          } catch {
+            // ignore
+          }
+          return {
+            ok: false,
+            status: res.status,
+            message: `Authentication error (${res.status}): ${errDetail}. Verify your FreeLLMAPI key.`,
+          };
+        }
+
+        // Fallback: Test 1-token completion
+        const chatUrl = `${base}/chat/completions`;
+        const chatRes = await fetch(chatUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${cleanKey}`,
+          },
+          body: JSON.stringify({
+            model: conf.model || 'auto',
+            messages: [{ role: 'user', content: 'ping' }],
+            max_tokens: 1,
+          }),
+        });
+
+        const chatLatencyMs = Math.round(performance.now() - start);
+
+        if (chatRes.ok) {
+          return {
+            ok: true,
+            status: chatRes.status,
+            latencyMs: chatLatencyMs,
+            message: `Connected successfully (${chatLatencyMs}ms)! FreeLLMAPI chat completions ready.`,
+          };
+        }
+
+        let chatErr = `HTTP ${chatRes.status}`;
         try {
-          const errData = await res.json();
-          errDetail = errData?.error?.message || errDetail;
+          const d = await chatRes.json();
+          chatErr = d?.error?.message || chatErr;
         } catch {
           // ignore
         }
+
         return {
           ok: false,
-          status: res.status,
-          message: `Authentication error (${res.status}): ${errDetail}. Verify your FreeLLMAPI key.`,
-        };
-      }
-
-      // Fallback: Test 1-token completion
-      const chatUrl = `${cleanBase}/chat/completions`;
-      const chatRes = await fetch(chatUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${cleanKey}`,
-        },
-        body: JSON.stringify({
-          model: conf.model || 'auto',
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 1,
-        }),
-      });
-
-      const chatLatencyMs = Math.round(performance.now() - start);
-
-      if (chatRes.ok) {
-        return {
-          ok: true,
           status: chatRes.status,
-          latencyMs: chatLatencyMs,
-          message: `Connected successfully (${chatLatencyMs}ms)! FreeLLMAPI chat completions ready.`,
+          message: `Router returned error (${chatRes.status}): ${chatErr}`,
         };
+      } catch (err: unknown) {
+        lastNetworkErr = err instanceof Error ? err.message : String(err);
+        // continue trying next candidate base
       }
-
-      let chatErr = `HTTP ${chatRes.status}`;
-      try {
-        const d = await chatRes.json();
-        chatErr = d?.error?.message || chatErr;
-      } catch {
-        // ignore
-      }
-
-      return {
-        ok: false,
-        status: chatRes.status,
-        message: `Router returned error (${chatRes.status}): ${chatErr}`,
-      };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return {
-        ok: false,
-        message: `Could not reach ${cleanBase}: ${msg}. Ensure your FreeLLMAPI gateway is running on port 31415.`,
-      };
     }
+
+    return {
+      ok: false,
+      message: `Could not reach ${cleanBase}: ${lastNetworkErr || 'Failed to fetch'}. Ensure your FreeLLMAPI gateway is running on port 31415.`,
+    };
   } else {
     // direct-gemini provider test
 

@@ -4,8 +4,32 @@
 
 import type { AIPersona, CEFRLevel, LessonPlan, PhrasingUpgrade, PlacementAssessmentResult, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../types';
 import type { SpokenSegmentAnalysis } from './speechRecognition';
-import { getLLMConfig } from './llmConfig';
+import { getCandidateGatewayUrls, getLLMConfig } from './llmConfig';
 import { toast } from './toast';
+
+/**
+ * Resiliently fetches FreeLLMAPI gateway endpoints.
+ * Automatically fails over to the Vite same-origin proxy if direct loopback
+ * connections are blocked by browser Cross-Origin-Resource-Policy (CORP) or Private Network Access (PNA).
+ */
+async function fetchFreeLLMWithFallback(
+  path: string,
+  init: RequestInit,
+  primaryBase?: string
+): Promise<Response> {
+  const candidates = getCandidateGatewayUrls(primaryBase);
+  let lastError: unknown = null;
+  for (const base of candidates) {
+    try {
+      const url = `${base}${path.startsWith('/') ? path : '/' + path}`;
+      const res = await fetch(url, init);
+      return res;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Failed to connect to FreeLLMAPI gateway');
+}
 
 export interface AudioAttachment {
   base64: string;
@@ -193,19 +217,23 @@ RULES:
         });
       }
 
-      const response = await fetch(`${config.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      const response = await fetchFreeLLMWithFallback(
+        '/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: config.model || 'auto',
+            messages,
+            temperature: 0.75,
+            max_tokens: 220,
+          }),
         },
-        body: JSON.stringify({
-          model: config.model || 'auto',
-          messages,
-          temperature: 0.75,
-          max_tokens: 220,
-        }),
-      });
+        config.baseUrl
+      );
 
       if (!response.ok) {
         const errText = await response.text();
@@ -396,10 +424,14 @@ export async function generateGeminiScorecard(params: {
           .join('\n')
       : 'None detected; speech recognized cleanly.';
 
+  const rubricSection = plan.gradingRubric
+    ? `\nSPECIALIZED INDUSTRY GRADING RUBRIC:\n${plan.gradingRubric}\nGrade the user's spoken turns strictly against these industry standards.\n`
+    : '';
+
   const prompt = `You are an expert British English language & pronunciation coach grading a student's spoken roleplay.
 Scenario: "${plan.title}" (${plan.contextLabel}) with ${plan.persona.name}.
 Warm-up pronunciation accuracy: ${avgPhraseScore}%.
-
+${rubricSection}
 Student's actual spoken lines:
 ${userTurns.map((turn, i) => `${i + 1}. "${turn}"`).join('\n')}
 
@@ -459,28 +491,32 @@ Return strictly valid JSON only.`;
     let rawJson: string | null = null;
 
     if (config.provider === 'freellmapi') {
-      const response = await fetch(`${config.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      const response = await fetchFreeLLMWithFallback(
+        '/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: config.model || 'auto',
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an expert British English language coach. Return strictly a JSON object matching the requested schema with no commentary or markdown backticks.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.3,
+          }),
         },
-        body: JSON.stringify({
-          model: config.model || 'auto',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are an expert British English language coach. Return strictly a JSON object matching the requested schema with no commentary or markdown backticks.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.3,
-        }),
-      });
+        config.baseUrl
+      );
 
       if (!response.ok) {
         const errText = await response.text();
@@ -683,3 +719,227 @@ Return strictly valid JSON only.`;
     };
   }
 }
+
+/**
+ * Interactive 3-turn CEFR Placement Assessment Evaluator.
+ * Analyzes the user's 3 spoken placement responses across:
+ * - Turn 1: Basic personal introductions, daily routines (A1/A2 foundation)
+ * - Turn 2: Past narrative, overcoming challenges (B1/B2 competence)
+ * - Turn 3: Complex perspective, technology impact, conditional reasoning (B2/C1 nuance)
+ * Uses FreeLLMAPI / Gemini 2.5 Flash with strict CEFR benchmarks,
+ * with an offline pedagogical analyzer fallback.
+ */
+export async function evaluatePlacementAssessment(
+  userTurns: string[]
+): Promise<PlacementAssessmentResult> {
+  const config = getLLMConfig();
+  const apiKey = config.apiKey;
+
+  const turn1 = userTurns[0] || '';
+  const turn2 = userTurns[1] || '';
+  const turn3 = userTurns[2] || '';
+
+  // Heuristic pedagogical fallback
+  const computeFallbackAssessment = (): PlacementAssessmentResult => {
+    const combined = `${turn1} ${turn2} ${turn3}`.trim();
+    const words = combined.split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
+
+    // Detect connectors and complex clauses
+    const connectors = [
+      'because', 'although', 'however', 'furthermore', 'whereas',
+      'therefore', 'while', 'since', 'despite', 'in order to', 'as well as'
+    ];
+    const complexConnectorsFound = connectors.filter((c) =>
+      new RegExp(`\\b${c}\\b`, 'i').test(combined)
+    );
+
+    // Detect conditionals and advanced modals
+    const modalsAndConditionals = ['would', 'could', 'should', 'might', 'have been', 'had been', 'if'];
+    const modalsFound = modalsAndConditionals.filter((m) =>
+      new RegExp(`\\b${m}\\b`, 'i').test(combined)
+    );
+
+    let level: CEFRLevel = 'B1';
+    let title = 'B1 — Intermediate';
+    let fluencyScore = 75;
+    let grammarScore = 76;
+    let summary = 'You communicate clearly in everyday conversations and can describe past experiences and opinions effectively.';
+    const strengths: string[] = ['Good functional vocabulary', 'Clear turn-taking and communicative intent'];
+    const recommendations: string[] = ['Work on using more complex sentence connectors', 'Incorporate more authentic British idioms'];
+
+    if (wordCount >= 65 && complexConnectorsFound.length >= 2 && modalsFound.length >= 2) {
+      level = 'C1';
+      title = 'C1 — Advanced Spoken Fluency';
+      fluencyScore = 92;
+      grammarScore = 90;
+      summary = 'Exceptional spoken command. You express complex thoughts, hypotheses, and professional perspectives with natural rhythm and rich lexical variety.';
+      strengths.push('Sophisticated sentence structures', 'Natural topic elaboration and nuanced vocabulary');
+      recommendations.length = 0;
+      recommendations.push('Refine subtle British understatement and executive tone', 'Master specialized industry idioms');
+    } else if (wordCount >= 38 || (complexConnectorsFound.length >= 1 && modalsFound.length >= 1)) {
+      level = 'B2';
+      title = 'B2 — Upper Intermediate';
+      fluencyScore = 84;
+      grammarScore = 82;
+      summary = 'Strong conversational ability. You handle narrative questions and abstract topics smoothly with good grammatical consistency and clear expression.';
+      strengths.push('Solid grasp of past tenses and connectors', 'Effective self-expression across varied topics');
+      recommendations.length = 0;
+      recommendations.push('Practice complex conditional clauses (e.g. "If I had known, I would have...")', 'Expand your repertoire of natural British phrasal verbs');
+    } else if (wordCount >= 18) {
+      level = 'B1';
+      title = 'B1 — Intermediate';
+      fluencyScore = 74;
+      grammarScore = 72;
+      summary = 'Good communicative foundation. You answer direct questions clearly and express personal routines and challenges with recognizable confidence.';
+      strengths.push('Clear message delivery', 'Good basic vocabulary for daily life and work');
+      recommendations.push('Practice linking ideas with "although", "whereas", and "furthermore"', 'Focus on past tense regularity and preposition accuracy');
+    } else if (wordCount >= 8) {
+      level = 'A2';
+      title = 'A2 — Elementary';
+      fluencyScore = 65;
+      grammarScore = 64;
+      summary = 'You can communicate basic facts and familiar information with simple sentence structures. With regular speaking practice, you will build conversational stamina quickly.';
+      strengths.push('Willingness to speak and share basic details', 'Good understanding of everyday prompts');
+      recommendations.length = 0;
+      recommendations.push('Build confidence combining two thoughts with "and", "but", and "because"', 'Expand high-frequency workplace vocabulary');
+    } else {
+      level = 'A1';
+      title = 'A1 — Beginner';
+      fluencyScore = 55;
+      grammarScore = 58;
+      summary = 'Welcome! You are starting your English journey. We will keep vocabulary simple, focus on high-frequency everyday phrases, and build your confidence step by step.';
+      strengths.push('Great initial effort taking the speaking assessment', 'Familiarity with basic English greetings');
+      recommendations.length = 0;
+      recommendations.push('Master key polite phrases ("Could I have...", "Please", "Thank you")', 'Practice short 3-word sentences daily');
+    }
+
+    return {
+      level,
+      title,
+      summary,
+      fluencyScore,
+      grammarScore,
+      strengths,
+      recommendations,
+      assessedAt: new Date().toISOString(),
+    };
+  };
+
+  if (!apiKey || userTurns.length === 0 || userTurns.every((t) => t.trim().length === 0)) {
+    return computeFallbackAssessment();
+  }
+
+  const prompt = `You are a Senior British English CEFR Examiner (Cambridge & IELTS oral assessment specialist).
+Evaluate this new student's 3 spoken placement assessment answers and assign their exact CEFR level (A1, A2, B1, B2, or C1).
+
+Student's 3 spoken placement responses:
+1. Question 1 (Personal intro & daily life): "${turn1}"
+2. Question 2 (Past challenge & resolution): "${turn2}"
+3. Question 3 (Perspective on AI & technology impact): "${turn3}"
+
+CEFR Grading Criteria:
+- A1 (Beginner): Very brief utterances, isolated words, basic present tense fragments, significant hesitations.
+- A2 (Elementary): Simple sentences on familiar topics, basic past/present, limited connectors (and, but).
+- B1 (Intermediate): Connected narrative flow, clear description of past events/plans, standard workplace vocabulary, understandable grammar with minor slips.
+- B2 (Upper Intermediate): Spontaneous fluid speech, good lexical range, effective connectors (however, although, whereas), confident abstract reasoning.
+- C1 (Advanced): Highly articulate, complex clauses, natural British idioms, subtle nuance, precise arguments.
+
+Return strictly valid JSON conforming to this schema:
+{
+  "level": "A1" | "A2" | "B1" | "B2" | "C1",
+  "title": "<e.g., 'B2 — Upper Intermediate'>",
+  "summary": "<2-3 encouraging sentences summarizing their spoken fluency, vocabulary breadth, and sentence structure>",
+  "fluencyScore": <number between 50 and 98>,
+  "grammarScore": <number between 50 and 98>,
+  "strengths": ["<specific strength 1>", "<specific strength 2>"],
+  "recommendations": ["<practical coaching recommendation 1>", "<practical coaching recommendation 2>"]
+}`;
+
+  try {
+    let rawJson: string | null = null;
+
+    if (config.provider === 'freellmapi') {
+      const response = await fetchFreeLLMWithFallback(
+        '/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: config.model || 'auto',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert Cambridge/IELTS CEFR examiner. Output only strictly valid JSON matching the requested schema with no commentary or markdown backticks.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.2,
+          }),
+        },
+        config.baseUrl
+      );
+
+      if (!response.ok) {
+        throw new Error(`FreeLLMAPI error ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content || '';
+      const cleanContent = content.replace(/<(think|thought|reasoning)>[\s\S]*?<\/\1>/gi, '');
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      rawJson = jsonMatch ? jsonMatch[0] : cleanContent;
+    } else {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+          apiKey
+        )}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Gemini error ${response.status}`);
+      }
+
+      const data = await response.json();
+      rawJson = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
+
+    if (!rawJson) return computeFallbackAssessment();
+
+    const parsed = JSON.parse(rawJson);
+    const validLevels: CEFRLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1'];
+    const level: CEFRLevel = validLevels.includes(parsed.level) ? parsed.level : 'B1';
+
+    return {
+      level,
+      title: parsed.title || `${level} — Assessed Level`,
+      summary: parsed.summary || 'Solid speaking performance across the placement assessment.',
+      fluencyScore: typeof parsed.fluencyScore === 'number' ? Math.max(50, Math.min(100, Math.round(parsed.fluencyScore))) : 80,
+      grammarScore: typeof parsed.grammarScore === 'number' ? Math.max(50, Math.min(100, Math.round(parsed.grammarScore))) : 78,
+      strengths: Array.isArray(parsed.strengths) && parsed.strengths.length > 0 ? parsed.strengths : ['Clear message delivery', 'Good communicative intent'],
+      recommendations: Array.isArray(parsed.recommendations) && parsed.recommendations.length > 0 ? parsed.recommendations : ['Focus on sentence linking', 'Practice natural British idioms'],
+      assessedAt: new Date().toISOString(),
+    };
+  } catch (e) {
+    console.warn('[geminiService] Placement evaluation fallback used:', e);
+    return computeFallbackAssessment();
+  }
+}
+

@@ -105,6 +105,14 @@ export class AudioVisualizerController {
     }
   }
 
+  start(onAudioData?: (normalizedAmplitudes: number[]) => void): Promise<boolean> {
+    return this.startMicrophone(onAudioData);
+  }
+
+  stop() {
+    this.stopMicrophone();
+  }
+
   getStream(): MediaStream | null {
     return this.mediaStream;
   }

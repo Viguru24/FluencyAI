@@ -35,6 +35,7 @@ interface Props {
   onClose: () => void;
   progress: UserProgress;
   onUpdateProgress: (updater: (prev: UserProgress) => UserProgress) => void;
+  onOpenPlacement?: () => void;
 }
 
 const AVATAR_PRESETS = ['🧑‍💼', '👩‍💼', '🎓', '🚀', '🌟', '🎧', '⚡', '☕', '🇬🇧', '🌍'];
@@ -44,6 +45,7 @@ export const UserProfileModal: React.FC<Props> = ({
   onClose,
   progress,
   onUpdateProgress,
+  onOpenPlacement,
 }) => {
   const [session, setSession] = useState<AuthSession | null>(() => authService.getSession());
   const [activeTab, setActiveTab] = useState<'signin' | 'signup' | 'otp' | 'server'>('signin');
@@ -536,6 +538,21 @@ export const UserProfileModal: React.FC<Props> = ({
                   <div className="text-[9px] text-slate-400 font-medium">Fluency Target</div>
                 </div>
               </div>
+
+              {/* Retake Placement Check Action Button */}
+              {onOpenPlacement && (
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    onClose();
+                    onOpenPlacement();
+                  }}
+                  className="w-full py-2.5 px-3.5 rounded-2xl bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+                  <span>Retake 3-Turn CEFR Placement Assessment</span>
+                </button>
+              )}
 
               {/* VPS Server Connection Pill */}
               <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">

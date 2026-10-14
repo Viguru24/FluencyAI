@@ -44,109 +44,20 @@ export function saveGeminiApiKey(key: string): void {
   }
 }
 
+import { generateJamesReply } from './geminiService';
+import type { AIPersona, CEFRLevel } from '../types';
+
 /**
- * Generate James's next spoken reply using Gemini 2.5 Flash.
- * Falls back to sensible scenario progression if API key is not configured or network fails.
+ * Generate tutor reply using unified service with dynamic persona and CEFR calibration.
  */
 export async function generateTutorReply(
   conversationHistory: ChatMessage[],
   scenarioTitle: string = 'Your First Day at a UK Office',
-  fallbackReplies: string[] = []
+  fallbackReplies: string[] = [],
+  persona?: AIPersona,
+  userLevel?: CEFRLevel
 ): Promise<string> {
-  const apiKey = getGeminiApiKey();
-
-  // If no API key or empty conversation, provide smooth scripted fallback
-  if (!apiKey) {
-    console.info('[GeminiTutor] No Gemini API key detected (set VITE_GEMINI_API_KEY). Using scenario fallback.');
-    const userTurnCount = conversationHistory.filter((m) => m.speaker === 'user').length;
-    const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
-    return fallbackReplies[fallbackIdx] || 'Splendid! Lovely chatting with you today.';
-  }
-
-  try {
-    // Map conversation turns into Gemini contents format
-    // Ensure contents start with user role or wrap appropriately
-    const contents: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }> = [];
-
-    // Provide initial prompt context if conversation started with AI greeting
-    let hasAddedPrompt = false;
-
-    for (let i = 0; i < conversationHistory.length; i++) {
-      const msg = conversationHistory[i];
-      if (i === 0 && msg.speaker === 'ai') {
-        contents.push({
-          role: 'user',
-          parts: [
-            {
-              text: `[Context: We are doing a workplace roleplay: "${scenarioTitle}". You begin as James by welcoming me to the office.]`,
-            },
-          ],
-        });
-        contents.push({
-          role: 'model',
-          parts: [{ text: msg.text }],
-        });
-        hasAddedPrompt = true;
-      } else {
-        if (contents.length === 0 && msg.speaker === 'ai') {
-          contents.push({
-            role: 'user',
-            parts: [{ text: `[Roleplay: ${scenarioTitle}]` }],
-          });
-        }
-        contents.push({
-          role: msg.speaker === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.text }],
-        });
-      }
-    }
-
-    if (!hasAddedPrompt && contents.length === 0) {
-      contents.push({
-        role: 'user',
-        parts: [{ text: 'Hello James, I am ready for my first day!' }],
-      });
-    }
-
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
-      apiKey
-    )}`;
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: JAMES_SYSTEM_INSTRUCTION }],
-        },
-        contents,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 120,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.warn(`[GeminiTutor] API responded with ${response.status}:`, errText);
-      throw new Error(`Gemini API error ${response.status}`);
-    }
-
-    const data = await response.json();
-    const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (candidateText && candidateText.trim()) {
-      return candidateText.trim();
-    }
-    throw new Error('No candidate text received from Gemini');
-  } catch (err) {
-    console.warn('[GeminiTutor] generateTutorReply fallback triggered:', err);
-    const userTurnCount = conversationHistory.filter((m) => m.speaker === 'user').length;
-    const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
-    return fallbackReplies[fallbackIdx] || 'Splendid! Lovely to have you on the team — speak soon!';
-  }
+  return generateJamesReply(conversationHistory, scenarioTitle, fallbackReplies, persona, null, userLevel);
 }
 
 /**

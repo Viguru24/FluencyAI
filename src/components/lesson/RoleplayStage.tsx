@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send, Square } from 'lucide-react';
-import type { LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
+import type { CEFRLevel, LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, stopSpeaking, playChime, isCurrentlySpeaking } from '../../services/speech';
 import {
   startRecognition,
@@ -51,6 +51,7 @@ interface Props {
   plan: LessonPlan;
   nativeLanguage: NativeLanguage;
   audioSpeed: number;
+  userLevel?: CEFRLevel;
   phraseScores?: number[];
   onMicDenied: () => void;
   onEnd: (stats: RoleplayStats) => void;
@@ -62,6 +63,7 @@ export const RoleplayStage: React.FC<Props> = ({
   plan,
   nativeLanguage,
   audioSpeed,
+  userLevel,
   phraseScores = [],
   onMicDenied,
   onEnd,
@@ -340,7 +342,8 @@ export const RoleplayStage: React.FC<Props> = ({
         plan.title,
         plan.aiTurns,
         plan.persona,
-        audioAttachment
+        audioAttachment,
+        userLevel
       );
 
       setTurns((prev) => [

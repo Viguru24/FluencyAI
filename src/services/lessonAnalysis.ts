@@ -26,6 +26,24 @@ const RULES: { test: RegExp; fix: (s: string) => string; explanation: string; ca
     explanation: 'Brits often say "lovely" or "brilliant" — it sounds more natural than "very good".',
     category: 'Natural Idiom',
   },
+  {
+    test: /\b(very sick|patient is bad)\b/i,
+    fix: (s) => s.replace(/\b(very sick|patient is bad)\b/i, 'deteriorating with an elevated NEWS score'),
+    explanation: 'In NHS clinical handovers, use objective clinical terminology rather than informal adjectives.',
+    category: 'Fluency',
+  },
+  {
+    test: /\b(ask the kitchen|ask chef)\b/i,
+    fix: (s) => s.replace(/\b(ask the kitchen|ask chef)\b/i, 'double-check with the head chef for you'),
+    explanation: '"I’d be more than happy to double-check with the head chef" is the standard gracious British hospitality phrasing.',
+    category: 'Natural Idiom',
+  },
+  {
+    test: /\b(in my old job|in my last job)\b/i,
+    fix: (s) => s.replace(/\b(in my old job|in my last job)\b/i, 'In my previous role, I was tasked with spearheading'),
+    explanation: 'Use strong leadership action verbs and STAR method framing in UK corporate interviews.',
+    category: 'Natural Idiom',
+  },
 ];
 
 export function buildUpgrades(plan: LessonPlan, userTurns: string[]): PhrasingUpgrade[] {

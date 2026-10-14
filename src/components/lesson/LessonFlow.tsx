@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, MicOff, Check } from 'lucide-react';
-import type { LessonPlan, LessonStage, LessonSessionResult, NativeLanguage, PhrasingUpgrade } from '../../types';
+import type { CEFRLevel, LessonPlan, LessonStage, LessonSessionResult, NativeLanguage, PhrasingUpgrade } from '../../types';
 import { stopSpeaking } from '../../services/speech';
 import { ScaffoldingStage } from './ScaffoldingStage';
 import { RoleplayStage, type RoleplayStats } from './RoleplayStage';
@@ -10,6 +10,7 @@ interface Props {
   plan: LessonPlan;
   nativeLanguage: NativeLanguage;
   audioSpeed: number;
+  userLevel?: CEFRLevel;
   savedMistakeIds: string[];
   initialStage?: LessonStage;
   onSaveMistakes: (plan: LessonPlan, upgrades: PhrasingUpgrade[]) => void;
@@ -27,6 +28,7 @@ export const LessonFlow: React.FC<Props> = ({
   plan,
   nativeLanguage,
   audioSpeed,
+  userLevel,
   savedMistakeIds,
   initialStage = 'scaffolding',
   onSaveMistakes,
@@ -142,6 +144,7 @@ export const LessonFlow: React.FC<Props> = ({
               plan={plan}
               nativeLanguage={nativeLanguage}
               audioSpeed={audioSpeed}
+              userLevel={userLevel}
               phraseScores={phraseScores}
               onMicDenied={() => setMicDenied(true)}
               onEnd={(stats: RoleplayStats) => {

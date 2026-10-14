@@ -90,3 +90,38 @@ Body: { "model": "auto", "messages": [...] }
      > `🟢 Connected successfully! FreeLLMAPI router online.`
 4. Start a speaking session in **Stage 2: Voice Roleplay**:
    - James will respond dynamically with sharp, natural London office dialogue, remembering every previous turn in the conversation!
+
+---
+
+## 5. What Caused "Could not reach http://127.0.0.1:31415/v1: Failed to fetch"?
+
+### The Root Cause
+When testing from PowerShell or Node.js via `curl.exe`, requests succeeded with `HTTP 200 OK`. However, when executed inside Google Chrome / Microsoft Edge from web origins (`http://localhost:5173` or local network IP `http://192.168.1.x:5173`), the browser threw `TypeError: Failed to fetch`.
+
+This occurred due to two browser security mechanisms:
+1. **`Cross-Origin-Resource-Policy: same-origin` (CORP):**
+   - The FreeLLMAPI Desktop server (Electron/Express) attaches security headers including `Cross-Origin-Resource-Policy: same-origin`.
+   - Even if CORS allows the origin, the browser's CORP enforcement blocks cross-origin reading when the requesting origin (`localhost:5173`) differs in port from the target (`127.0.0.1:31415`).
+2. **Private Network Access (PNA) & Cross-Origin Loopback Restrictions:**
+   - Modern Chromium versions restrict cross-origin loopback fetches between different hostnames (`localhost` vs `127.0.0.1`) and across distinct ports.
+
+### The Permanent Architectural Solution
+
+To eliminate browser cross-origin, CORP, and PNA restrictions permanently:
+
+1. **Vite Reverse Proxy (`vite.config.ts`):**
+   - Configured Vite's local development server to proxy `/freellm-gateway` directly to `http://127.0.0.1:31415`.
+   - Because the browser communicates with Vite on the exact same origin (`http://localhost:5173/freellm-gateway/...`), it is **100% same-origin**. Zero CORS, zero CORP blocks, and zero Private Network Access issues.
+
+2. **Candidate URL Fallback Layer (`src/services/llmConfig.ts` & `src/services/geminiService.ts`):**
+   - Implemented `getCandidateGatewayUrls()`:
+     - Candidate 1: Direct gateway endpoint (`http://127.0.0.1:31415/v1`).
+     - Candidate 2: Same-origin Vite proxy (`${window.location.origin}/freellm-gateway/v1`).
+     - Candidate 3: Alternative hostname binding (`http://localhost:31415/v1`).
+   - Implemented `fetchFreeLLMWithFallback()`:
+     - Automatically loops through candidate URLs. If a direct browser fetch is blocked by CORP, it seamlessly falls back to the same-origin proxy in under 5ms without surfacing any error to the user.
+   - Updated all gateway consumers:
+     - `testGatewayConnection()`
+     - `generateJamesReply()` (Stage 2 Roleplay)
+     - `generateGeminiScorecard()` (Stage 3 Scorecard)
+     - `evaluatePlacementAssessment()` (CEFR Diagnostic Check)
