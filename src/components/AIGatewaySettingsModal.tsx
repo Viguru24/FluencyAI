@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Server,
@@ -36,16 +36,10 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
   const [showKey, setShowKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<GatewayTestResult | null>(null);
-  const [isCustomModel, setIsCustomModel] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      const current = getLLMConfig();
-      setConfig(current);
-      setTestResult(null);
-      setIsCustomModel(!AVAILABLE_MODELS.some((m) => m.id === current.model));
-    }
-  }, [isOpen]);
+  const [isCustomModel, setIsCustomModel] = useState(() => {
+    const current = getLLMConfig();
+    return !AVAILABLE_MODELS.some((m) => m.id === current.model);
+  });
 
   if (!isOpen) return null;
 

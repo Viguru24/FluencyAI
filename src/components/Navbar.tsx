@@ -54,9 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const conf = getLLMConfig();
-    setLlmConfig(conf);
-    checkGateway(conf);
+    checkGateway(getLLMConfig());
 
     const handleConfigChange = (e: Event) => {
       const customEvt = e as CustomEvent<LLMConfig>;
@@ -294,11 +292,13 @@ export const Navbar: React.FC<NavbarProps> = ({
       </header>
 
       {/* AI Gateway Settings Modal */}
-      <AIGatewaySettingsModal
-        isOpen={showGatewayModal}
-        onClose={() => setShowGatewayModal(false)}
-        onConnectionStatusChange={(ok) => setIsGatewayConnected(ok)}
-      />
+      {showGatewayModal && (
+        <AIGatewaySettingsModal
+          isOpen={showGatewayModal}
+          onClose={() => setShowGatewayModal(false)}
+          onConnectionStatusChange={(ok) => setIsGatewayConnected(ok)}
+        />
+      )}
     </>
   );
 };
