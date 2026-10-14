@@ -116,10 +116,11 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
     setIsRecording(false);
     setIsProcessing(true);
     vizRef.current.stopMicrophone();
-    setBands([]);
-    recRef.current?.stop();
-    const heard = recRef.current ? await recRef.current.result : null;
-    recRef.current = null;
+    let heard: string | null = null;
+    if (recRef.current) {
+      heard = await recRef.current.stop();
+      recRef.current = null;
+    }
     setInterim('');
 
     const idx = userTurnCount.current++;
