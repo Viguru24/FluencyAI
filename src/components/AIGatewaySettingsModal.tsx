@@ -14,6 +14,7 @@ import {
   Radio,
   AlertTriangle,
   ExternalLink,
+  Volume2,
 } from 'lucide-react';
 
 import {
@@ -29,7 +30,14 @@ import {
 } from '../services/llmConfig';
 
 import { toast } from '../services/toast';
-import { playChime } from '../services/speech';
+import {
+  playChime,
+  getAvailableBritishVoices,
+  getSelectedTTSVoice,
+  setSelectedTTSVoice,
+  auditionTTSVoice,
+  type VoiceOption,
+} from '../services/speech';
 
 interface Props {
   isOpen: boolean;
@@ -47,6 +55,10 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
     return !AVAILABLE_MODELS.some((m) => m.id === current.model);
   });
 
+  const [availableVoices, setAvailableVoices] = useState<VoiceOption[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>(() => getSelectedTTSVoice() || '');
+  const [isAuditioning, setIsAuditioning] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       const current = getLLMConfig();
@@ -58,8 +70,42 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
       }
       setConfig(current);
       setTestResult(null);
+
+      const loadVoices = () => {
+        const voices = getAvailableBritishVoices();
+        setAvailableVoices(voices);
+        const savedVoice = getSelectedTTSVoice();
+        if (savedVoice) {
+          setSelectedVoice(savedVoice);
+        } else if (voices.length > 0) {
+          setSelectedVoice(voices[0].name);
+          setSelectedTTSVoice(voices[0].name);
+        }
+      };
+
+      loadVoices();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
     }
   }, [isOpen]);
+
+  const handleVoiceChange = (voiceName: string) => {
+    setSelectedVoice(voiceName);
+    setSelectedTTSVoice(voiceName);
+    playChime('tap');
+    toast.success(`Active British voice: ${voiceName.split('-')[0].trim()}`, 'Voice Engine Updated');
+  };
+
+  const handleAuditionVoice = () => {
+    setIsAuditioning(true);
+    playChime('tap');
+    auditionTTSVoice(
+      selectedVoice,
+      () => setIsAuditioning(true),
+      () => setIsAuditioning(false)
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -422,6 +468,55 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
               ) : (
                 <>Leave set to <strong className="text-slate-700">auto</strong> for FreeLLMAPI intelligent routing across Gemini Flash and Gemma 4 models.</>
               )}
+            </p>
+          </div>
+
+          {/* British Voice Engine & Audition Selector */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-brand-600" />
+                British Voice Engine (James TTS)
+              </label>
+              <button
+                type="button"
+                disabled={isAuditioning}
+                onClick={handleAuditionVoice}
+                className="px-2.5 py-1 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition active:scale-95 disabled:opacity-50"
+              >
+                {isAuditioning ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Speaking…</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-3 h-3" />
+                    <span>🔊 Test Voice</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <select
+              value={selectedVoice}
+              onChange={(e) => handleVoiceChange(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+            >
+              {availableVoices.length === 0 ? (
+                <option value="">Default British Neural Voice</option>
+              ) : (
+                availableVoices.map((v) => (
+                  <option key={v.id} value={v.name}>
+                    {v.isNeural ? '🌟 [Neural] ' : v.isRobotic ? '🤖 [Robotic SAPI] ' : '🗣️ '}
+                    {v.name}
+                  </option>
+                ))
+              )}
+            </select>
+
+            <p className="text-[11px] text-slate-500 leading-tight">
+              Prioritizes <strong className="text-slate-700">Microsoft Ryan / Sonia Online (Natural)</strong> and <strong className="text-slate-700">Google UK English</strong> for realistic human-like cadence. The robotic offline Microsoft George voice is explicitly penalized.
             </p>
           </div>
 

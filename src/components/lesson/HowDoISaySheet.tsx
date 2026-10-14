@@ -36,13 +36,13 @@ export const HowDoISaySheet: React.FC<Props> = ({ phrases, nativeLanguage, accen
 
   const play = (text: string) => {
     onUsed();
-    speakEnglish(text, { rate: Math.min(audioSpeed, 0.85), accent });
+    speakEnglish(text, { rate: audioSpeed < 0.9 ? 0.92 : audioSpeed, accent });
   };
 
   return (
     <div className="absolute inset-0 z-30 flex items-end bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div
-        className="w-full max-h-[80%] overflow-y-auto bg-white rounded-t-3xl p-5 space-y-4 animate-slide-up"
+        className="w-full max-h-[80%] overflow-y-auto no-scrollbar scrollbar-none bg-white rounded-t-3xl p-5 space-y-4 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="How do I say help"
