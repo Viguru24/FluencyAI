@@ -65,16 +65,18 @@ export function getLLMConfig(): LLMConfig {
     (import.meta as any).env?.GEMINI_API_KEY ||
     '';
 
-  const rawKey = saved.apiKey !== undefined && saved.apiKey !== '' ? saved.apiKey : fluencyKey || legacyKey || envKey;
+  const rawKey = saved.apiKey && saved.apiKey.trim().length > 0 ? saved.apiKey : fluencyKey || legacyKey || envKey;
   const apiKey = sanitizeApiKey(rawKey || '');
   const envBaseUrl = (import.meta as any).env?.VITE_FREELLM_BASE_URL;
   const baseUrl = (saved.baseUrl || envBaseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
   
-  let provider: LLMProvider = saved.provider === 'direct-gemini' ? 'direct-gemini' : 'freellmapi';
+  let provider: LLMProvider = 'freellmapi';
   if (apiKey.startsWith('freellma')) {
     provider = 'freellmapi';
   } else if (apiKey.startsWith('AIza')) {
     provider = 'direct-gemini';
+  } else if (saved.provider) {
+    provider = saved.provider;
   }
 
   const model = saved.model || (provider === 'direct-gemini' ? 'gemini-2.5-flash' : DEFAULT_MODEL);
@@ -89,14 +91,21 @@ export function getLLMConfig(): LLMConfig {
 
 export function saveLLMConfig(config: LLMConfig): void {
   const cleanKey = sanitizeApiKey(config.apiKey);
+  let provider = config.provider;
+  if (cleanKey.startsWith('freellma')) {
+    provider = 'freellmapi';
+  } else if (cleanKey.startsWith('AIza')) {
+    provider = 'direct-gemini';
+  }
+
   const model =
-    config.provider === 'direct-gemini' && config.model === 'auto'
+    provider === 'direct-gemini' && config.model === 'auto'
       ? 'gemini-2.5-flash'
-      : config.model || (config.provider === 'direct-gemini' ? 'gemini-2.5-flash' : 'auto');
+      : config.model || (provider === 'direct-gemini' ? 'gemini-2.5-flash' : 'auto');
 
   const normalized: LLMConfig = {
-    ...config,
-    baseUrl: config.baseUrl.trim().replace(/\/+$/, ''),
+    provider,
+    baseUrl: (config.baseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, ''),
     apiKey: cleanKey,
     model,
   };
@@ -134,9 +143,17 @@ export interface GatewayTestResult {
  * Accurately parses response JSON error messages so errors are never masked by empty statusText.
  */
 export async function testGatewayConnection(config?: LLMConfig): Promise<GatewayTestResult> {
-  const conf = config || getLLMConfig();
-  const cleanBase = conf.baseUrl.trim().replace(/\/+$/, '');
+  const conf: LLMConfig = config ? { ...config } : getLLMConfig();
   const cleanKey = sanitizeApiKey(conf.apiKey);
+
+  // Guarantee that freellma keys ALWAYS test against FreeLLMAPI router
+  if (cleanKey.startsWith('freellma')) {
+    conf.provider = 'freellmapi';
+  } else if (cleanKey.startsWith('AIza')) {
+    conf.provider = 'direct-gemini';
+  }
+
+  const cleanBase = (conf.baseUrl || (import.meta as any).env?.VITE_FREELLM_BASE_URL || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
   const start = performance.now();
 
   if (!cleanKey) {

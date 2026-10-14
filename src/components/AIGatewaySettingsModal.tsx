@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Server,
@@ -47,6 +47,20 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
     return !AVAILABLE_MODELS.some((m) => m.id === current.model);
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      const current = getLLMConfig();
+      if (!current.apiKey && (import.meta as any).env?.VITE_FREELLM_API_KEY) {
+        current.apiKey = (import.meta as any).env.VITE_FREELLM_API_KEY;
+      }
+      if (current.apiKey.startsWith('freellma')) {
+        current.provider = 'freellmapi';
+      }
+      setConfig(current);
+      setTestResult(null);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleRunTest = async () => {
@@ -55,9 +69,18 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
     playChime('tap');
 
     try {
-      const res = await testGatewayConnection(config);
+      const activeConf = { ...config };
+      if (activeConf.apiKey.trim().startsWith('freellma')) {
+        activeConf.provider = 'freellmapi';
+        setConfig((prev) => ({ ...prev, provider: 'freellmapi' }));
+      } else if (activeConf.apiKey.trim().startsWith('AIza')) {
+        activeConf.provider = 'direct-gemini';
+        setConfig((prev) => ({ ...prev, provider: 'direct-gemini' }));
+      }
+      const res = await testGatewayConnection(activeConf);
       setTestResult(res);
       if (res.ok) {
+        saveLLMConfig(activeConf);
         playChime('success');
         onConnectionStatusChange?.(true);
         toast.success(res.message, 'Gateway Test Successful');
@@ -258,12 +281,21 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
                 {config.apiKey.trim().length > 0 && !config.apiKey.trim().startsWith('AIza') && (
                   <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div className="leading-tight">
-                      <span className="font-bold">Key format notice: </span>
+                    <div className="leading-tight space-y-1.5 flex-1">
+                      <div className="font-bold">Key format notice: </div>
                       {config.apiKey.trim().startsWith('freellma') ? (
-                        <span>
-                          This key starts with <code>freellma</code>, which belongs to <strong>FreeLLMAPI</strong>. Switch to the <strong>FreeLLMAPI (Unified)</strong> tab above.
-                        </span>
+                        <div className="space-y-1.5">
+                          <p>
+                            This key starts with <code>freellma</code>, which belongs to <strong>FreeLLMAPI</strong>.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setConfig((prev) => ({ ...prev, provider: 'freellmapi' }))}
+                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs transition"
+                          >
+                            Switch to FreeLLMAPI (Unified) Mode
+                          </button>
+                        </div>
                       ) : config.apiKey.trim().startsWith('sk-') ? (
                         <span>
                           This key starts with <code>sk-</code> (OpenAI format). Gemini API keys always start with <code>AIzaSy...</code>.
@@ -296,6 +328,17 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
                     <span>Get Key</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
+                </div>
+              </div>
+            )}
+
+            {/* FreeLLMAPI Active Status Card */}
+            {config.provider === 'freellmapi' && (
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2.5 shadow-2xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <div className="leading-tight">
+                  <div className="font-bold text-emerald-950">FreeLLMAPI Unified Gateway Active</div>
+                  <p className="text-[11px] text-emerald-700">Connected to local router on port 31415. Free, fast, and multi-model.</p>
                 </div>
               </div>
             )}
