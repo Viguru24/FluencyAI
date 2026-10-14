@@ -105,7 +105,12 @@ export class AudioVisualizerController {
     }
   }
 
+  getStream(): MediaStream | null {
+    return this.mediaStream;
+  }
+
   isActive(): boolean {
     return this.isListening;
   }
 }
+

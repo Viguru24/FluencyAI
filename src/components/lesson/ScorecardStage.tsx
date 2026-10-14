@@ -220,12 +220,113 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           <span>🛟 {result.helpRequests} help requests</span>
         </div>
 
+        {/* Multimodal Acoustic Voice Insights from Gemini 2.5 Flash */}
+        {result.acousticFeedback && (
+          <div className="p-4 rounded-3xl bg-gradient-to-r from-sky-50 via-brand-50/50 to-emerald-50 border border-brand-200 shadow-sm space-y-1.5 animate-fade-in">
+            <div className="flex items-center gap-2 text-xs font-black text-brand-800">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Acoustic Voice &amp; Accent Feedback</span>
+              <span className="text-[10px] bg-brand-100 text-brand-700 font-bold px-2 py-0.5 rounded-full">
+                Gemini 2.5 Flash
+              </span>
+            </div>
+            <p className="text-xs text-slate-700 leading-relaxed font-medium">
+              {result.acousticFeedback}
+            </p>
+          </div>
+        )}
+
+        {/* Word-Level Pronunciation Coaching Points (Low Confidence & Phonetic Ambiguities) */}
+        {result.pronunciationCoachingPoints && result.pronunciationCoachingPoints.length > 0 && (
+          <section className="space-y-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-slate-900">Pronunciation Coaching Points</h3>
+                <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
+                  Acoustic Analysis
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Words with lower recognition confidence or phonetic ambiguity. Practice these to refine your British accent!
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              {result.pronunciationCoachingPoints.map((point, idx) => {
+                const cardId = `coach-${idx}`;
+                return (
+                  <div key={cardId} className="rounded-2xl border border-rose-100 bg-white p-3.5 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-sm text-slate-900">“{point.wordOrPhrase}”</span>
+                        {point.ipa && <span className="font-mono text-xs text-slate-400">/{point.ipa}/</span>}
+                        <span className="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                          {point.confidence}% confidence
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => speakEnglish(point.wordOrPhrase, { rate: audioSpeed, accent: plan.persona.accent })}
+                          className="p-1.5 rounded-lg bg-slate-50 hover:bg-brand-50 text-brand-700 border border-slate-200 active:scale-95 transition"
+                          title="Listen with native British accent"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleTrySaying(cardId, point.wordOrPhrase)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border transition active:scale-95 ${
+                            practicingId === cardId
+                              ? 'bg-rose-500 text-white border-rose-600 ring-2 ring-rose-200 animate-pulse'
+                              : practicedScores[cardId] !== undefined
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
+                          }`}
+                        >
+                          <Mic className="w-3 h-3" />
+                          <span>
+                            {practicingId === cardId
+                              ? 'Listening…'
+                              : practicedScores[cardId] !== undefined
+                              ? `${practicedScores[cardId]}% Match`
+                              : 'Practice'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {point.alternatives.length > 0 && (
+                      <div className="text-[11px] text-slate-500">
+                        <span className="font-semibold text-slate-600">Phonetic alternatives heard: </span>
+                        <span className="italic">{point.alternatives.slice(0, 3).join(', ')}</span>
+                      </div>
+                    )}
+
+                    {point.feedback && (
+                      <p className="text-xs text-slate-600 bg-rose-50/60 p-2 rounded-xl border border-rose-100">
+                        💡 {point.feedback}
+                      </p>
+                    )}
+
+                    {practicedScores[cardId] !== undefined && (
+                      <div className="text-xs text-emerald-800 bg-white p-2 rounded-xl border border-emerald-200 flex items-center justify-between animate-fade-in">
+                        <span>Heard: <strong>"{practicedHeard[cardId]}"</strong></span>
+                        <span className="font-extrabold text-emerald-700">{practicedScores[cardId]}% Match ✓</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Grammar & Phrasing Upgrades */}
         <section className="space-y-3">
           <div>
             <h3 className="text-base font-extrabold text-slate-900">British English Phrasing Upgrades</h3>
             <p className="text-xs text-slate-500">Small changes that make you sound more natural. You were understood — these are bonus points!</p>
           </div>
+
 
           {upgrades.map((u) => (
             <div key={u.id} className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">

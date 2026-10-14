@@ -1,5 +1,6 @@
-// Web SpeechRecognition Service - Robust Voice Recognition for Language Learners
-// Supports Chrome, Edge, Safari with live transcription, interim results, and resilient error recovery.
+// Web SpeechRecognition Service - Robust Voice Recognition for Non-Native Language Learners
+// Supports Chrome, Edge, Safari with pause-tolerant continuous capture, interim results,
+// silence detection (6s timeout), and word-level acoustic confidence & phonetic alternative scoring.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyRecognition = any;
@@ -10,27 +11,57 @@ export function isRecognitionSupported(): boolean {
   return Boolean(w.SpeechRecognition || w.webkitSpeechRecognition);
 }
 
-export interface RecognitionHandle {
-  stop: () => Promise<string | null>;
-  getLatestTranscript: () => string;
+export interface SpokenSegmentAnalysis {
+  text: string;
+  confidence: number;
+  alternatives: string[];
+  isLowConfidence: boolean;
+  isAmbiguous: boolean;
+}
+
+export interface WordConfidenceInfo {
+  word: string;
+  confidence: number;
+  alternatives: string[];
+  isLowConfidence: boolean;
+}
+
+export interface RecognitionDetails {
+  transcript: string;
+  confidence: number;
+  segments: SpokenSegmentAnalysis[];
+  lowConfidenceWords: WordConfidenceInfo[];
 }
 
 export interface RecognitionOptions {
   lang?: 'en-GB' | 'en-US';
   onInterim?: (text: string) => void;
   onStatusChange?: (status: 'listening' | 'heard' | 'error' | 'stopped', details?: string) => void;
+  silenceTimeoutMs?: number; // Defaults to 6000ms (6s pause tolerance for ESL learners)
+  onSilenceTimeout?: () => void;
+  onSegmentAnalysis?: (segments: SpokenSegmentAnalysis[]) => void;
+}
+
+export interface RecognitionHandle {
+  stop: () => Promise<string | null>;
+  stopWithDetails: () => Promise<RecognitionDetails | null>;
+  getLatestTranscript: () => string;
+  getPronunciationMetadata: () => SpokenSegmentAnalysis[];
+  resetSilenceTimer: () => void;
+  pauseSilenceTimer: (paused: boolean) => void;
 }
 
 /**
- * Start listening with SpeechRecognition.
- * Captures both interim and final transcripts continuously.
- * Ignores benign events like 'no-speech' to avoid premature promise resolution.
+ * Start listening with SpeechRecognition engineered for non-native ESL learners:
+ * - continuous = true, interimResults = true, maxAlternatives = 3
+ * - Pause-tolerant session accumulation across browser auto-stops
+ * - 6-second silence timeout
+ * - Captures confidence scores (< 0.80) and phonetic alternatives for pronunciation coaching
  */
 export function startRecognition(
   options: RecognitionOptions | ('en-GB' | 'en-US') = 'en-GB',
   legacyOnInterim?: (text: string) => void
 ): RecognitionHandle {
-  // Support both new options object and legacy signature
   const opts: RecognitionOptions =
     typeof options === 'string'
       ? { lang: options, onInterim: legacyOnInterim }
@@ -39,6 +70,9 @@ export function startRecognition(
   const lang = opts.lang || 'en-GB';
   const onInterim = opts.onInterim;
   const onStatusChange = opts.onStatusChange;
+  const silenceTimeoutMs = opts.silenceTimeoutMs ?? 6000;
+  const onSilenceTimeout = opts.onSilenceTimeout;
+  const onSegmentAnalysis = opts.onSegmentAnalysis;
 
   const w = window as any;
   const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
@@ -47,80 +81,224 @@ export function startRecognition(
     onStatusChange?.('error', 'Speech recognition not supported in this browser');
     return {
       stop: async () => null,
+      stopWithDetails: async () => null,
       getLatestTranscript: () => '',
+      getPronunciationMetadata: () => [],
+      resetSilenceTimer: () => {},
+      pauseSilenceTimer: () => {},
     };
   }
 
+  let accumulatedFinalText = '';
   let latestTranscript = '';
   let isStopped = false;
+  let isSilenceTimerPaused = false;
   let rec: AnyRecognition = null;
+  let silenceTimerId: number | null = null;
+  const recordedSegments: SpokenSegmentAnalysis[] = [];
 
-  try {
-    rec = new Ctor();
-    rec.lang = lang;
-    rec.interimResults = true;
-    rec.continuous = true;
-    rec.maxAlternatives = 3;
+  const clearSilenceTimer = () => {
+    if (silenceTimerId !== null) {
+      window.clearTimeout(silenceTimerId);
+      silenceTimerId = null;
+    }
+  };
 
-    rec.onstart = () => {
-      onStatusChange?.('listening', 'Microphone active');
-    };
+  const scheduleSilenceTimer = () => {
+    clearSilenceTimer();
+    if (isStopped || isSilenceTimerPaused) return;
 
-    rec.onresult = (event: any) => {
-      let fullText = '';
-      for (let i = 0; i < event.results.length; i++) {
-        const item = event.results[i];
-        if (item && item[0]) {
-          fullText += item[0].transcript + ' ';
+    // Only arm silence timeout if the learner has begun speaking
+    if (latestTranscript.trim().length > 0 && silenceTimeoutMs > 0) {
+      silenceTimerId = window.setTimeout(() => {
+        if (!isStopped && !isSilenceTimerPaused) {
+          console.log('[SpeechRecognition] 6-second silence timeout reached. Auto-completing learner turn.');
+          onSilenceTimeout?.();
+        }
+      }, silenceTimeoutMs);
+    }
+  };
+
+  const initRecognition = () => {
+    if (isStopped) return;
+
+    try {
+      rec = new Ctor();
+      rec.lang = lang;
+      rec.interimResults = true;
+      rec.continuous = true;
+      rec.maxAlternatives = 3;
+
+      rec.onstart = () => {
+        onStatusChange?.('listening', 'Microphone active');
+      };
+
+      rec.onresult = (event: any) => {
+        let currentCycleText = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+          const item = event.results[i];
+          if (!item || !item[0]) continue;
+
+          const topAlt = item[0];
+          const transcript = (topAlt.transcript || '').trim();
+          const confidence = typeof topAlt.confidence === 'number' ? topAlt.confidence : 1.0;
+
+          // Capture phonetic alternatives (up to maxAlternatives = 3)
+          const alternatives: string[] = [];
+          for (let a = 1; a < item.length; a++) {
+            const altText = item[a]?.transcript?.trim();
+            if (altText && altText !== transcript && !alternatives.includes(altText)) {
+              alternatives.push(altText);
+            }
+          }
+
+          currentCycleText += (currentCycleText ? ' ' : '') + transcript;
+
+          // If final result, record pronunciation metadata for the segment
+          if (item.isFinal && transcript) {
+            const isLowConfidence = confidence > 0 && confidence < 0.80;
+            const isAmbiguous = alternatives.length > 0;
+
+            const existingIdx = recordedSegments.findIndex((s) => s.text === transcript);
+            if (existingIdx >= 0) {
+              recordedSegments[existingIdx] = {
+                text: transcript,
+                confidence,
+                alternatives,
+                isLowConfidence,
+                isAmbiguous,
+              };
+            } else {
+              recordedSegments.push({
+                text: transcript,
+                confidence,
+                alternatives,
+                isLowConfidence,
+                isAmbiguous,
+              });
+            }
+          }
+        }
+
+        const combined = accumulatedFinalText
+          ? `${accumulatedFinalText} ${currentCycleText}`.trim()
+          : currentCycleText.trim();
+
+        if (combined) {
+          latestTranscript = combined;
+          onInterim?.(combined);
+          onStatusChange?.('heard', combined);
+          onSegmentAnalysis?.(recordedSegments);
+          scheduleSilenceTimer();
+        }
+      };
+
+      rec.onerror = (event: any) => {
+        const err = event?.error;
+        console.log('[SpeechRecognition] Event:', err);
+
+        // Benign errors: 'no-speech' happens when the user is thinking/pausing mid-sentence.
+        // DO NOT stop or clear transcript on 'no-speech'
+        if (err === 'no-speech') {
+          return;
+        }
+
+        if (err === 'audio-capture' || err === 'not-allowed') {
+          clearSilenceTimer();
+          onStatusChange?.('error', `Microphone error: ${err}`);
+        }
+      };
+
+      rec.onend = () => {
+        // If recognition ended without manual user stop (e.g. Chrome 3-second auto cutoff),
+        // save what was accumulated so far and restart seamlessly to maintain Pause-Tolerant mode.
+        if (!isStopped) {
+          accumulatedFinalText = latestTranscript;
+          try {
+            rec.start();
+          } catch {
+            // If restart failed on this instance, re-init
+            setTimeout(() => {
+              if (!isStopped) initRecognition();
+            }, 100);
+          }
+        }
+      };
+
+      rec.start();
+    } catch (e: any) {
+      console.warn('[SpeechRecognition] Failed to start:', e);
+      onStatusChange?.('error', e?.message || 'Failed to start');
+    }
+  };
+
+  initRecognition();
+
+  const extractLowConfidenceWords = (): WordConfidenceInfo[] => {
+    const words: WordConfidenceInfo[] = [];
+    const seenWords = new Set<string>();
+
+    for (const segment of recordedSegments) {
+      const segWords = segment.text.split(/\s+/).filter((w) => w.length > 1);
+      for (const w of segWords) {
+        const cleanWord = w.toLowerCase().replace(/[^a-z']/g, '');
+        if (!cleanWord || seenWords.has(cleanWord)) continue;
+        seenWords.add(cleanWord);
+
+        // If whole segment is low confidence or has alternatives, attribute to key words
+        if (segment.isLowConfidence || segment.isAmbiguous) {
+          words.push({
+            word: cleanWord,
+            confidence: segment.confidence > 0 ? segment.confidence : 0.72,
+            alternatives: segment.alternatives,
+            isLowConfidence: segment.isLowConfidence,
+          });
         }
       }
+    }
+    return words;
+  };
 
-      const trimmed = fullText.trim();
-      if (trimmed) {
-        latestTranscript = trimmed;
-        onInterim?.(trimmed);
-        onStatusChange?.('heard', trimmed);
+  const getDetails = (): RecognitionDetails => {
+    const text = latestTranscript.trim();
+    let totalConf = 0;
+    let counted = 0;
+
+    for (const s of recordedSegments) {
+      if (s.confidence > 0) {
+        totalConf += s.confidence;
+        counted++;
       }
+    }
+
+    const avgConfidence = counted > 0 ? totalConf / counted : 0.85;
+
+    return {
+      transcript: text,
+      confidence: avgConfidence,
+      segments: [...recordedSegments],
+      lowConfidenceWords: extractLowConfidenceWords(),
     };
-
-    rec.onerror = (event: any) => {
-      const err = event?.error;
-      console.log('[SpeechRecognition] Event:', err);
-
-      // Benign errors: 'no-speech' happens when the user is thinking/pausing.
-      // Do NOT stop or clear transcript on 'no-speech'.
-      if (err === 'no-speech') {
-        // User is pausing or hasn't spoken yet, keep listening
-        return;
-      }
-
-      if (err === 'audio-capture' || err === 'not-allowed') {
-        onStatusChange?.('error', `Microphone error: ${err}`);
-      }
-    };
-
-    rec.onend = () => {
-      // If recognition ended unexpectedly without user calling stop,
-      // and we still haven't manually stopped, try restarting once
-      if (!isStopped && rec) {
-        try {
-          rec.start();
-        } catch {
-          /* ignore restart error */
-        }
-      }
-    };
-
-    rec.start();
-  } catch (e: any) {
-    console.warn('[SpeechRecognition] Failed to start:', e);
-    onStatusChange?.('error', e?.message || 'Failed to start');
-  }
+  };
 
   return {
     getLatestTranscript: () => latestTranscript,
+    getPronunciationMetadata: () => [...recordedSegments],
+    resetSilenceTimer: () => {
+      scheduleSilenceTimer();
+    },
+    pauseSilenceTimer: (paused: boolean) => {
+      isSilenceTimerPaused = paused;
+      if (paused) {
+        clearSilenceTimer();
+      } else {
+        scheduleSilenceTimer();
+      }
+    },
     stop: async () => {
       isStopped = true;
+      clearSilenceTimer();
       if (rec) {
         try {
           rec.stop();
@@ -130,9 +308,24 @@ export function startRecognition(
       }
       onStatusChange?.('stopped');
 
-      // Allow 200ms for any pending final audio buffers to flush
+      // Allow 200ms for final audio buffers to flush
       await new Promise((r) => setTimeout(r, 200));
       return latestTranscript.trim() || null;
+    },
+    stopWithDetails: async () => {
+      isStopped = true;
+      clearSilenceTimer();
+      if (rec) {
+        try {
+          rec.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+      onStatusChange?.('stopped');
+
+      await new Promise((r) => setTimeout(r, 200));
+      return getDetails();
     },
   };
 }

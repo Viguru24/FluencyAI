@@ -101,6 +101,14 @@ export interface LessonPlan {
   helpPhrases: HelpPhrase[];
 }
 
+export interface PronunciationCoachingPoint {
+  wordOrPhrase: string;
+  confidence: number;
+  alternatives: string[];
+  feedback?: string;
+  ipa?: string;
+}
+
 export interface LessonSessionResult {
   phraseScores: number[]; // scaffolding pronunciation attempts (0-100)
   userTurns: string[];
@@ -110,7 +118,10 @@ export interface LessonSessionResult {
   fluencyScore?: number;
   dynamicUpgrades?: PhrasingUpgrade[];
   phrasesToReview?: string[];
+  pronunciationCoachingPoints?: PronunciationCoachingPoint[];
+  acousticFeedback?: string;
 }
+
 
 export interface KeyVocabItem {
   word: string;

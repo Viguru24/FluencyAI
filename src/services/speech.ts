@@ -161,3 +161,8 @@ export interface SpeechRecognitionHook {
   stopListening: () => void;
   isSupported: boolean;
 }
+
+// Re-export speech recognition & audio recording capabilities
+export * from './speechRecognition';
+export * from './audioRecorder';
+
