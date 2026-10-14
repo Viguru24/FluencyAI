@@ -3,30 +3,30 @@ import { Navbar } from './components/Navbar';
 import { DailyGoalCard } from './components/DailyGoalCard';
 import { RoleplayList } from './components/RoleplayList';
 import { StartDailyLessonFAB } from './components/StartDailyLessonFAB';
-import { RoleplayModal } from './components/RoleplayModal';
-import { DailyLessonModal } from './components/DailyLessonModal';
 import { PWAInstallGuideModal } from './components/PWAInstallGuideModal';
-import { roleplayScenarios, dailyLessonMock, initialUserProgress } from './data/mockData';
-import type { UserProgress, RoleplayScenario } from './types';
+import { LessonFlow } from './components/lesson/LessonFlow';
+import { roleplayScenarios, initialUserProgress } from './data/mockData';
+import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans';
+import type { UserProgress, LessonPlan, PhrasingUpgrade } from './types';
 import { registerServiceWorker } from './pwa';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { RefreshCw, Sparkles, BookmarkCheck } from 'lucide-react';
 
 const STORAGE_KEY = 'fluencyai_user_progress_v1';
+const DAILY_ID = 'daily-lesson-today';
 
 export function App() {
   // Load saved progress or fallback to initial
   const [progress, setProgress] = useState<UserProgress>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) return { ...initialUserProgress, ...JSON.parse(saved) };
     } catch (e) {
       console.warn('Could not read user progress from localStorage', e);
     }
     return initialUserProgress;
   });
 
-  const [activeScenario, setActiveScenario] = useState<RoleplayScenario | null>(null);
-  const [isDailyLessonOpen, setIsDailyLessonOpen] = useState(false);
+  const [activePlan, setActivePlan] = useState<LessonPlan | null>(null);
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const [hasUpdate, setHasUpdate] = useState(false);
 
@@ -46,34 +46,41 @@ export function App() {
     });
   }, []);
 
-  // Update handlers
-  const handleScenarioCompleted = (scenarioId: string, earnedXP: number, minutes: number) => {
-    setProgress((prev) => {
-      const alreadyCompleted = prev.completedScenarioIds.includes(scenarioId);
-      const nextCompletedIds = alreadyCompleted
-        ? prev.completedScenarioIds
-        : [...prev.completedScenarioIds, scenarioId];
+  const openDailyLesson = () => setActivePlan(getDailyLessonPlan());
+  const openScenario = (scenarioId: string) => setActivePlan(getLessonPlanForScenario(scenarioId));
 
+  const handleLessonComplete = (plan: LessonPlan) => {
+    setProgress((prev) => {
+      const isDaily = plan.id === DAILY_ID;
       return {
         ...prev,
-        completedScenarioIds: nextCompletedIds,
-        completedXP: Math.min(prev.dailyGoalXP, prev.completedXP + earnedXP),
-        completedMinutes: Math.min(prev.dailyGoalMinutes, prev.completedMinutes + minutes),
+        hasCompletedDailyLessonToday: prev.hasCompletedDailyLessonToday || isDaily,
+        completedScenarioIds:
+          isDaily || prev.completedScenarioIds.includes(plan.id)
+            ? prev.completedScenarioIds
+            : [...prev.completedScenarioIds, plan.id],
+        completedXP: Math.min(prev.dailyGoalXP, prev.completedXP + plan.xpReward),
+        completedMinutes: Math.min(prev.dailyGoalMinutes, prev.completedMinutes + plan.minutes),
       };
     });
+    setActivePlan(null);
   };
 
-  const handleLessonCompleted = () => {
-    setProgress((prev) => ({
-      ...prev,
-      hasCompletedDailyLessonToday: true,
-      completedXP: Math.min(prev.dailyGoalXP, prev.completedXP + dailyLessonMock.xpReward),
-      completedMinutes: Math.min(
-        prev.dailyGoalMinutes,
-        prev.completedMinutes + dailyLessonMock.estimatedMinutes
-      ),
-    }));
-    setIsDailyLessonOpen(false);
+  const handleSaveMistakes = (plan: LessonPlan, upgrades: PhrasingUpgrade[]) => {
+    setProgress((prev) => {
+      const existing = prev.savedMistakes ?? [];
+      const existingIds = new Set(existing.map((m) => m.id));
+      const fresh = upgrades
+        .filter((u) => !existingIds.has(u.id))
+        .map((u) => ({
+          id: u.id,
+          whatYouSaid: u.whatYouSaid,
+          moreNatural: u.moreNatural,
+          scenarioTitle: plan.title,
+          dateSaved: new Date().toISOString(),
+        }));
+      return { ...prev, savedMistakes: [...existing, ...fresh] };
+    });
   };
 
   const handleReloadApp = () => {
@@ -86,6 +93,8 @@ export function App() {
       window.location.reload();
     }
   };
+
+  const reviewCount = progress.savedMistakes?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-28">
@@ -116,50 +125,50 @@ export function App() {
       {/* Main Mobile App Container */}
       <main className="flex-1 w-full max-w-xl mx-auto px-4 py-4 space-y-5">
         {/* Daily Goal & Welcoming Section */}
-        <DailyGoalCard
-          progress={progress}
-          onUpdateProgress={setProgress}
-          onStartLesson={() => setIsDailyLessonOpen(true)}
-        />
+        <DailyGoalCard progress={progress} onUpdateProgress={setProgress} onStartLesson={openDailyLesson} />
+
+        {/* Tomorrow's review queue */}
+        {reviewCount > 0 && (
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+              <BookmarkCheck className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-amber-900">
+              <div className="font-bold">{reviewCount} phrases queued for tomorrow’s review</div>
+              <div className="text-amber-700">Saved from your scorecards — we’ll revisit them in your next lesson.</div>
+            </div>
+          </div>
+        )}
 
         {/* Upcoming Roleplay Scenarios Section */}
         <RoleplayList
           scenarios={roleplayScenarios}
           progress={progress}
-          onSelectScenario={(scenario) => setActiveScenario(scenario)}
+          onSelectScenario={(scenario) => openScenario(scenario.id)}
         />
       </main>
 
       {/* Floating Action Button: Start Daily Lesson */}
-      <StartDailyLessonFAB
-        onStartLesson={() => setIsDailyLessonOpen(true)}
-        isCompletedToday={progress.hasCompletedDailyLessonToday}
-      />
-
-      {/* Roleplay Conversation Modal */}
-      {activeScenario && (
-        <RoleplayModal
-          scenario={activeScenario}
-          progress={progress}
-          onClose={() => setActiveScenario(null)}
-          onComplete={handleScenarioCompleted}
-        />
+      {!activePlan && (
+        <StartDailyLessonFAB onStartLesson={openDailyLesson} isCompletedToday={progress.hasCompletedDailyLessonToday} />
       )}
 
-      {/* Daily Lesson Modal */}
-      {isDailyLessonOpen && (
-        <DailyLessonModal
-          lesson={dailyLessonMock}
-          progress={progress}
-          onClose={() => setIsDailyLessonOpen(false)}
-          onCompleteLesson={handleLessonCompleted}
+      {/* 3-stage lesson flow: Prep → Live Roleplay → Scorecard */}
+      {activePlan && (
+        <LessonFlow
+          key={activePlan.id}
+          plan={activePlan}
+          nativeLanguage={progress.nativeLanguage}
+          audioSpeed={progress.audioSpeed}
+          savedMistakeIds={(progress.savedMistakes ?? []).map((m) => m.id)}
+          onSaveMistakes={handleSaveMistakes}
+          onComplete={handleLessonComplete}
+          onExit={() => setActivePlan(null)}
         />
       )}
 
       {/* PWA Installation Guide Modal */}
-      {isInstallGuideOpen && (
-        <PWAInstallGuideModal onClose={() => setIsInstallGuideOpen(false)} />
-      )}
+      {isInstallGuideOpen && <PWAInstallGuideModal onClose={() => setIsInstallGuideOpen(false)} />}
     </div>
   );
 }

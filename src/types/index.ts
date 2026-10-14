@@ -2,7 +2,7 @@
 
 export type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1';
 
-export type NativeLanguage = 
+export type NativeLanguage =
   | 'Spanish'
   | 'Mandarin'
   | 'Japanese'
@@ -11,6 +11,24 @@ export type NativeLanguage =
   | 'French'
   | 'Vietnamese'
   | 'German';
+
+export type LessonStage = 'scaffolding' | 'roleplay' | 'scorecard';
+
+export interface PhrasingUpgrade {
+  id: string;
+  whatYouSaid: string;
+  moreNatural: string;
+  explanation: string;
+  category: 'Politeness' | 'Natural Idiom' | 'Grammar' | 'Fluency';
+}
+
+export interface SavedMistake {
+  id: string;
+  whatYouSaid: string;
+  moreNatural: string;
+  scenarioTitle: string;
+  dateSaved: string;
+}
 
 export interface UserProgress {
   name: string;
@@ -25,6 +43,7 @@ export interface UserProgress {
   audioSpeed: number; // e.g. 0.8 or 1.0
   completedScenarioIds: string[];
   hasCompletedDailyLessonToday: boolean;
+  savedMistakes?: SavedMistake[];
 }
 
 export interface AIPersona {
@@ -34,6 +53,46 @@ export interface AIPersona {
   accent: 'US' | 'UK';
   greeting: string;
   tone: string;
+}
+
+export interface ScaffoldingTargetPhrase {
+  id: string;
+  phrase: string;
+  ipa: string;
+  usageContext: string;
+  translations: Partial<Record<NativeLanguage, string>>;
+}
+
+export interface HelpPhrase {
+  id: string;
+  /** Keywords (any language) that map a native-language request to this phrase */
+  keywords: string[];
+  english: string;
+  ipa: string;
+  note: string;
+}
+
+/** Everything the 3-stage lesson flow needs for one scenario or the daily lesson */
+export interface LessonPlan {
+  id: string;
+  title: string;
+  contextLabel: string; // e.g. "UK Hospitality"
+  persona: AIPersona;
+  xpReward: number;
+  minutes: number;
+  phrases: ScaffoldingTargetPhrase[]; // exactly 3
+  aiTurns: string[]; // AI lines, spoken in order
+  mockUserReplies: string[]; // fallback transcript when speech recognition is unavailable
+  upgrades: PhrasingUpgrade[];
+  helpPhrases: HelpPhrase[];
+}
+
+export interface LessonSessionResult {
+  phraseScores: number[]; // scaffolding pronunciation attempts (0-100)
+  userTurns: string[];
+  revealsUsed: number;
+  helpRequests: number;
+  aiTurnsHeard: number;
 }
 
 export interface KeyVocabItem {
