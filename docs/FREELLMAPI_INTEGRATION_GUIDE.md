@@ -125,3 +125,89 @@ To eliminate browser cross-origin, CORP, and PNA restrictions permanently:
      - `generateJamesReply()` (Stage 2 Roleplay)
      - `generateGeminiScorecard()` (Stage 3 Scorecard)
      - `evaluatePlacementAssessment()` (CEFR Diagnostic Check)
+
+
+---
+
+## 6. What Caused the "405 Method Not Allowed" Error?
+
+### The Root Cause
+1. **Stale Background Node Process:**
+   - An orphaned background Node process (`PID 55656`) was holding port `5173` on IPv6 `::` from an earlier session before proxy routes were added.
+   - When Vite started fresh, it saw port `5173` was busy and shifted to port `5174`.
+   - Any browser requests hitting `http://localhost:5173` were intercepted by the old process without the Connect proxy middleware. Vite's default static file server rejected incoming `POST /v1/chat/completions` with `HTTP 405 Method Not Allowed`.
+2. **Premature Loop Break in `testGatewayConnection()`:**
+   - In `src/services/llmConfig.ts`, when a candidate endpoint returned `405`, line 287 was returning immediately rather than continuing to the next candidate in the fallback loop.
+
+### The Fix
+1. **Clean Process Termination:** Terminated `PID 55656` so port `5173` is exclusively owned by the Vite dev server with active proxy middleware.
+2. **Dual-Route Reverse Proxy in `vite.config.ts`:**
+   ```typescript
+   proxy: {
+     '/freellm-gateway': {
+       target: 'http://127.0.0.1:31415',
+       changeOrigin: true,
+       rewrite: (path) => path.replace(/^\/freellm-gateway/, ''),
+     },
+     '/v1': {
+       target: 'http://127.0.0.1:31415',
+       changeOrigin: true,
+     },
+   }
+   ```
+3. **Cascading Candidate Fallback:**
+   - `testGatewayConnection()` and `fetchFreeLLMWithFallback()` now cascade across all candidates (`${origin}/v1`, `${origin}/freellm-gateway/v1`, and `http://127.0.0.1:31415/v1`) even if an intermediate base returns `404` or `405`.
+
+---
+
+## 7. The HTTPS (GitHub Pages) Mixed-Content "Failed to fetch" Trap
+
+### The Root Cause
+When testing the app from **`https://viguru24.github.io/FluencyAI/`** (or an installed desktop/mobile PWA running from the GitHub Pages URL):
+1. The web page is served over secure **`HTTPS`**.
+2. FreeLLMAPI is a local desktop app listening on **`http://127.0.0.1:31415`** (**HTTP**).
+3. Under the W3C Mixed Content and Chromium Private Network Access (PNA) specifications, modern web browsers **strictly block** secure HTTPS web pages from making background network requests to insecure local HTTP endpoints. The browser aborts the request before it leaves the browser and throws:
+   ```
+   TypeError: Failed to fetch
+   ```
+4. Furthermore, GitHub Pages is a static file host with no backend server, so `${origin}/v1` returns `HTTP 404`.
+
+### The Permanent Architectural Solution
+1. **Automatic HTTPS Mixed-Content Detection:**
+   - `testGatewayConnection()` now checks `window.location.protocol === 'https:'`.
+   - Instead of showing a misleading `"Could not reach 127.0.0.1:31415"` error, it explains the browser Mixed-Content security restriction with complete clarity.
+2. **1-Click Local App Launcher in Settings Modal:**
+   - When on HTTPS, the modal displays:
+     - 🚀 **"Open Local App (http://localhost:5173)"** — Launches `localhost:5173` in a new tab where FreeLLMAPI works natively with 0 Mixed-Content restrictions.
+     - ✨ **"Switch to Direct Gemini API"** — Allows seamless AI usage on the cloud website via Google Gemini cloud endpoints.
+3. **Local-First Rule Enforcement:**
+   - By working on **`http://localhost:5173`**, both the web app and FreeLLMAPI run on HTTP loopback with zero CORS, zero CORP blocks, and ~10ms latency.
+
+---
+
+## 8. Service Worker Interception Bypass
+
+### The Root Cause
+The PWA service worker (`public/sw.js`) intercepts outgoing `GET` requests to cache offline assets. If an API request to `/v1/models` was intercepted, the service worker's cache handler attempted to treat the dynamic AI model catalog as a static file, causing failed requests or cache poisoning.
+
+### The Fix
+In `public/sw.js`, explicitly bypassed all AI gateway endpoints:
+```javascript
+if (
+  event.request.method !== 'GET' ||
+  !url.startsWith('http') ||
+  url.includes('/freellm-gateway') ||
+  url.includes('/v1/') ||
+  url.endsWith('/v1') ||
+  url.includes('/models') ||
+  url.includes('/chat/completions') ||
+  url.includes('31415') ||
+  url.includes('127.0.0.1') ||
+  url.includes('localhost') ||
+  url.includes('/api/') ||
+  url.includes('cosmowhisper.com')
+) {
+  return; // Let the browser handle network directly
+}
+```
+In `src/pwa.ts`, all Service Workers and CacheStorage are automatically unregistered and purged on `localhost` during development.
