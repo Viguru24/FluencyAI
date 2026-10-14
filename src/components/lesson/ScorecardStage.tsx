@@ -76,7 +76,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
         <div className="text-center space-y-1">
           <span className="inline-block px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
-            Stage 3 of 3 · Your Scorecard
+            Stage 3 of 3 · Pronunciation &amp; British Phrasing Scorecard
           </span>
           <h2 className="text-xl font-extrabold text-slate-900">Well done — you spoke English for real!</h2>
           <p className="text-sm text-slate-600">{plan.title}</p>
@@ -108,7 +108,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
         {/* Grammar & Phrasing Upgrades */}
         <section className="space-y-3">
           <div>
-            <h3 className="text-base font-extrabold text-slate-900">Grammar &amp; Phrasing Upgrades</h3>
+            <h3 className="text-base font-extrabold text-slate-900">British English Phrasing Upgrades</h3>
             <p className="text-xs text-slate-500">Small changes that make you sound more natural. You were understood — these are bonus points!</p>
           </div>
 

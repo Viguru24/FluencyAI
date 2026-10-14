@@ -89,7 +89,11 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
           return (
             <div
               key={scenario.id}
-              className={`group relative overflow-hidden rounded-3xl bg-white border border-slate-200/80 shadow-soft hover:shadow-soft-lg transition-all duration-300 ${
+              onClick={() => {
+                playChime('tap');
+                onSelectScenario(scenario);
+              }}
+              className={`group relative overflow-hidden rounded-3xl bg-white border border-slate-200/80 shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer hover:border-brand-300 ${
                 isCompleted ? 'border-emerald-200/90' : ''
               }`}
             >
@@ -152,7 +156,8 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                 {/* Key Vocabulary Collapsible Helper for Non-Native Speakers */}
                 <div className="rounded-2xl bg-slate-50/80 border border-slate-200/60 p-2.5">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       playChime('tap');
                       setExpandedVocabId(isVocabOpen ? null : scenario.id);
                     }}
@@ -219,7 +224,8 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                   </div>
 
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       playChime('tap');
                       onSelectScenario(scenario);
                     }}

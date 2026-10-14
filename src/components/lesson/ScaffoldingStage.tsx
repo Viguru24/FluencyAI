@@ -45,6 +45,9 @@ export const ScaffoldingStage: React.FC<Props> = ({
   const [level, setLevel] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>('');
+  const [isTestingMic, setIsTestingMic] = useState(false);
+  const [micTestStatus, setMicTestStatus] = useState<'idle' | 'testing' | 'passed'>('idle');
+  const [micTestLevel, setMicTestLevel] = useState(0);
 
   const recRef = useRef<RecognitionHandle | null>(null);
   const vizRef = useRef(new AudioVisualizerController());
@@ -144,17 +147,111 @@ export const ScaffoldingStage: React.FC<Props> = ({
     playChime('success');
   };
 
+  const handleTestMic = async () => {
+    if (isTestingMic) {
+      vizRef.current.stopMicrophone();
+      setIsTestingMic(false);
+      setMicTestStatus('passed');
+      return;
+    }
+    playChime('tap');
+    setIsTestingMic(true);
+    setMicTestStatus('testing');
+    try {
+      const ok = await vizRef.current.startMicrophone((b) => {
+        const avg = b.reduce((acc, val) => acc + val, 0) / (b.length || 1);
+        setMicTestLevel(avg);
+      });
+      if (!ok) {
+        setIsTestingMic(false);
+        setMicTestStatus('idle');
+        onMicDenied();
+        return;
+      }
+      setTimeout(() => {
+        vizRef.current.stopMicrophone();
+        setIsTestingMic(false);
+        setMicTestStatus('passed');
+        playChime('success');
+      }, 3500);
+    } catch {
+      setIsTestingMic(false);
+      setMicTestStatus('idle');
+      onMicDenied();
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
         <div className="space-y-1">
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
-            Stage 1 of 3 · Pre-Chat Prep
+            Stage 1 of 3 · 3-Phrase Vocabulary Warm-up &amp; Mic Test
           </span>
           <h2 className="text-xl font-extrabold text-slate-900">Warm up your key phrases</h2>
           <p className="text-sm text-slate-600 leading-relaxed">
             Listen, then say each phrase out loud. You will use them naturally with {plan.persona.name}.
           </p>
+        </div>
+
+        {/* Microphone Check Widget */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-brand-50/40 to-emerald-50 border border-brand-200/80 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                micTestStatus === 'passed'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : isTestingMic
+                  ? 'bg-rose-100 text-rose-600 animate-pulse'
+                  : 'bg-brand-100 text-brand-700'
+              }`}
+            >
+              <Mic className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-slate-800 flex items-center gap-1.5 truncate">
+                <span>Microphone Test</span>
+                {micTestStatus === 'passed' && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md">
+                    Ready ✓
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {isTestingMic
+                  ? 'Say anything to test input...'
+                  : micTestStatus === 'passed'
+                  ? 'Audio input detected and working cleanly'
+                  : 'Check your microphone before starting'}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isTestingMic && (
+              <div className="flex items-end gap-0.5 h-5 px-1" aria-hidden>
+                {[0.5, 1, 0.8, 1.2, 0.6].map((m, i) => (
+                  <span
+                    key={i}
+                    className="w-1 rounded-full bg-emerald-500 transition-all duration-75"
+                    style={{ height: `${Math.max(4, Math.min(20, Math.max(micTestLevel, 0.25) * 40 * m))}px` }}
+                  />
+                ))}
+              </div>
+            )}
+            <button
+              onClick={handleTestMic}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                isTestingMic
+                  ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-xs'
+                  : micTestStatus === 'passed'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                  : 'bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 shadow-xs'
+              }`}
+            >
+              {isTestingMic ? 'Stop Test' : micTestStatus === 'passed' ? 'Test Again' : 'Test Mic'}
+            </button>
+          </div>
         </div>
 
         {plan.phrases.map((p, idx) => {
@@ -345,6 +442,18 @@ export const ScaffoldingStage: React.FC<Props> = ({
             <><Lock className="w-4 h-4" /> Practise all 3 phrases to unlock</>
           )}
         </button>
+
+        {!allDone && (
+          <button
+            onClick={() => {
+              playChime('tap');
+              onComplete(plan.phrases.map((p) => scores[p.id] ?? 80));
+            }}
+            className="w-full text-center text-xs font-semibold text-slate-500 hover:text-brand-600 transition py-1"
+          >
+            Skip warm-up to Live Roleplay &rarr;
+          </button>
+        )}
       </div>
     </div>
   );

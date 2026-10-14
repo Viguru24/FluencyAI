@@ -191,17 +191,21 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
       {/* Stage tag + reveal toggle */}
       <div className="flex items-center justify-between px-4 pt-3">
         <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
-          Stage 2 of 3 · Live Roleplay
+          Stage 2 of 3 · Live Voice Roleplay
         </span>
         <button
-          onClick={() => setRevealAll((r) => !r)}
+          onClick={() => {
+            playChime('tap');
+            setRevealAll((r) => !r);
+          }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
-            revealAll ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-700 border-slate-200'
+            revealAll ? 'bg-brand-600 text-white border-brand-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 shadow-xs hover:bg-slate-50'
           }`}
           aria-pressed={revealAll}
+          title="Toggle blurred transcript for ear training"
         >
           {revealAll ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          {revealAll ? 'Hide text' : 'Tap to Reveal Text'}
+          {revealAll ? 'Transcript: Revealed' : 'Transcript: Blurred'}
         </button>
       </div>
 

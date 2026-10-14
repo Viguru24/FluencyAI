@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Mic, Sparkles, Zap } from 'lucide-react';
+import { Flame, Mic, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { UserProgress } from '../types';
 import { playChime } from '../services/speech';
@@ -12,7 +12,6 @@ interface DailyGoalCardProps {
 
 export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   progress,
-  onUpdateProgress,
   onStartLesson,
 }) => {
   const getGreeting = () => {
@@ -28,26 +27,6 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   );
 
   const isGoalReached = progress.completedMinutes >= progress.dailyGoalMinutes;
-
-  const handleQuickPractice = () => {
-    playChime('success');
-    confetti({
-      particleCount: 40,
-      spread: 60,
-      origin: { y: 0.7 },
-      colors: ['#0ea5e9', '#10b981', '#fbbf24', '#38bdf8'],
-    });
-
-    onUpdateProgress((prev) => {
-      const nextMinutes = Math.min(prev.dailyGoalMinutes, prev.completedMinutes + 2);
-      const nextXP = Math.min(prev.dailyGoalXP, prev.completedXP + 10);
-      return {
-        ...prev,
-        completedMinutes: nextMinutes,
-        completedXP: nextXP,
-      };
-    });
-  };
 
   return (
     <div className="w-full space-y-3">
@@ -167,32 +146,34 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={handleQuickPractice}
-              className="p-2.5 rounded-2xl bg-gradient-to-r from-brand-50 to-sky-50 hover:from-brand-100 hover:to-sky-100 border border-brand-200 text-center transition active:scale-95 group"
-              title="Add 2 minutes speaking test"
-            >
-              <div className="text-[10px] font-bold text-brand-700 uppercase flex items-center justify-center gap-1">
-                <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
-                <span>+2 Mins</span>
+            <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Pronunciation Avg
               </div>
-              <div className="text-xs font-bold text-brand-900 mt-0.5 group-hover:text-brand-600">
-                Log Speak
+              <div className="text-sm font-black text-emerald-600 mt-0.5 flex items-center justify-center gap-1">
+                <span>88%</span>
               </div>
-            </button>
+            </div>
           </div>
 
-          {/* Quick link to start daily lesson if uncompleted */}
-          {!progress.hasCompletedDailyLessonToday && onStartLesson && (
+          {/* Spaced repetition review banner */}
+          {onStartLesson && (
             <button
               onClick={onStartLesson}
-              className="w-full py-2.5 px-3 rounded-2xl bg-brand-50 hover:bg-brand-100 border border-brand-200/80 text-brand-700 text-xs font-bold flex items-center justify-between transition"
+              className="w-full py-2.5 px-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950 text-xs font-bold flex items-center justify-between transition shadow-xs group"
             >
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-                <span>Today's 5-minute Fluency Sprint is ready</span>
+              <span className="flex items-center gap-2 text-left">
+                <span className="flex items-center justify-center w-5 h-5 rounded-lg bg-amber-200 text-amber-800 flex-shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                </span>
+                <span>
+                  <strong className="text-amber-900 font-extrabold">Spaced Repetition:</strong>{' '}
+                  <span className="text-slate-700 font-semibold">3 phrases from yesterday ready for review</span>
+                </span>
               </span>
-              <span className="text-[11px] underline">Start now &rarr;</span>
+              <span className="text-[11px] font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 flex-shrink-0">
+                Review &rarr;
+              </span>
             </button>
           )}
         </div>

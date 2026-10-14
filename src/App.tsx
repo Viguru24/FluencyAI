@@ -123,7 +123,7 @@ export function App() {
       />
 
       {/* Main Mobile App Container */}
-      <main className="flex-1 w-full max-w-xl mx-auto px-4 py-4 space-y-5">
+      <main className="flex-1 w-full max-w-xl mx-auto px-4 py-4 pb-28 space-y-5">
         {/* Daily Goal & Welcoming Section */}
         <DailyGoalCard progress={progress} onUpdateProgress={setProgress} onStartLesson={openDailyLesson} />
 
