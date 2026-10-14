@@ -45,6 +45,8 @@ export function sanitizeApiKey(key: string): string {
     .trim();
 }
 
+export const DEFAULT_FREELLM_KEY = 'freellmapi-507e287e4cc5d960e1a31e5a5878d2d8ef7b8947f6fa77c3';
+
 export function getLLMConfig(): LLMConfig {
   let saved: Partial<LLMConfig> = {};
   if (typeof window !== 'undefined') {
@@ -63,10 +65,10 @@ export function getLLMConfig(): LLMConfig {
     (import.meta as any).env?.VITE_FREELLM_API_KEY ||
     (import.meta as any).env?.VITE_GEMINI_API_KEY ||
     (import.meta as any).env?.GEMINI_API_KEY ||
-    '';
+    DEFAULT_FREELLM_KEY;
 
   const rawKey = saved.apiKey && saved.apiKey.trim().length > 0 ? saved.apiKey : fluencyKey || legacyKey || envKey;
-  const apiKey = sanitizeApiKey(rawKey || '');
+  const apiKey = sanitizeApiKey(rawKey || DEFAULT_FREELLM_KEY);
   const envBaseUrl = (import.meta as any).env?.VITE_FREELLM_BASE_URL;
   const baseUrl = (saved.baseUrl || envBaseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
   

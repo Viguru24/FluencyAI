@@ -78,6 +78,22 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
         setConfig((prev) => ({ ...prev, provider: 'direct-gemini' }));
       }
       const res = await testGatewayConnection(activeConf);
+      if (!res.ok && res.status === 401 && activeConf.provider === 'freellmapi') {
+        const verifiedKey = 'freellmapi-507e287e4cc5d960e1a31e5a5878d2d8ef7b8947f6fa77c3';
+        if (activeConf.apiKey !== verifiedKey) {
+          const retryRes = await testGatewayConnection({ ...activeConf, apiKey: verifiedKey });
+          if (retryRes.ok) {
+            const healed = { ...activeConf, apiKey: verifiedKey, provider: 'freellmapi' as const };
+            setConfig(healed);
+            saveLLMConfig(healed);
+            setTestResult(retryRes);
+            playChime('success');
+            onConnectionStatusChange?.(true);
+            toast.success('Connected with verified FreeLLMAPI key!', 'Gateway Connected');
+            return;
+          }
+        }
+      }
       setTestResult(res);
       if (res.ok) {
         saveLLMConfig(activeConf);
@@ -230,10 +246,28 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
 
           {/* API Key Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-brand-600" />
-              {config.provider === 'freellmapi' ? 'FreeLLMAPI Unified Key' : 'Google Gemini API Key'}
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-brand-600" />
+                {config.provider === 'freellmapi' ? 'FreeLLMAPI Unified Key' : 'Google Gemini API Key'}
+              </label>
+              {config.provider === 'freellmapi' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const verifiedKey = 'freellmapi-507e287e4cc5d960e1a31e5a5878d2d8ef7b8947f6fa77c3';
+                    const healed = { ...config, apiKey: verifiedKey, provider: 'freellmapi' as const };
+                    setConfig(healed);
+                    saveLLMConfig(healed);
+                    toast.success('Inserted verified FreeLLMAPI key!', 'Key Inserted');
+                  }}
+                  className="text-[11px] font-bold text-brand-600 hover:text-brand-800 flex items-center gap-1 bg-brand-50 hover:bg-brand-100 px-2 py-0.5 rounded-lg border border-brand-200/60 active:scale-95 transition"
+                >
+                  <RotateCcw className="w-3 h-3 text-brand-600" />
+                  <span>Insert Verified Key</span>
+                </button>
+              )}
+            </div>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
@@ -415,6 +449,32 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
                   <div className="mt-1 text-[11px] text-emerald-700 font-medium">
                     Available router models: {testResult.models.slice(0, 4).join(', ')}
                     {testResult.models.length > 4 ? ` +${testResult.models.length - 4} more` : ''}
+                  </div>
+                )}
+                {!testResult.ok && config.provider === 'freellmapi' && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const verifiedKey = 'freellmapi-507e287e4cc5d960e1a31e5a5878d2d8ef7b8947f6fa77c3';
+                        const healed = { ...config, apiKey: verifiedKey, provider: 'freellmapi' as const };
+                        setConfig(healed);
+                        saveLLMConfig(healed);
+                        setIsTesting(true);
+                        const res = await testGatewayConnection(healed);
+                        setIsTesting(false);
+                        setTestResult(res);
+                        if (res.ok) {
+                          playChime('success');
+                          onConnectionStatusChange?.(true);
+                          toast.success('Connected successfully with verified FreeLLMAPI key!', 'Gateway Connected');
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Use Verified Key &amp; Re-Test</span>
+                    </button>
                   </div>
                 )}
               </div>
