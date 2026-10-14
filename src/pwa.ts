@@ -11,6 +11,30 @@ const installListeners = new Set<(canInstall: boolean) => void>();
 export function registerServiceWorker(onUpdate?: () => void) {
   if (typeof window === 'undefined') return;
 
+  // In local development, never cache JS modules in service worker to prevent stale code lockups
+  const isLocalhost =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.endsWith('.local');
+
+  if (isLocalhost) {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) {
+          reg.unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        for (const key of keys) {
+          caches.delete(key);
+        }
+      });
+    }
+    return;
+  }
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       // Resolves relative to current base path (works on localhost, custom domains, and GitHub Pages)

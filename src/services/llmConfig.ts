@@ -142,21 +142,22 @@ export function getCandidateGatewayUrls(base?: string): string[] {
   const primary = (base || (import.meta as any).env?.VITE_FREELLM_BASE_URL || DEFAULT_FREELLM_BASE_URL)
     .trim()
     .replace(/\/+$/, '');
-  const candidates: string[] = [primary];
+  const candidates: string[] = [];
 
   if (typeof window !== 'undefined' && window.location) {
     const origin = window.location.origin;
     const proxyBase = `${origin}/freellm-gateway/v1`;
-    if (!candidates.includes(proxyBase)) {
-      candidates.push(proxyBase);
-    }
-    if (primary.includes('127.0.0.1:31415')) {
-      const localhostBase = primary.replace('127.0.0.1:31415', 'localhost:31415');
-      if (!candidates.includes(localhostBase)) candidates.push(localhostBase);
-    } else if (primary.includes('localhost:31415')) {
-      const ipBase = primary.replace('localhost:31415', '127.0.0.1:31415');
-      if (!candidates.includes(ipBase)) candidates.push(ipBase);
-    }
+    candidates.push(proxyBase);
+  }
+  if (!candidates.includes(primary)) {
+    candidates.push(primary);
+  }
+  if (primary.includes('127.0.0.1:31415')) {
+    const localhostBase = primary.replace('127.0.0.1:31415', 'localhost:31415');
+    if (!candidates.includes(localhostBase)) candidates.push(localhostBase);
+  } else if (primary.includes('localhost:31415')) {
+    const ipBase = primary.replace('localhost:31415', '127.0.0.1:31415');
+    if (!candidates.includes(ipBase)) candidates.push(ipBase);
   }
   return candidates;
 }
