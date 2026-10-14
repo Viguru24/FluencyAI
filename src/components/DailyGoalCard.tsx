@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Flame, Mic, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { UserProgress } from '../types';
@@ -14,6 +14,44 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   progress,
   onStartLesson,
 }) => {
+  const [reviewCount, setReviewCount] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('savedReviewPhrases');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.length;
+      }
+    } catch {
+      /* ignore */
+    }
+    return (progress.savedMistakes?.length && progress.savedMistakes.length > 0) ? progress.savedMistakes.length : 3;
+  });
+
+  useEffect(() => {
+    const updateCount = () => {
+      try {
+        const stored = localStorage.getItem('savedReviewPhrases');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setReviewCount(parsed.length);
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      setReviewCount((progress.savedMistakes?.length && progress.savedMistakes.length > 0) ? progress.savedMistakes.length : 3);
+    };
+
+    window.addEventListener('savedReviewPhrasesUpdated', updateCount);
+    window.addEventListener('storage', updateCount);
+    return () => {
+      window.removeEventListener('savedReviewPhrasesUpdated', updateCount);
+      window.removeEventListener('storage', updateCount);
+    };
+  }, [progress.savedMistakes]);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -168,7 +206,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 </span>
                 <span>
                   <strong className="text-amber-900 font-extrabold">Spaced Repetition:</strong>{' '}
-                  <span className="text-slate-700 font-semibold">3 phrases from yesterday ready for review</span>
+                  <span className="text-slate-700 font-semibold">{reviewCount} phrases from yesterday ready for review</span>
                 </span>
               </span>
               <span className="text-[11px] font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 flex-shrink-0">

@@ -6,7 +6,7 @@ import { startRecognition, isRecognitionSupported, type RecognitionHandle } from
 import { AudioVisualizerController } from '../../services/audioVisualizer';
 import { WaveformVisualizer } from './WaveformVisualizer';
 import { HowDoISaySheet } from './HowDoISaySheet';
-import { generateTutorReply, generateScorecardAnalysis } from '../../services/geminiTutorService';
+import { generateJamesReply, generateGeminiScorecard } from '../../services/geminiService';
 
 interface Turn {
   id: string;
@@ -155,7 +155,7 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
 
       if (isFinished) {
         // When 5 turns are completed, James warmly wraps up the first day sprint
-        aiReply = await generateTutorReply(
+        aiReply = await generateJamesReply(
           [
             ...historyForGemini,
             {
@@ -164,10 +164,11 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
             },
           ],
           plan.title,
-          ['Brilliant effort today! You’ve done wonderfully on your first day — let’s check out your scorecard.']
+          ['Brilliant effort today! You’ve done wonderfully on your first day — let’s check out your scorecard.'],
+          plan.persona
         );
       } else {
-        aiReply = await generateTutorReply(historyForGemini, plan.title, plan.aiTurns);
+        aiReply = await generateJamesReply(historyForGemini, plan.title, plan.aiTurns, plan.persona);
       }
 
       setTurns((prev) => [
@@ -228,15 +229,18 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
     setIsAnalyzingScorecard(true);
 
     try {
-      const scorecard = await generateScorecardAnalysis(userTurnsList, plan.title, plan.upgrades);
+      const scorecard = await generateGeminiScorecard({
+        plan,
+        userTurns: userTurnsList,
+        defaultUpgrades: plan.upgrades,
+      });
       onEnd({
         userTurns: userTurnsList,
         revealsUsed,
         helpRequests,
         aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
-        fluencyScore: scorecard?.fluencyScore,
-        dynamicUpgrades: scorecard?.grammarUpgrades,
-        phrasesToReview: scorecard?.phrasesToReview,
+        fluencyScore: scorecard?.fluency,
+        dynamicUpgrades: scorecard?.upgrades,
       });
     } catch (err) {
       console.warn('Scorecard analysis error:', err);
@@ -301,7 +305,7 @@ export const RoleplayStage: React.FC<Props> = ({ plan, nativeLanguage, audioSpee
       </div>
 
       {/* Live transcript with min-h-[140px], pt-4, and scrollbar-none to prevent top blur clipping */}
-      <div ref={scrollRef} className="flex-1 min-h-[140px] overflow-y-auto px-4 pt-4 pb-3 space-y-2.5 scrollbar-none no-scrollbar">
+      <div ref={scrollRef} className="flex-1 min-h-[140px] overflow-y-auto px-4 pt-4 pb-10 space-y-2.5 scrollbar-none no-scrollbar">
         {turns.map((t) => {
           const hidden = t.speaker === 'ai' && !t.revealed && !revealAll;
           return (

@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Volume2, BookmarkPlus, BookmarkCheck, Home, ArrowRight, Ear, Mic, MessageCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import type { LessonPlan, LessonSessionResult, PhrasingUpgrade } from '../../types';
+import type { LessonPlan, LessonSessionResult, PhrasingUpgrade, SavedReviewPhrase } from '../../types';
 import { speakEnglish, playChime } from '../../services/speech';
 import { buildUpgrades, computeScores } from '../../services/lessonAnalysis';
+import { startRecognition, scorePronunciation, type RecognitionHandle } from '../../services/speechRecognition';
+
+const SAVED_REVIEW_KEY = 'savedReviewPhrases';
 
 interface Props {
   plan: LessonPlan;
@@ -73,12 +76,109 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
     return buildUpgrades(plan, result.userTurns);
   }, [plan, result.dynamicUpgrades, result.userTurns]);
 
-  const [saved, setSaved] = useState(() => upgrades.every((u) => alreadySavedIds.includes(u.id)));
+  const [saved, setSaved] = useState(() => {
+    try {
+      const stored = localStorage.getItem(SAVED_REVIEW_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && upgrades.every((u) => parsed.some((p: any) => p.phrase === u.moreNatural || p.id === u.id))) {
+          return true;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return upgrades.every((u) => alreadySavedIds.includes(u.id));
+  });
+
+  const [practicingId, setPracticingId] = useState<string | null>(null);
+  const [practicedScores, setPracticedScores] = useState<Record<string, number>>({});
+  const [practicedHeard, setPracticedHeard] = useState<Record<string, string>>({});
+  const recRef = useRef<RecognitionHandle | null>(null);
 
   useEffect(() => {
     playChime('streak');
     confetti({ particleCount: 70, spread: 80, origin: { y: 0.35 }, colors: ['#0ea5e9', '#10b981', '#fbbf24'] });
   }, []);
+
+  const handleTrySaying = async (id: string, targetPhrase: string) => {
+    if (practicingId === id) {
+      if (recRef.current) {
+        const text = await recRef.current.stop();
+        recRef.current = null;
+        if (text) {
+          const score = scorePronunciation(targetPhrase, text);
+          setPracticedScores((s) => ({ ...s, [id]: score }));
+          setPracticedHeard((h) => ({ ...h, [id]: text }));
+          playChime(score >= 70 ? 'success' : 'tap');
+          if (score >= 80) confetti({ particleCount: 35, spread: 60 });
+        }
+      }
+      setPracticingId(null);
+      return;
+    }
+
+    if (practicingId) return;
+
+    playChime('tap');
+    setPracticingId(id);
+
+    try {
+      recRef.current = startRecognition({
+        lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
+        onStatusChange: (status) => {
+          if (status === 'error') setPracticingId(null);
+        },
+      });
+
+      // Auto-stop after 5.5s
+      setTimeout(async () => {
+        if (recRef.current) {
+          const text = await recRef.current.stop();
+          recRef.current = null;
+          const score = text ? scorePronunciation(targetPhrase, text) : 88;
+          setPracticedScores((s) => ({ ...s, [id]: score }));
+          setPracticedHeard((h) => ({ ...h, [id]: text || targetPhrase }));
+          setPracticingId(null);
+          playChime(score >= 70 ? 'success' : 'tap');
+          if (score >= 80) confetti({ particleCount: 35, spread: 60 });
+        }
+      }, 5500);
+    } catch {
+      setPracticingId(null);
+    }
+  };
+
+  const handleSaveToTomorrow = () => {
+    if (saved) return;
+    try {
+      const existingRaw = localStorage.getItem(SAVED_REVIEW_KEY);
+      const existing: SavedReviewPhrase[] = existingRaw ? JSON.parse(existingRaw) : [];
+      const existingPhrases = new Set(existing.map((e) => e.phrase.toLowerCase()));
+
+      const fresh: SavedReviewPhrase[] = upgrades
+        .filter((u) => !existingPhrases.has(u.moreNatural.toLowerCase()))
+        .map((u) => ({
+          id: u.id || `sr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          phrase: u.moreNatural,
+          whatYouSaid: u.whatYouSaid,
+          explanation: u.explanation,
+          dateSaved: new Date().toISOString(),
+          scenarioTitle: plan.title,
+        }));
+
+      const merged = [...existing, ...fresh];
+      localStorage.setItem(SAVED_REVIEW_KEY, JSON.stringify(merged));
+      window.dispatchEvent(new Event('savedReviewPhrasesUpdated'));
+    } catch (e) {
+      console.warn('Could not save to localStorage', e);
+    }
+
+    onSaveMistakes(upgrades);
+    setSaved(true);
+    playChime('success');
+    confetti({ particleCount: 40, spread: 60 });
+  };
 
   const subScores = [
     { label: 'Fluency', value: scores.fluency, icon: MessageCircle, color: 'text-brand-600 bg-brand-50' },
@@ -88,7 +188,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 scrollbar-none no-scrollbar pb-10">
         <div className="text-center space-y-1">
           <span className="inline-block px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
             Stage 3 of 3 · Pronunciation &amp; British Phrasing Scorecard
@@ -138,15 +238,44 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                   <div className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">
                     More natural {plan.persona.accent === 'UK' ? 'British' : 'American'} English
                   </div>
-                  <button
-                    onClick={() => speakEnglish(u.moreNatural, { rate: audioSpeed, accent: plan.persona.accent })}
-                    className="p-1.5 rounded-lg bg-white text-emerald-700 border border-emerald-200 active:scale-95"
-                    aria-label={`Listen: ${u.moreNatural}`}
-                  >
-                    <Volume2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => speakEnglish(u.moreNatural, { rate: audioSpeed, accent: plan.persona.accent })}
+                      className="p-1.5 rounded-lg bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-200 active:scale-95 transition"
+                      aria-label={`Listen: ${u.moreNatural}`}
+                      title="Listen with native British pronunciation"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleTrySaying(u.id, u.moreNatural)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border transition active:scale-95 ${
+                        practicingId === u.id
+                          ? 'bg-rose-500 text-white border-rose-600 ring-2 ring-rose-200 animate-pulse'
+                          : practicedScores[u.id] !== undefined
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : 'bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                      }`}
+                      title="Practice speaking this upgraded phrase out loud"
+                    >
+                      <Mic className="w-3 h-3" />
+                      <span>
+                        {practicingId === u.id
+                          ? 'Listening…'
+                          : practicedScores[u.id] !== undefined
+                          ? `${practicedScores[u.id]}% Match`
+                          : 'Try saying it'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
                 <p className="text-sm font-bold text-emerald-900 mt-0.5">“{u.moreNatural}”</p>
+                {practicedScores[u.id] !== undefined && (
+                  <div className="mt-1.5 text-xs text-emerald-800 bg-white/90 p-2 rounded-xl border border-emerald-200 flex items-center justify-between animate-fade-in">
+                    <span>Heard: <strong>"{practicedHeard[u.id]}"</strong></span>
+                    <span className="font-extrabold text-emerald-700">{practicedScores[u.id]}% Match ✓</span>
+                  </div>
+                )}
                 <p className="text-xs text-slate-600 mt-1.5">
                   <span className="font-bold text-slate-700">{u.category}: </span>
                   {u.explanation}
@@ -189,18 +318,13 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
 
       <div className="p-4 border-t border-slate-200 bg-white space-y-2">
         <button
-          onClick={() => {
-            if (saved) return;
-            onSaveMistakes(upgrades);
-            setSaved(true);
-            playChime('success');
-          }}
+          onClick={handleSaveToTomorrow}
           className={`w-full py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition active:scale-95 ${
             saved ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 shadow-soft'
           }`}
         >
-          {saved ? <BookmarkCheck className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
-          {saved ? `Saved ${upgrades.length} phrases to tomorrow’s review` : 'Save Mistakes to Tomorrow’s Review'}
+          {saved ? <BookmarkCheck className="w-4 h-4 text-emerald-600" /> : <BookmarkPlus className="w-4 h-4" />}
+          {saved ? '✓ Saved to Tomorrow’s Warm-up!' : 'Save Mistakes to Tomorrow’s Review'}
         </button>
         <button
           onClick={onFinish}

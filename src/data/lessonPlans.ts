@@ -167,12 +167,61 @@ function buildPlanFromScenario(s: RoleplayScenario): LessonPlan {
   };
 }
 
+const SAVED_REVIEW_KEY = 'savedReviewPhrases';
+
+export function injectSavedReviewPhrases(plan: LessonPlan): LessonPlan {
+  if (typeof window === 'undefined') return plan;
+  try {
+    const raw = localStorage.getItem(SAVED_REVIEW_KEY);
+    if (!raw) return plan;
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved) || saved.length === 0) return plan;
+
+    // Take up to 2 saved review phrases from yesterday and inject into Stage 1 phrases
+    const reviewPhrases = saved.slice(0, 2).map((item, idx) => ({
+      id: `review-${item.id || idx}`,
+      phrase: item.phrase,
+      ipa: item.ipa || '',
+      usageContext: item.explanation || `From yesterday's review: replaces "${item.whatYouSaid || ''}"`,
+      originalMistake: item.whatYouSaid,
+      isSpacedRepetition: true,
+      translations: item.translations || {
+        Spanish: 'Frase de repaso guardada de ayer',
+        French: 'Phrase de révision enregistrée',
+        German: 'Gespeicherte Wiederholungsphrase',
+        Mandarin: '昨日保存的复习短语',
+        Portuguese: 'Frase de revisão salva de ontem',
+        Japanese: '昨日保存した復習フレーズ',
+        Arabic: 'عبارة مراجعة محفوظة من الأمس',
+        Vietnamese: 'Cụm từ ôn tập đã lưu hôm qua',
+      },
+    }));
+
+    // Keep 3 phrases total in Stage 1: review phrases first, then the plan's key phrases
+    const remainingCount = Math.max(1, 3 - reviewPhrases.length);
+    const combinedPhrases = [...reviewPhrases, ...plan.phrases.slice(0, remainingCount)];
+
+    return {
+      ...plan,
+      phrases: combinedPhrases,
+    };
+  } catch (e) {
+    console.warn('Failed to inject saved review phrases', e);
+    return plan;
+  }
+}
+
 export function getLessonPlanForScenario(scenarioId: string): LessonPlan {
-  if (scenarioId === coffeePlan.id) return coffeePlan;
-  const s = roleplayScenarios.find((x) => x.id === scenarioId);
-  return s ? buildPlanFromScenario(s) : dailyPlan;
+  let basePlan: LessonPlan;
+  if (scenarioId === coffeePlan.id) {
+    basePlan = coffeePlan;
+  } else {
+    const s = roleplayScenarios.find((x) => x.id === scenarioId);
+    basePlan = s ? buildPlanFromScenario(s) : dailyPlan;
+  }
+  return injectSavedReviewPhrases(basePlan);
 }
 
 export function getDailyLessonPlan(): LessonPlan {
-  return dailyPlan;
+  return injectSavedReviewPhrases(dailyPlan);
 }

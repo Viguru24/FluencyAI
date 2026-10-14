@@ -94,10 +94,43 @@ export function App() {
     }
   };
 
-  const reviewCount = progress.savedMistakes?.length ?? 0;
+  const [savedCount, setSavedCount] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('savedReviewPhrases');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.length;
+      }
+    } catch {
+      /* ignore */
+    }
+    return progress.savedMistakes?.length ?? 0;
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const stored = localStorage.getItem('savedReviewPhrases');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) setSavedCount(parsed.length);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener('savedReviewPhrasesUpdated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('savedReviewPhrasesUpdated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  const reviewCount = Math.max(savedCount, progress.savedMistakes?.length ?? 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-28">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       {/* PWA Update Banner */}
       {hasUpdate && (
         <div className="sticky top-0 z-50 bg-brand-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-md">
@@ -122,20 +155,20 @@ export function App() {
         onOpenInstallGuide={() => setIsInstallGuideOpen(true)}
       />
 
-      {/* Main Mobile App Container */}
-      <main className="flex-1 w-full max-w-xl mx-auto px-4 py-4 pb-28 space-y-5">
+      {/* Main Mobile App Container with pb-32 to guarantee floating button never overlaps Conversational Roleplays heading */}
+      <main className="flex-1 w-full max-w-xl mx-auto px-4 py-4 pb-32 space-y-5">
         {/* Daily Goal & Welcoming Section */}
         <DailyGoalCard progress={progress} onUpdateProgress={setProgress} onStartLesson={openDailyLesson} />
 
         {/* Tomorrow's review queue */}
         {reviewCount > 0 && (
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-200">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
               <BookmarkCheck className="w-5 h-5" />
             </div>
             <div className="text-xs text-amber-900">
-              <div className="font-bold">{reviewCount} phrases queued for tomorrow’s review</div>
-              <div className="text-amber-700">Saved from your scorecards — we’ll revisit them in your next lesson.</div>
+              <div className="font-bold">{reviewCount} phrases queued for your next lesson warm-up</div>
+              <div className="text-amber-700">Saved from your scorecards — automatically injected into Stage 1 Prep.</div>
             </div>
           </div>
         )}

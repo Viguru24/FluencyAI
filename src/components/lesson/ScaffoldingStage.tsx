@@ -183,7 +183,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4 scrollbar-none no-scrollbar pb-10">
         <div className="space-y-1">
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
             Stage 1 of 3 · 3-Phrase Vocabulary Warm-up &amp; Mic Test
@@ -269,12 +269,24 @@ export const ScaffoldingStage: React.FC<Props> = ({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Phrase {idx + 1}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      Phrase {idx + 1}
+                    </span>
+                    {p.isSpacedRepetition && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold border border-amber-300">
+                        🔁 Spaced Repetition Review
+                      </span>
+                    )}
                   </div>
                   <p className="text-lg font-extrabold text-slate-900 leading-snug">
                     {p.phrase}
                   </p>
+                  {p.originalMistake && (
+                    <div className="text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                      From yesterday: replaces <em>"{p.originalMistake}"</em>
+                    </div>
+                  )}
                   {p.ipa && <p className="text-xs font-mono text-slate-500">{p.ipa}</p>}
                 </div>
                 <button
