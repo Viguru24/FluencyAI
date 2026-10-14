@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send } from 'lucide-react';
-import type { LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint } from '../../types';
+import type { LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, stopSpeaking, playChime } from '../../services/speech';
 import {
   startRecognition,
   isRecognitionSupported,
+  extractWordsFromSpeechResults,
   type RecognitionHandle,
   type SpokenSegmentAnalysis,
+  type WordConfidenceInfo,
 } from '../../services/speechRecognition';
 import { AudioRecorderController, type RecordedAudioClip } from '../../services/audioRecorder';
 import { AudioVisualizerController } from '../../services/audioVisualizer';
@@ -24,6 +26,8 @@ interface Turn {
   text: string;
   revealed: boolean;
   isMock?: boolean;
+  lowConfidenceWords?: string[];
+  wordConfidences?: WordConfidenceInfo[];
 }
 
 export interface RoleplayStats {
@@ -37,7 +41,9 @@ export interface RoleplayStats {
   dynamicUpgrades?: PhrasingUpgrade[];
   phrasesToReview?: string[];
   pronunciationCoachingPoints?: PronunciationCoachingPoint[];
+  pronunciationFeedback?: PronunciationFeedbackWord[];
   acousticFeedback?: string;
+  lowConfidenceWords?: string[];
 }
 
 interface Props {
@@ -67,6 +73,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAnalyzingScorecard, setIsAnalyzingScorecard] = useState(false);
   const [livePreview, setLivePreview] = useState('');
+  const [liveLowConfidenceWords, setLiveLowConfidenceWords] = useState<string[]>([]);
   const [isEditingBubble, setIsEditingBubble] = useState(false);
   const [bubbleEditValue, setBubbleEditValue] = useState('');
   const [bands, setBands] = useState<number[]>([]);
@@ -80,6 +87,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const recRef = useRef<RecognitionHandle | null>(null);
   const recordedClipsRef = useRef<AudioAttachment[]>([]);
   const pronunciationMetadataRef = useRef<SpokenSegmentAnalysis[]>([]);
+  const sessionLowConfidenceWordsRef = useRef<Set<string>>(new Set());
   const userTurnCount = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isEditingBubbleRef = useRef(false);
@@ -158,6 +166,7 @@ export const RoleplayStage: React.FC<Props> = ({
     playChime('tap');
     setIsRecording(true);
     setLivePreview('');
+    setLiveLowConfidenceWords([]);
     setIsEditingBubble(false);
     setBubbleEditValue('');
 
@@ -171,6 +180,16 @@ export const RoleplayStage: React.FC<Props> = ({
           onInterim: (text) => {
             if (!isEditingBubbleRef.current) {
               setLivePreview(text);
+            }
+          },
+          onSpeechResults: (eventResults) => {
+            // Extract the confidence score for each word from the SpeechRecognitionResult array
+            const extracted = extractWordsFromSpeechResults(eventResults);
+            const lowConfWords = extracted
+              .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
+              .map((w) => w.word);
+            if (lowConfWords.length > 0) {
+              setLiveLowConfidenceWords(Array.from(new Set(lowConfWords)));
             }
           },
         })
@@ -206,24 +225,54 @@ export const RoleplayStage: React.FC<Props> = ({
     vizRef.current.stopMicrophone();
 
     let heard: string | null = null;
+    let turnLowConfidenceWords: string[] = [];
+    let turnWordConfidences: WordConfidenceInfo[] = [];
+
     if (recRef.current) {
       const details = await recRef.current.stopWithDetails();
       recRef.current = null;
       if (details) {
         heard = details.transcript;
-        // Accumulate segments with lower confidence (< 0.80) or phonetic ambiguity
+
+        // 1. Extract the confidence score for each word from the SpeechRecognitionResult array
+        const extractedWords = details.rawResults
+          ? extractWordsFromSpeechResults(details.rawResults)
+          : details.allWords && details.allWords.length > 0
+          ? details.allWords
+          : [];
+
+        turnWordConfidences = extractedWords;
+
+        // 2. If any recognized word has a confidence score below 0.75, flag it in the transcript state
+        const lowConfWordsFromResult = extractedWords
+          .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
+          .map((w) => w.word.toLowerCase());
+
+        const lowConfWordsFromDetails = (details.lowConfidenceWords || [])
+          .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
+          .map((w) => w.word.toLowerCase());
+
+        // Accumulate segments with lower confidence (< 0.75) or phonetic ambiguity
         const flaggedSegments = details.segments.filter(
-          (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.8) || s.alternatives.length > 0
+          (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.75) || s.alternatives.length > 0
         );
         if (flaggedSegments.length > 0) {
           pronunciationMetadataRef.current.push(...flaggedSegments);
         }
+
+        turnLowConfidenceWords = Array.from(
+          new Set([...lowConfWordsFromResult, ...lowConfWordsFromDetails, ...liveLowConfidenceWords])
+        );
+
+        // Record in session low-confidence set
+        turnLowConfidenceWords.forEach((word) => sessionLowConfidenceWordsRef.current.add(word));
       }
     }
 
     // If learner manually edited text via the pencil icon, prioritize their edit
     const finalTranscript = bubbleEditValue.trim() || livePreview.trim() || heard?.trim() || '';
     setLivePreview('');
+    setLiveLowConfidenceWords([]);
     setBubbleEditValue('');
 
     // Store audio attachment for multimodal Gemini analysis
@@ -243,7 +292,15 @@ export const RoleplayStage: React.FC<Props> = ({
 
     const newTurns: Turn[] = [
       ...turns,
-      { id: `u-${idx}`, speaker: 'user', text, revealed: true, isMock: !userSpokeReal },
+      {
+        id: `u-${idx}`,
+        speaker: 'user',
+        text,
+        revealed: true,
+        isMock: !userSpokeReal,
+        lowConfidenceWords: turnLowConfidenceWords,
+        wordConfidences: turnWordConfidences,
+      },
     ];
     setTurns(newTurns);
 
@@ -368,6 +425,7 @@ export const RoleplayStage: React.FC<Props> = ({
     setIsAnalyzingScorecard(true);
 
     try {
+      const sessionLowConf = Array.from(sessionLowConfidenceWordsRef.current);
       // Send multimodal audio recordings & low-confidence phonetic metadata to Gemini 2.5 Flash / FreeLLMAPI
       const scorecard = await generateGeminiScorecard({
         plan,
@@ -376,6 +434,7 @@ export const RoleplayStage: React.FC<Props> = ({
         defaultUpgrades: plan.upgrades,
         audioClips: recordedClipsRef.current,
         pronunciationMetadata: pronunciationMetadataRef.current,
+        lowConfidenceWords: sessionLowConf,
       });
 
       onEnd({
@@ -388,7 +447,9 @@ export const RoleplayStage: React.FC<Props> = ({
         listeningScore: scorecard?.listening,
         dynamicUpgrades: scorecard?.upgrades,
         pronunciationCoachingPoints: scorecard?.pronunciationCoachingPoints,
+        pronunciationFeedback: scorecard?.pronunciationFeedback,
         acousticFeedback: scorecard?.acousticFeedback,
+        lowConfidenceWords: sessionLowConf,
       });
     } catch (err) {
       console.warn('Scorecard analysis error:', err);
@@ -397,6 +458,7 @@ export const RoleplayStage: React.FC<Props> = ({
         revealsUsed,
         helpRequests,
         aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
+        lowConfidenceWords: Array.from(sessionLowConfidenceWordsRef.current),
       });
     } finally {
       setIsAnalyzingScorecard(false);
@@ -492,7 +554,39 @@ export const RoleplayStage: React.FC<Props> = ({
                   </button>
                 ) : (
                   <>
-                    <span>{t.text}</span>
+                    {(() => {
+                      if (!t.lowConfidenceWords || t.lowConfidenceWords.length === 0) {
+                        return <span>{t.text}</span>;
+                      }
+                      const lowConfSet = new Set(t.lowConfidenceWords.map((w) => w.toLowerCase()));
+                      const tokens = t.text.split(/(\s+)/);
+                      return (
+                        <span>
+                          {tokens.map((token, idx) => {
+                            const clean = token.toLowerCase().replace(/[^a-z']/g, '');
+                            const isFlagged = clean && lowConfSet.has(clean);
+                            if (isFlagged) {
+                              return (
+                                <span
+                                  key={idx}
+                                  className="inline-block relative underline decoration-amber-300 decoration-wavy underline-offset-4 font-bold text-amber-200 bg-amber-400/20 px-1 rounded-sm cursor-help"
+                                  title="Acoustic speech confidence < 75% · Flagged for British pronunciation coaching"
+                                >
+                                  {token}
+                                </span>
+                              );
+                            }
+                            return <span key={idx}>{token}</span>;
+                          })}
+                        </span>
+                      );
+                    })()}
+                    {t.lowConfidenceWords && t.lowConfidenceWords.length > 0 && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[10px] font-bold text-amber-200 bg-black/20 px-2 py-0.5 rounded-md border border-amber-300/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+                        <span>Flagged pronunciation (&lt;75%): {t.lowConfidenceWords.join(', ')}</span>
+                      </div>
+                    )}
                     {t.isMock && (
                       <span className="block mt-1 text-[10px] text-brand-100">
                         Demo transcript (speech-to-text unavailable)
@@ -521,7 +615,7 @@ export const RoleplayStage: React.FC<Props> = ({
           <div className="absolute bottom-[calc(100%+14px)] left-3 right-3 z-20 animate-slide-up">
             <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-rose-200/90 shadow-2xl text-slate-800">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
@@ -532,6 +626,12 @@ export const RoleplayStage: React.FC<Props> = ({
                   <span className="text-[11px] text-slate-400 hidden sm:inline">
                     · Mic open (no cutoff)
                   </span>
+                  {liveLowConfidenceWords.length > 0 && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Flagged (&lt;75%): {liveLowConfidenceWords.join(', ')}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5">

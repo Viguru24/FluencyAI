@@ -44,6 +44,9 @@ export interface SavedReviewPhrase {
 
 export interface UserProgress {
   name: string;
+  avatar?: string;
+  email?: string;
+  id?: string | number;
   streakDays: number;
   streakActiveToday: boolean;
   dailyGoalMinutes: number;
@@ -56,6 +59,23 @@ export interface UserProgress {
   completedScenarioIds: string[];
   hasCompletedDailyLessonToday: boolean;
   savedMistakes?: SavedMistake[];
+}
+
+export interface AuthUser {
+  id: string | number;
+  email: string;
+  name: string;
+  picture?: string | null;
+  xp?: number;
+  streak?: number;
+  level?: CEFRLevel;
+  tier?: string;
+  progress_data?: any;
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
 }
 
 export interface AIPersona {
