@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, Square, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check } from 'lucide-react';
+import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send } from 'lucide-react';
 import type { LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint } from '../../types';
 import { speakEnglish, stopSpeaking, playChime } from '../../services/speech';
 import {
@@ -63,6 +63,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const [aiIndex, setAiIndex] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isHolding, setIsHolding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAnalyzingScorecard, setIsAnalyzingScorecard] = useState(false);
   const [livePreview, setLivePreview] = useState('');
@@ -79,11 +80,17 @@ export const RoleplayStage: React.FC<Props> = ({
   const recRef = useRef<RecognitionHandle | null>(null);
   const recordedClipsRef = useRef<AudioAttachment[]>([]);
   const pronunciationMetadataRef = useRef<SpokenSegmentAnalysis[]>([]);
-  const pressStart = useRef(0);
   const userTurnCount = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isEditingBubbleRef = useRef(false);
   isEditingBubbleRef.current = isEditingBubble;
+
+  // Push-To-Talk tracking refs
+  const pressStartTimeRef = useRef(0);
+  const isPressingRef = useRef(false);
+  const isHoldingRef = useRef(false);
+  const holdTimerRef = useRef<number | null>(null);
+  const pendingStopRef = useRef(false);
 
   const userTurnsCount = turns.filter((t) => t.speaker === 'user').length;
   const currentTurn = userTurnsCount + 1;
@@ -132,11 +139,9 @@ export const RoleplayStage: React.FC<Props> = ({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [turns, livePreview]);
 
-  // Forward ref for stopRecording so the 6s silence timeout callback can invoke it cleanly
-  const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
-
   const startRecording = async () => {
     if (isRecording || isProcessing) return;
+    pendingStopRef.current = false;
     stopSpeaking();
     setIsAiSpeaking(false);
 
@@ -156,33 +161,40 @@ export const RoleplayStage: React.FC<Props> = ({
     setIsEditingBubble(false);
     setBubbleEditValue('');
 
-    // Pause-Tolerant Speaking Mode:
-    // Continuous = true, interimResults = true, maxAlternatives = 3
-    // 6-second silence timeout before auto-send
+    // Push-To-Talk Speaking Mode (Zero VAD / No auto-cutoff):
+    // Continuous = true, interimResults = true, silenceTimeoutMs = 0
+    // The mic stays wide open so the learner can pause for as long as they need to think
     recRef.current = isRecognitionSupported()
       ? startRecognition({
           lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
-          silenceTimeoutMs: 6000,
+          silenceTimeoutMs: 0,
           onInterim: (text) => {
             if (!isEditingBubbleRef.current) {
               setLivePreview(text);
             }
           },
-          onSilenceTimeout: () => {
-            // Auto-send turn after 6 full seconds of learner silence
-            stopRecordingRef.current();
-          },
         })
       : null;
+
+    if (pendingStopRef.current) {
+      pendingStopRef.current = false;
+      stopRecording();
+    }
   };
 
   const stopRecording = async () => {
-    if (!isRecording) return;
+    if (!isRecording) {
+      pendingStopRef.current = true;
+      return;
+    }
     setIsRecording(false);
+    setIsHolding(false);
+    isHoldingRef.current = false;
+    isPressingRef.current = false;
     setIsProcessing(true);
     setIsEditingBubble(false);
 
-    // Stop MediaRecorder and capture audio clip for Gemini 2.5 Flash
+    // Stop MediaRecorder and capture audio clip for Gemini 2.5 Flash / FreeLLMAPI
     let audioClip: RecordedAudioClip | null = null;
     try {
       audioClip = await recorderRef.current.stop();
@@ -268,28 +280,75 @@ export const RoleplayStage: React.FC<Props> = ({
     }
   };
 
-  stopRecordingRef.current = stopRecording;
-
-
-  // Push-to-talk and Tap-to-speak handler
-  const pressAction = useRef<'start' | 'stop' | null>(null);
+  // Push-To-Talk Handlers (supports both Tap-to-Toggle and Press-and-Hold)
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
-    pressStart.current = Date.now();
+    if (isProcessing || isAnalyzingScorecard) return;
+
     if (isRecording) {
-      pressAction.current = 'stop';
-    } else {
-      pressAction.current = 'start';
-      startRecording();
+      // If already recording, tapping acts as "Done / Send"
+      stopRecording();
+      return;
     }
+
+    pressStartTimeRef.current = Date.now();
+    isPressingRef.current = true;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore if unsupported */
+    }
+
+    startRecording();
+
+    if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = window.setTimeout(() => {
+      if (isPressingRef.current) {
+        setIsHolding(true);
+        isHoldingRef.current = true;
+      }
+    }, HOLD_THRESHOLD_MS);
   };
 
-  const onPointerUp = () => {
-    const action = pressAction.current;
-    pressAction.current = null;
-    if (!action) return;
-    const held = Date.now() - pressStart.current;
-    if (action === 'stop' || held > HOLD_THRESHOLD_MS) stopRecording();
+  const onPointerUp = (e?: React.PointerEvent) => {
+    if (holdTimerRef.current) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+
+    if (!isPressingRef.current) return;
+    const duration = Date.now() - pressStartTimeRef.current;
+    isPressingRef.current = false;
+    const wasHolding = isHoldingRef.current || duration >= HOLD_THRESHOLD_MS;
+    setIsHolding(false);
+    isHoldingRef.current = false;
+
+    if (e) {
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (wasHolding) {
+      // Press-and-Hold: releasing immediately stops and sends the turn
+      stopRecording();
+    }
+    // If duration < HOLD_THRESHOLD_MS: Tap-to-Talk!
+    // Mic stays wide open hands-free so the user can speak without holding.
+  };
+
+  const onPointerCancel = (e: React.PointerEvent) => {
+    onPointerUp(e);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      if (isRecording) stopRecording();
+      else startRecording();
+    }
   };
 
   const revealTurn = (id: string) => {
@@ -346,14 +405,16 @@ export const RoleplayStage: React.FC<Props> = ({
 
   const mode = isRecording ? 'user' : isAiSpeaking ? 'ai' : 'idle';
   const statusText = isRecording
-    ? 'Speaking… take your time to think · tap when finished'
+    ? isHolding
+      ? 'Speaking (Hold-to-Talk) · Release button when finished to send'
+      : 'Speaking (Tap-to-Talk) · Mic wide open · Tap "Done / Send" when ready'
     : isProcessing
     ? `${plan.persona.name} is listening & thinking…`
     : isAiSpeaking
     ? `${plan.persona.name} is speaking — listen carefully`
     : userTurnsCount >= 3
     ? 'Keep chatting freely, or click "Finish & Get Scorecard"'
-    : 'Your turn — tap the mic to speak';
+    : 'Your turn — hold or tap the mic to speak';
 
   return (
     <div className="relative flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
@@ -453,44 +514,61 @@ export const RoleplayStage: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Controls Container with Pause-Tolerant Live Preview Bubble */}
+      {/* Controls Container with Push-to-Talk Interface & Live Transcription */}
       <div className="relative px-4 pb-5 pt-3 border-t border-slate-200 bg-white/95 backdrop-blur">
-        {/* Live Preview Bubble Floating Above the Mic Button */}
+        {/* Real-time live transcription bubble floating above the PTT button */}
         {isRecording && (
-          <div className="absolute -top-28 left-4 right-4 z-20 animate-slide-up">
-            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-3 border border-brand-200/90 shadow-xl text-slate-800">
-              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-brand-700">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  <span>Pause-Tolerant Speaking</span>
-                  <span className="text-slate-400 font-normal">· Take time to think</span>
+          <div className="absolute bottom-[calc(100%+14px)] left-3 right-3 z-20 animate-slide-up">
+            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-rose-200/90 shadow-2xl text-slate-800">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+                  </span>
+                  <span className="text-[11px] font-extrabold text-rose-600 tracking-wide uppercase">
+                    Live Transcription
+                  </span>
+                  <span className="text-[11px] text-slate-400 hidden sm:inline">
+                    · Mic open (no cutoff)
+                  </span>
                 </div>
-                <button
-                  onClick={() => {
-                    if (isEditingBubble) {
-                      setIsEditingBubble(false);
-                      recRef.current?.pauseSilenceTimer(false);
-                    } else {
-                      setBubbleEditValue(livePreview || '');
-                      setIsEditingBubble(true);
-                      recRef.current?.pauseSilenceTimer(true);
-                    }
-                  }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition flex items-center gap-1 text-[11px] font-medium"
-                  title="Edit word or accent correction"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span>{isEditingBubble ? 'Cancel' : 'Edit word'}</span>
-                </button>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      if (isEditingBubble) {
+                        setIsEditingBubble(false);
+                      } else {
+                        setBubbleEditValue(livePreview || '');
+                        setIsEditingBubble(true);
+                      }
+                    }}
+                    className="px-2 py-1 rounded-lg text-slate-500 hover:text-brand-600 hover:bg-slate-100 text-[11px] font-medium flex items-center gap-1 transition"
+                    title="Edit misheard words"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>{isEditingBubble ? 'Cancel' : 'Edit'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => stopRecording()}
+                    className="px-3 py-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95 transition"
+                    title="Send audio and transcript to James"
+                  >
+                    <Send className="w-3 h-3" />
+                    <span>Done / Send</span>
+                  </button>
+                </div>
               </div>
 
               {isEditingBubble ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 py-1">
                   <input
                     type="text"
                     value={bubbleEditValue}
                     onChange={(e) => setBubbleEditValue(e.target.value)}
-                    className="flex-1 px-2.5 py-1 text-xs rounded-xl border border-brand-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900"
+                    className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-brand-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 shadow-inner"
                     placeholder="Correct misheard word..."
                     autoFocus
                   />
@@ -498,21 +576,30 @@ export const RoleplayStage: React.FC<Props> = ({
                     onClick={() => {
                       setLivePreview(bubbleEditValue);
                       setIsEditingBubble(false);
-                      recRef.current?.pauseSilenceTimer(false);
                     }}
-                    className="px-2.5 py-1 bg-brand-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-brand-700 active:scale-95 transition flex items-center gap-1"
+                    className="px-3 py-1.5 bg-brand-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-brand-700 active:scale-95 transition flex items-center gap-1"
                   >
-                    <Check className="w-3 h-3" /> Apply
+                    <Check className="w-3.5 h-3.5" /> Apply
                   </button>
                 </div>
               ) : (
-                <p className="text-xs font-medium text-slate-800 italic leading-relaxed min-h-[24px] flex items-center">
-                  {livePreview ? `“${livePreview}”` : 'Speak naturally — pauses will not cut you off…'}
-                </p>
+                <div className="min-h-[28px] flex items-center">
+                  {livePreview ? (
+                    <div className="text-sm font-semibold text-slate-900 leading-relaxed max-h-28 overflow-y-auto pr-1">
+                      “{livePreview}”
+                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-rose-500 animate-pulse align-middle rounded-xs" />
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium text-slate-500 italic flex items-center gap-2 py-0.5">
+                      <span className="text-sm">🎙️</span>
+                      <span>Listening… Speak freely at your own pace. Pauses will not cut you off.</span>
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* Downward pointer to mic */}
-              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 border-r border-b border-brand-200/90" />
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white rotate-45 border-r border-b border-rose-200/90 shadow-xs" />
             </div>
           </div>
         )}
@@ -532,42 +619,64 @@ export const RoleplayStage: React.FC<Props> = ({
             <span className="text-[10px] font-bold leading-tight text-center">How do I say…?</span>
           </button>
 
-          {/* Big Push-to-Talk / Tap-to-Finish Mic Button */}
-          <div className="flex flex-col items-center">
+          {/* Robust Push-To-Talk / Hold-to-Talk / Tap-to-Talk Mic Interface */}
+          <div className="flex flex-col items-center relative">
+            {/* Glowing animated recording ring when active */}
+            {isRecording && (
+              <>
+                {/* Outermost expanding ping aura */}
+                <span className="absolute -inset-3.5 rounded-full bg-rose-500/25 animate-ping pointer-events-none" />
+                {/* Soft ambient radial bloom */}
+                <span className="absolute -inset-5 rounded-full bg-rose-500/20 blur-xl animate-pulse pointer-events-none" />
+                {/* Active glowing ring boundary */}
+                <span className="absolute -inset-1 rounded-full ring-4 ring-rose-400 ring-offset-2 ring-offset-white shadow-[0_0_28px_rgba(244,63,94,0.6)] pointer-events-none animate-pulse" />
+              </>
+            )}
+
             <button
               onPointerDown={onPointerDown}
               onPointerUp={onPointerUp}
-              onPointerLeave={onPointerUp}
-              onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.preventDefault();
-                  if (isRecording) stopRecording();
-                  else startRecording();
-                }
-              }}
+              onPointerCancel={onPointerCancel}
+              onKeyDown={onKeyDown}
               disabled={isProcessing || isAnalyzingScorecard}
-              className={`relative w-24 h-24 rounded-full flex flex-col items-center justify-center text-white shadow-fab transition-all active:scale-95 touch-none select-none disabled:opacity-40 ${
-                isRecording ? 'bg-rose-500 scale-105 ring-4 ring-rose-200' : 'bg-gradient-to-br from-brand-600 to-emerald-500'
+              className={`relative z-10 w-24 h-24 rounded-full flex flex-col items-center justify-center text-white transition-all duration-200 active:scale-95 touch-none select-none disabled:opacity-40 ${
+                isRecording
+                  ? 'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 scale-105 shadow-xl shadow-rose-500/35'
+                  : 'bg-gradient-to-br from-brand-600 via-brand-500 to-emerald-500 shadow-fab hover:shadow-lg hover:scale-[1.02]'
               }`}
-              aria-label={isRecording ? 'Tap to finish and send' : 'Tap or hold to speak'}
+              aria-label={isRecording ? 'Tap or release to send spoken turn' : 'Push to talk: hold or tap to speak'}
             >
-              {isRecording && <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-30" />}
               {isProcessing ? (
-                <Loader2 className="w-9 h-9 animate-spin" />
+                <>
+                  <Loader2 className="w-8 h-8 animate-spin mb-0.5" />
+                  <span className="text-[9px] font-black uppercase tracking-wider text-white/90">Thinking</span>
+                </>
               ) : isRecording ? (
                 <>
-                  <Square className="w-7 h-7 fill-white mb-0.5" />
-                  <span className="text-[9px] font-black uppercase tracking-wider text-rose-100">Send</span>
+                  <Send className="w-7 h-7 text-white fill-white/20 translate-x-0.5 mb-0.5" />
+                  <span className="text-[9px] font-black uppercase tracking-wider text-rose-100">Done · Send</span>
                 </>
               ) : (
-                <Mic className="w-10 h-10" />
+                <>
+                  <Mic className="w-9 h-9 mb-0.5" />
+                  <span className="text-[9px] font-black uppercase tracking-wider text-white/90">Push to Talk</span>
+                </>
               )}
             </button>
-            {isRecording && (
-              <span className="text-[10px] font-bold text-rose-600 mt-1.5 animate-pulse">
-                Tap to Finish &amp; Send
-              </span>
-            )}
+
+            {/* Clear contextual instruction below the button */}
+            <div className="h-5 flex items-center justify-center mt-1.5">
+              {isRecording ? (
+                <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  {isHolding ? 'Release to Send' : 'Tap to Finish & Send'}
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-slate-500">
+                  Hold or tap to speak
+                </span>
+              )}
+            </div>
           </div>
 
           <button
