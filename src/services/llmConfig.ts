@@ -1,5 +1,5 @@
 // LLM Configuration & Unified FreeLLMAPI Router Management
-// Default: FreeLLMAPI Gateway on http://127.0.0.1:31415/v1 (Unified Key)
+// Supports FreeLLMAPI Gateway on http://127.0.0.1:31415/v1 and Direct Google Gemini API
 
 export type LLMProvider = 'freellmapi' | 'direct-gemini';
 
@@ -14,12 +14,21 @@ export const STORAGE_KEY_LLM_CONFIG = 'fluency_llm_config';
 export const DEFAULT_FREELLM_BASE_URL = 'http://127.0.0.1:31415/v1';
 export const DEFAULT_MODEL = 'auto';
 
-export const AVAILABLE_MODELS = [
+export const AVAILABLE_MODELS_FREELLM = [
   { id: 'auto', label: 'Auto (Recommended - FreeLLMAPI Routing)' },
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
   { id: 'gemma-4-31b-it', label: 'Gemma 4 31B IT' },
 ];
+
+export const AVAILABLE_MODELS_DIRECT = [
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Recommended)' },
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+  { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+];
+
+export const AVAILABLE_MODELS = AVAILABLE_MODELS_FREELLM;
 
 export function getLLMConfig(): LLMConfig {
   let saved: Partial<LLMConfig> = {};
@@ -32,15 +41,20 @@ export function getLLMConfig(): LLMConfig {
     }
   }
 
-  // Check environment variables
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const envKey = (import.meta as any).env?.VITE_FREELLM_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+  // Check stored keys and environment variables
+  const fluencyKey = typeof window !== 'undefined' ? localStorage.getItem('fluency_gemini_api_key') || '' : '';
   const legacyKey = typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') || '' : '';
+  const envKey =
+    (import.meta as any).env?.VITE_FREELLM_API_KEY ||
+    (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+    (import.meta as any).env?.GEMINI_API_KEY ||
+    '';
 
-  const apiKey = (saved.apiKey !== undefined ? saved.apiKey : envKey || legacyKey).trim();
+  const rawKey = saved.apiKey !== undefined && saved.apiKey !== '' ? saved.apiKey : fluencyKey || legacyKey || envKey;
+  const apiKey = (rawKey || '').trim().replace(/^["']|["']$/g, '');
   const baseUrl = (saved.baseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
   const provider: LLMProvider = saved.provider === 'direct-gemini' ? 'direct-gemini' : 'freellmapi';
-  const model = saved.model || DEFAULT_MODEL;
+  const model = saved.model || (provider === 'direct-gemini' ? 'gemini-2.5-flash' : DEFAULT_MODEL);
 
   return {
     provider,
@@ -51,16 +65,27 @@ export function getLLMConfig(): LLMConfig {
 }
 
 export function saveLLMConfig(config: LLMConfig): void {
+  const cleanKey = config.apiKey.trim().replace(/^["']|["']$/g, '');
+  const model =
+    config.provider === 'direct-gemini' && config.model === 'auto'
+      ? 'gemini-2.5-flash'
+      : config.model || (config.provider === 'direct-gemini' ? 'gemini-2.5-flash' : 'auto');
+
   const normalized: LLMConfig = {
     ...config,
     baseUrl: config.baseUrl.trim().replace(/\/+$/, ''),
-    apiKey: config.apiKey.trim(),
+    apiKey: cleanKey,
+    model,
   };
 
   try {
     localStorage.setItem(STORAGE_KEY_LLM_CONFIG, JSON.stringify(normalized));
-    if (normalized.apiKey) {
-      localStorage.setItem('gemini_api_key', normalized.apiKey);
+    if (cleanKey) {
+      localStorage.setItem('fluency_gemini_api_key', cleanKey);
+      localStorage.setItem('gemini_api_key', cleanKey);
+    } else {
+      localStorage.removeItem('fluency_gemini_api_key');
+      localStorage.removeItem('gemini_api_key');
     }
   } catch (e) {
     console.warn('Failed saving fluency_llm_config', e);
@@ -68,6 +93,8 @@ export function saveLLMConfig(config: LLMConfig): void {
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('fluency_llm_config_changed', { detail: normalized }));
+    window.dispatchEvent(new Event('gemini_api_key_updated'));
+    window.dispatchEvent(new Event('storage'));
   }
 }
 
@@ -80,29 +107,33 @@ export interface GatewayTestResult {
 }
 
 /**
- * Pings http://127.0.0.1:31415/v1/models (or sends a 1-token test message)
- * with Authorization: Bearer ${apiKey} and confirms the router is responding.
+ * Tests connection to FreeLLMAPI Router or Google Gemini Direct API.
+ * Accurately parses response JSON error messages so errors are never masked by empty statusText.
  */
 export async function testGatewayConnection(config?: LLMConfig): Promise<GatewayTestResult> {
   const conf = config || getLLMConfig();
   const cleanBase = conf.baseUrl.trim().replace(/\/+$/, '');
+  const cleanKey = conf.apiKey.trim().replace(/^["']|["']$/g, '');
   const start = performance.now();
 
-  if (!conf.apiKey) {
+  if (!cleanKey) {
     return {
       ok: false,
-      message: 'API Key is empty. Please enter your unified FreeLLMAPI key.',
+      message:
+        conf.provider === 'direct-gemini'
+          ? 'API Key is empty. Please enter your Google Gemini API key (starts with AIza...).'
+          : 'API Key is empty. Please enter your FreeLLMAPI unified key (starts with freellma...).',
     };
   }
 
   if (conf.provider === 'freellmapi') {
     try {
-      // 1. Try pinging /models endpoint
+      // 1. Try pinging /models endpoint on FreeLLMAPI router
       const modelsUrl = `${cleanBase}/models`;
       const res = await fetch(modelsUrl, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${conf.apiKey.trim()}`,
+          Authorization: `Bearer ${cleanKey}`,
         },
       });
 
@@ -113,11 +144,10 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
         try {
           const data = await res.json();
           if (Array.isArray(data?.data)) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             models = data.data.map((m: any) => m.id || m.name).filter(Boolean);
           }
         } catch {
-          // ignore JSON parse issue if models endpoint returned raw text
+          // ignore
         }
         return {
           ok: true,
@@ -128,7 +158,7 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
         };
       }
 
-      // If 401 or 403, key is rejected by the router
+      // If auth failure on FreeLLMAPI
       if (res.status === 401 || res.status === 403) {
         let errDetail = 'Invalid API key';
         try {
@@ -140,17 +170,17 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
         return {
           ok: false,
           status: res.status,
-          message: `Authentication error (${res.status}): ${errDetail}. Verify your unified key.`,
+          message: `Authentication error (${res.status}): ${errDetail}. Verify your FreeLLMAPI key.`,
         };
       }
 
-      // Fallback: If /models isn't enabled or returns 404/405, send a 1-token test chat message
+      // Fallback: Test 1-token completion
       const chatUrl = `${cleanBase}/chat/completions`;
       const chatRes = await fetch(chatUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${conf.apiKey.trim()}`,
+          Authorization: `Bearer ${cleanKey}`,
         },
         body: JSON.stringify({
           model: conf.model || 'auto',
@@ -170,7 +200,7 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
         };
       }
 
-      let chatErr = chatRes.statusText;
+      let chatErr = `HTTP ${chatRes.status}`;
       try {
         const d = await chatRes.json();
         chatErr = d?.error?.message || chatErr;
@@ -181,7 +211,7 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
       return {
         ok: false,
         status: chatRes.status,
-        message: `Router returned error ${chatRes.status}: ${chatErr}`,
+        message: `Router returned error (${chatRes.status}): ${chatErr}`,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -193,31 +223,53 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
   } else {
     // direct-gemini provider test
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash?key=${encodeURIComponent(
-        conf.apiKey.trim()
-      )}`;
+      // Validate key by querying Google's Gemini models endpoint
+      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`;
       const res = await fetch(url);
       const latencyMs = Math.round(performance.now() - start);
 
       if (res.ok) {
+        let models: string[] = [];
+        try {
+          const data = await res.json();
+          if (Array.isArray(data?.models)) {
+            models = data.models
+              .map((m: any) => m.name?.replace('models/', ''))
+              .filter((name: string) => name && (name.includes('flash') || name.includes('gemini')));
+          }
+        } catch {
+          // ignore
+        }
+
         return {
           ok: true,
           status: res.status,
           latencyMs,
-          message: `Google Gemini API connected directly (${latencyMs}ms)!`,
+          message: `Google Gemini API connected directly (${latencyMs}ms)! Key verified.`,
+          models: models.length > 0 ? models : undefined,
         };
+      }
+
+      // Parse JSON error body from Google API to prevent blank statusText
+      let errorDetail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errorDetail = errJson?.error?.message || errJson?.message || errorDetail;
+      } catch {
+        const txt = await res.text();
+        errorDetail = txt.slice(0, 200) || errorDetail;
       }
 
       return {
         ok: false,
         status: res.status,
-        message: `Gemini API error ${res.status}: ${res.statusText}`,
+        message: `Gemini API error (${res.status}): ${errorDetail}`,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       return {
         ok: false,
-        message: `Direct Gemini connection failed: ${msg}`,
+        message: `Direct Gemini connection failed: ${msg}. Check network connectivity.`,
       };
     }
   }
