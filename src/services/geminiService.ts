@@ -1,9 +1,10 @@
-// Gemini Service - Real-time Voice Roleplay & Dynamic British English Phrasing Scorecard
-// Supports Full Multi-Turn Memory, Multimodal Audio Capture (base64 inlineData -> gemini-2.5-flash),
-// System Instructions, and Transparent Error Reporting (no silent fallbacks).
+// Gemini & FreeLLMAPI Unified Service - Real-time Voice Roleplay & Dynamic British English Phrasing Scorecard
+// Supports FreeLLMAPI Gateway (port 31415) and Direct Google Gemini 2.5 Flash,
+// Full Multi-Turn Memory, Multimodal Audio Capture, System Instructions, and Transparent Error Reporting.
 
 import type { AIPersona, LessonPlan, PhrasingUpgrade, PronunciationCoachingPoint } from '../types';
 import type { SpokenSegmentAnalysis } from './speechRecognition';
+import { getLLMConfig } from './llmConfig';
 import { toast } from './toast';
 
 export interface AudioAttachment {
@@ -12,46 +13,27 @@ export interface AudioAttachment {
 }
 
 export function getGeminiApiKey(): string | null {
-  if (typeof window === 'undefined') return null;
-
-  // 1. Check user key saved from the UI modal
-  const fluencyKey = localStorage.getItem('fluency_gemini_api_key');
-  if (fluencyKey && fluencyKey.trim().length > 0) {
-    return fluencyKey.trim();
-  }
-
-  // 2. Check legacy storage key
-  const legacyKey = localStorage.getItem('gemini_api_key');
-  if (legacyKey && legacyKey.trim().length > 0) {
-    return legacyKey.trim();
-  }
-
-  // 3. Check environment variables
-  const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
-  if (envKey && typeof envKey === 'string' && envKey.trim().length > 0) {
-    return envKey.trim();
-  }
-
-  return null;
+  const config = getLLMConfig();
+  return config.apiKey || null;
 }
 
 export function saveGeminiApiKey(key: string): void {
-  if (key && key.trim()) {
-    const cleanKey = key.trim();
+  if (typeof window === 'undefined') return;
+  const cleanKey = key.trim();
+  if (cleanKey) {
     localStorage.setItem('fluency_gemini_api_key', cleanKey);
     localStorage.setItem('gemini_api_key', cleanKey);
   } else {
     localStorage.removeItem('fluency_gemini_api_key');
     localStorage.removeItem('gemini_api_key');
   }
-  // Notify listeners to update the Navbar AI Brain Status badge immediately
   window.dispatchEvent(new Event('gemini_api_key_updated'));
   window.dispatchEvent(new Event('storage'));
 }
 
 export function isGeminiConfigured(): boolean {
-  const key = getGeminiApiKey();
-  return Boolean(key && key.length > 5);
+  const config = getLLMConfig();
+  return Boolean(config.apiKey && config.apiKey.length > 5);
 }
 
 export interface ChatMessage {
@@ -76,8 +58,8 @@ export interface DynamicScorecardResult {
 }
 
 /**
- * Powers James's live multi-turn responses with full conversation memory using Gemini 2.5 Flash.
- * Sends the entire dialogue history (role: 'user' and role: 'model') so James remembers everything.
+ * Powers James's live multi-turn responses with full conversation memory.
+ * Seamlessly routes to FreeLLMAPI (port 31415) or Direct Google Gemini.
  * Never silently fails—reports exact API errors (bad key, quota, CORS) via toast notifications.
  */
 export async function generateJamesReply(
@@ -87,12 +69,13 @@ export async function generateJamesReply(
   persona?: AIPersona,
   userAudioClip?: AudioAttachment | null
 ): Promise<string> {
-  const apiKey = getGeminiApiKey();
+  const config = getLLMConfig();
+  const apiKey = config.apiKey;
   const userTurnCount = conversationHistory.filter((m) => m.speaker === 'user').length;
 
   if (!apiKey) {
     toast.warning(
-      'No Gemini API Key found. James is using offline scripted replies. Click "Offline / Mock Mode" in the top bar to connect Gemini 2.5 Flash.',
+      `No API Key found. James is using offline scripted replies. Click "AI Brain Status" in the top bar to connect FreeLLMAPI or Gemini.`,
       'AI Brain in Mock Mode'
     );
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
@@ -111,110 +94,181 @@ export async function generateJamesReply(
 3. Keep your spoken response concise (2 to 3 natural sentences) and end with a relevant follow-up question that builds directly on what THEY just talked about.`;
 
   try {
-    // Build full multi-turn conversation memory alternating between 'user' and 'model'
-    const contents: Array<{ role: 'user' | 'model'; parts: any[] }> = [];
+    if (config.provider === 'freellmapi') {
+      // 1. FreeLLMAPI Unified Router Mode (OpenAI-compatible)
+      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+        { role: 'system', content: systemPrompt },
+      ];
 
-    for (let i = 0; i < conversationHistory.length; i++) {
-      const msg = conversationHistory[i];
-      const isUser = msg.speaker === 'user';
-      const isLatest = i === conversationHistory.length - 1;
-
-      if (i === 0 && !isUser) {
-        // Conversation started with AI opening greeting:
-        // Supply initial context to open conversation so Gemini has a valid user turn
-        contents.push({
-          role: 'user',
-          parts: [{ text: `[Roleplay Scenario: "${scenarioTitle}". ${pName} welcomes a new colleague.]` }],
-        });
-        contents.push({
-          role: 'model',
-          parts: [{ text: msg.text }],
-        });
-      } else {
-        const targetRole = isUser ? 'user' : 'model';
-        const parts: any[] = [];
-
-        // Attach user audio clip to the latest user turn if available
-        if (isLatest && isUser && userAudioClip && userAudioClip.base64 && userAudioClip.base64.length > 50) {
-          parts.push({
-            inlineData: {
-              mimeType: userAudioClip.mimeType.split(';')[0] || 'audio/webm',
-              data: userAudioClip.base64,
-            },
+      for (let i = 0; i < conversationHistory.length; i++) {
+        const msg = conversationHistory[i];
+        if (i === 0 && msg.speaker === 'ai') {
+          messages.push({
+            role: 'user',
+            content: `[Roleplay Scenario: "${scenarioTitle}". ${pName} welcomes a new colleague.]`,
+          });
+          messages.push({
+            role: 'assistant',
+            content: msg.text,
+          });
+        } else {
+          messages.push({
+            role: msg.speaker === 'user' ? 'user' : 'assistant',
+            content: msg.text,
           });
         }
+      }
 
-        parts.push({ text: msg.text });
+      if (messages.length === 1) {
+        messages.push({
+          role: 'user',
+          content: `Hello ${pName}, I'm ready to begin!`,
+        });
+      }
 
-        // Merge if consecutive turns share the same role (satisfies Gemini API alternating role constraint)
-        const lastEntry = contents[contents.length - 1];
-        if (lastEntry && lastEntry.role === targetRole) {
-          lastEntry.parts.push(...parts);
+      const response = await fetch(`${config.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          model: config.model || 'auto',
+          messages,
+          temperature: 0.75,
+          max_tokens: 160,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        let detailedMsg = `HTTP ${response.status}`;
+        try {
+          const parsed = JSON.parse(errText);
+          detailedMsg = parsed?.error?.message || detailedMsg;
+        } catch {
+          detailedMsg = errText.slice(0, 200) || detailedMsg;
+        }
+
+        toast.error(
+          `FreeLLMAPI Error (${response.status}): ${detailedMsg}`,
+          'FreeLLMAPI Router Issue'
+        );
+        throw new Error(`FreeLLMAPI status ${response.status}: ${detailedMsg}`);
+      }
+
+      const data = await response.json();
+      const replyText = data?.choices?.[0]?.message?.content;
+      if (replyText && typeof replyText === 'string') {
+        return replyText
+          .trim()
+          .replace(/^["']|["']$/g, '')
+          .replace(new RegExp(`^${pName}:\\s*`, 'i'), '')
+          .trim();
+      }
+      throw new Error('FreeLLMAPI returned an empty reply');
+    } else {
+      // 2. Direct Google Gemini Mode (supports multimodal inline audio data)
+      const contents: Array<{ role: 'user' | 'model'; parts: any[] }> = [];
+
+      for (let i = 0; i < conversationHistory.length; i++) {
+        const msg = conversationHistory[i];
+        const isUser = msg.speaker === 'user';
+        const isLatest = i === conversationHistory.length - 1;
+
+        if (i === 0 && !isUser) {
+          contents.push({
+            role: 'user',
+            parts: [{ text: `[Roleplay Scenario: "${scenarioTitle}". ${pName} welcomes a new colleague.]` }],
+          });
+          contents.push({
+            role: 'model',
+            parts: [{ text: msg.text }],
+          });
         } else {
-          contents.push({ role: targetRole, parts });
+          const targetRole = isUser ? 'user' : 'model';
+          const parts: any[] = [];
+
+          if (isLatest && isUser && userAudioClip && userAudioClip.base64 && userAudioClip.base64.length > 50) {
+            parts.push({
+              inlineData: {
+                mimeType: userAudioClip.mimeType.split(';')[0] || 'audio/webm',
+                data: userAudioClip.base64,
+              },
+            });
+          }
+
+          parts.push({ text: msg.text });
+
+          const lastEntry = contents[contents.length - 1];
+          if (lastEntry && lastEntry.role === targetRole) {
+            lastEntry.parts.push(...parts);
+          } else {
+            contents.push({ role: targetRole, parts });
+          }
         }
       }
-    }
 
-    if (contents.length === 0) {
-      contents.push({
-        role: 'user',
-        parts: [{ text: `Hello ${pName}, I'm ready to begin!` }],
-      });
-    }
-
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
-      apiKey
-    )}`;
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents,
-        generationConfig: {
-          temperature: 0.75,
-          maxOutputTokens: 140,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      let detailedMsg = `HTTP ${response.status}`;
-      try {
-        const parsed = JSON.parse(errText);
-        detailedMsg = parsed?.error?.message || detailedMsg;
-      } catch {
-        detailedMsg = errText.slice(0, 200) || detailedMsg;
+      if (contents.length === 0) {
+        contents.push({
+          role: 'user',
+          parts: [{ text: `Hello ${pName}, I'm ready to begin!` }],
+        });
       }
 
-      toast.error(
-        `Gemini API Error (${response.status}): ${detailedMsg}`,
-        'AI Brain Connection Issue'
-      );
-      throw new Error(`Gemini status ${response.status}: ${detailedMsg}`);
-    }
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+        apiKey
+      )}`;
 
-    const data = await response.json();
-    const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (candidateText && typeof candidateText === 'string') {
-      return candidateText
-        .trim()
-        .replace(/^["']|["']$/g, '')
-        .replace(new RegExp(`^${pName}:\\s*`, 'i'), '')
-        .trim();
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: systemPrompt }],
+          },
+          contents,
+          generationConfig: {
+            temperature: 0.75,
+            maxOutputTokens: 140,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        let detailedMsg = `HTTP ${response.status}`;
+        try {
+          const parsed = JSON.parse(errText);
+          detailedMsg = parsed?.error?.message || detailedMsg;
+        } catch {
+          detailedMsg = errText.slice(0, 200) || detailedMsg;
+        }
+
+        toast.error(
+          `Gemini API Error (${response.status}): ${detailedMsg}`,
+          'AI Brain Connection Issue'
+        );
+        throw new Error(`Gemini status ${response.status}: ${detailedMsg}`);
+      }
+
+      const data = await response.json();
+      const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (candidateText && typeof candidateText === 'string') {
+        return candidateText
+          .trim()
+          .replace(/^["']|["']$/g, '')
+          .replace(new RegExp(`^${pName}:\\s*`, 'i'), '')
+          .trim();
+      }
+      throw new Error('Gemini returned an empty reply');
     }
-    throw new Error('Gemini returned an empty reply');
   } catch (err: any) {
     console.warn('[geminiService] Live reply fallback used due to error:', err);
-    if (!err?.message?.includes('Gemini status')) {
+    if (!err?.message?.includes('status')) {
       toast.error(
-        `Network / Connection Error: ${err?.message || 'Check your internet or API key'}`,
-        'Gemini Request Failed'
+        `Network / Connection Error: ${err?.message || 'Check your internet or FreeLLMAPI gateway'}`,
+        'AI Request Failed'
       );
     }
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
@@ -230,7 +284,7 @@ export const generateTutorReply = generateJamesReply;
 
 /**
  * Dynamically generates the Stage 3 JSON Scorecard from the user's actual spoken transcript
- * and multimodal audio clips with Gemini 2.5 Flash.
+ * with FreeLLMAPI or Gemini 2.5 Flash.
  */
 export async function generateGeminiScorecard(params: {
   plan: LessonPlan;
@@ -240,7 +294,8 @@ export async function generateGeminiScorecard(params: {
   audioClips?: AudioAttachment[];
   pronunciationMetadata?: SpokenSegmentAnalysis[];
 }): Promise<DynamicScorecardResult | null> {
-  const apiKey = getGeminiApiKey();
+  const config = getLLMConfig();
+  const apiKey = config.apiKey;
   const {
     plan,
     userTurns,
@@ -285,7 +340,7 @@ SpeechRecognition Acoustic Confidence & Phonetic Ambiguities (< 0.80):
 ${phoneticNotes}
 
 ${
-  audioClips.length > 0
+  audioClips.length > 0 && config.provider === 'direct-gemini'
     ? `CRITICAL MULTIMODAL INSTRUCTION:
 ${audioClips.length} audio clip(s) of the learner speaking their turns are attached as inlineData.
 Listen directly to their real recorded voice: evaluate their genuine British accent, syllable stress, intonation, vowel length, rhythm, and hesitation—even if the browser's speech-to-text auto-corrected their words.`
@@ -327,61 +382,106 @@ Provide 2 or 3 insightful phrasing upgrades and 1 to 3 targeted pronunciation co
 Return strictly valid JSON only.`;
 
   try {
-    const parts: any[] = [];
+    let rawJson: string | null = null;
 
-    // Attach up to 3 most recent audio clips as inlineData
-    if (audioClips.length > 0) {
-      const recentClips = audioClips.slice(-3);
-      for (const clip of recentClips) {
-        if (clip.base64 && clip.base64.length > 50) {
-          parts.push({
-            inlineData: {
-              mimeType: clip.mimeType.split(';')[0] || 'audio/webm',
-              data: clip.base64,
+    if (config.provider === 'freellmapi') {
+      const response = await fetch(`${config.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          model: config.model || 'auto',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are an expert British English language coach. Return strictly a JSON object matching the requested schema with no commentary or markdown backticks.',
             },
-          });
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          temperature: 0.3,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        let detailedMsg = `HTTP ${response.status}`;
+        try {
+          const parsed = JSON.parse(errText);
+          detailedMsg = parsed?.error?.message || detailedMsg;
+        } catch {
+          detailedMsg = errText.slice(0, 200) || detailedMsg;
+        }
+        toast.error(`Scorecard Error (${response.status}): ${detailedMsg}`, 'Scorecard Analysis Issue');
+        throw new Error(`Scorecard status ${response.status}: ${detailedMsg}`);
+      }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content || '';
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      rawJson = jsonMatch ? jsonMatch[0] : content;
+    } else {
+      const parts: any[] = [];
+
+      if (audioClips.length > 0) {
+        const recentClips = audioClips.slice(-3);
+        for (const clip of recentClips) {
+          if (clip.base64 && clip.base64.length > 50) {
+            parts.push({
+              inlineData: {
+                mimeType: clip.mimeType.split(';')[0] || 'audio/webm',
+                data: clip.base64,
+              },
+            });
+          }
         }
       }
-    }
 
-    parts.push({ text: prompt });
+      parts.push({ text: prompt });
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
-        apiKey
-      )}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          generationConfig: {
-            temperature: 0.3,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errText = await response.text();
-      let detailedMsg = `HTTP ${response.status}`;
-      try {
-        const parsed = JSON.parse(errText);
-        detailedMsg = parsed?.error?.message || detailedMsg;
-      } catch {
-        detailedMsg = errText.slice(0, 200) || detailedMsg;
-      }
-
-      toast.error(
-        `Gemini Scorecard Error (${response.status}): ${detailedMsg}`,
-        'Scorecard Analysis Issue'
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+          apiKey
+        )}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts }],
+            generationConfig: {
+              temperature: 0.3,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
       );
-      throw new Error(`Gemini scorecard status ${response.status}: ${detailedMsg}`);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        let detailedMsg = `HTTP ${response.status}`;
+        try {
+          const parsed = JSON.parse(errText);
+          detailedMsg = parsed?.error?.message || detailedMsg;
+        } catch {
+          detailedMsg = errText.slice(0, 200) || detailedMsg;
+        }
+
+        toast.error(
+          `Gemini Scorecard Error (${response.status}): ${detailedMsg}`,
+          'Scorecard Analysis Issue'
+        );
+        throw new Error(`Gemini scorecard status ${response.status}: ${detailedMsg}`);
+      }
+
+      const data = await response.json();
+      rawJson = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     }
 
-    const data = await response.json();
-    const rawJson = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawJson) return null;
 
     const parsed = JSON.parse(rawJson);

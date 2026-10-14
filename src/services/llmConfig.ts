@@ -67,8 +67,16 @@ export function getLLMConfig(): LLMConfig {
 
   const rawKey = saved.apiKey !== undefined && saved.apiKey !== '' ? saved.apiKey : fluencyKey || legacyKey || envKey;
   const apiKey = sanitizeApiKey(rawKey || '');
-  const baseUrl = (saved.baseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
-  const provider: LLMProvider = saved.provider === 'direct-gemini' ? 'direct-gemini' : 'freellmapi';
+  const envBaseUrl = (import.meta as any).env?.VITE_FREELLM_BASE_URL;
+  const baseUrl = (saved.baseUrl || envBaseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
+  
+  let provider: LLMProvider = saved.provider === 'direct-gemini' ? 'direct-gemini' : 'freellmapi';
+  if (apiKey.startsWith('freellma')) {
+    provider = 'freellmapi';
+  } else if (apiKey.startsWith('AIza')) {
+    provider = 'direct-gemini';
+  }
+
   const model = saved.model || (provider === 'direct-gemini' ? 'gemini-2.5-flash' : DEFAULT_MODEL);
 
   return {

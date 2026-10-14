@@ -215,8 +215,24 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
               <input
                 type={showKey ? 'text' : 'password'}
                 value={config.apiKey}
-                onChange={(e) => setConfig((prev) => ({ ...prev, apiKey: e.target.value }))}
-                placeholder={config.provider === 'freellmapi' ? 'freellma...' : 'AIzaSy...'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const clean = val.trim();
+                  setConfig((prev) => {
+                    let targetProvider = prev.provider;
+                    if (clean.startsWith('freellma')) {
+                      targetProvider = 'freellmapi';
+                    } else if (clean.startsWith('AIza')) {
+                      targetProvider = 'direct-gemini';
+                    }
+                    return {
+                      ...prev,
+                      apiKey: val,
+                      provider: targetProvider,
+                    };
+                  });
+                }}
+                placeholder={config.provider === 'freellmapi' ? 'freellmapi-...' : 'AIzaSy...'}
                 className="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
               />
               <button
