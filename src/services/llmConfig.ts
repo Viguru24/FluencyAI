@@ -146,8 +146,11 @@ export function getCandidateGatewayUrls(base?: string): string[] {
 
   if (typeof window !== 'undefined' && window.location) {
     const origin = window.location.origin;
-    const proxyBase = `${origin}/freellm-gateway/v1`;
-    candidates.push(proxyBase);
+    // Proxies configured on Vite dev server (zero-CORS)
+    const directV1Proxy = `${origin}/v1`;
+    const gatewayV1Proxy = `${origin}/freellm-gateway/v1`;
+    candidates.push(directV1Proxy);
+    candidates.push(gatewayV1Proxy);
   }
   if (!candidates.includes(primary)) {
     candidates.push(primary);
@@ -250,7 +253,7 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
           };
         }
 
-        // Fallback: Test 1-token completion
+        // Fallback: Test 1-token completion on this base
         const chatUrl = `${base}/chat/completions`;
         const chatRes = await fetch(chatUrl, {
           method: 'POST',
@@ -276,6 +279,14 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
           };
         }
 
+        if (chatRes.status === 401 || chatRes.status === 403) {
+          return {
+            ok: false,
+            status: chatRes.status,
+            message: `Authentication error (${chatRes.status}). Verify your FreeLLMAPI key.`,
+          };
+        }
+
         let chatErr = `HTTP ${chatRes.status}`;
         try {
           const d = await chatRes.json();
@@ -283,12 +294,7 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
         } catch {
           // ignore
         }
-
-        return {
-          ok: false,
-          status: chatRes.status,
-          message: `Router returned error (${chatRes.status}): ${chatErr}`,
-        };
+        lastNetworkErr = `HTTP ${chatRes.status} (${chatErr})`;
       } catch (err: unknown) {
         lastNetworkErr = err instanceof Error ? err.message : String(err);
         // continue trying next candidate base

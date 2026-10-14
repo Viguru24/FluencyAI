@@ -19,15 +19,20 @@ async function fetchFreeLLMWithFallback(
 ): Promise<Response> {
   const candidates = getCandidateGatewayUrls(primaryBase);
   let lastError: unknown = null;
+  let lastRes: Response | null = null;
   for (const base of candidates) {
     try {
       const url = `${base}${path.startsWith('/') ? path : '/' + path}`;
       const res = await fetch(url, init);
-      return res;
+      if (res.ok || res.status === 401 || res.status === 403) {
+        return res;
+      }
+      lastRes = res;
     } catch (err) {
       lastError = err;
     }
   }
+  if (lastRes) return lastRes;
   throw lastError || new Error('Failed to connect to FreeLLMAPI gateway');
 }
 
