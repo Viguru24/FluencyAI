@@ -505,9 +505,9 @@ export const RoleplayStage: React.FC<Props> = ({
     : 'Your turn — hold or tap the mic to speak';
 
   return (
-    <div className="relative flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
+    <div className="relative flex flex-col h-[calc(100vh-6rem)] max-h-full min-h-0 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
       {/* Stage tag with Turn Count badge + reveal toggle */}
-      <div className="flex items-center justify-between px-4 pt-3">
+      <div className="flex items-center justify-between px-4 sm:px-6 pt-3 flex-shrink-0">
         <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
           Stage 2 · Turn {currentTurn} · Open Conversation
         </span>
@@ -531,7 +531,7 @@ export const RoleplayStage: React.FC<Props> = ({
       </div>
 
       {/* Persona + waveform */}
-      <div className="flex flex-col items-center pt-2">
+      <div className="flex flex-col items-center pt-1.5 px-4 sm:px-6 flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-2xl">{plan.persona.avatar}</span>
           <div className="text-left">
@@ -542,7 +542,7 @@ export const RoleplayStage: React.FC<Props> = ({
           </div>
         </div>
         {/* Active Audio Waveform Visualizer + Instant Stop Speaking Kill-Switch */}
-        <div className="relative flex items-center justify-center w-full max-w-lg px-4">
+        <div className="relative flex items-center justify-center w-full max-w-2xl px-4 mt-0.5">
           <WaveformVisualizer mode={mode} bands={bands} />
 
           {/* Instant "Stop Speaking" kill-switch button */}
@@ -559,16 +559,17 @@ export const RoleplayStage: React.FC<Props> = ({
             </button>
           )}
         </div>
-        <p className="text-sm font-semibold text-slate-600 mb-2 px-6 text-center" aria-live="polite">
+        <p className="text-xs sm:text-sm font-semibold text-slate-600 mb-1.5 px-6 text-center" aria-live="polite">
           {statusText}
         </p>
       </div>
 
-      {/* Live transcript with min-h-[140px], pt-4, and scrollbar-none to prevent top blur clipping */}
+      {/* Live transcript with internal scrolling: flex-1 overflow-y-auto */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-[140px] overflow-y-auto px-4 pt-4 pb-12 space-y-2.5 scrollbar-none no-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 pb-6 space-y-2.5 scrollbar-none no-scrollbar"
       >
+        <div className="max-w-3xl mx-auto space-y-2.5">
         {turns.map((t) => {
           const hidden = t.speaker === 'ai' && !t.revealed && !revealAll;
           return (
@@ -649,13 +650,14 @@ export const RoleplayStage: React.FC<Props> = ({
             </div>
           );
         })}
+        </div>
       </div>
 
-      {/* Controls Container with Push-to-Talk Interface & Live Transcription */}
-      <div className="relative px-4 pb-5 pt-3 border-t border-slate-200 bg-white/95 backdrop-blur">
+      {/* Controls Container with Push-to-Talk Interface & Live Transcription (Permanently Docked & Sticky) */}
+      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-4 sm:pb-5 pt-3 border-t border-slate-200/90 bg-white/95 backdrop-blur-md shadow-lg">
         {/* Real-time live transcription bubble floating above the PTT button */}
         {isRecording && (
-          <div className="absolute bottom-[calc(100%+14px)] left-3 right-3 z-20 animate-slide-up">
+          <div className="absolute bottom-[calc(100%+12px)] left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-xl z-20 animate-slide-up">
             <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-rose-200/90 shadow-2xl text-slate-800">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -747,19 +749,19 @@ export const RoleplayStage: React.FC<Props> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
           <button
             onClick={() => {
               stopSpeaking();
               setHelpOpen(true);
               setHelpRequests((n) => n + 1);
             }}
-            className="flex flex-col items-center gap-1 w-20 text-amber-700"
+            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-amber-700 hover:text-amber-800 transition active:scale-95"
           >
-            <span className="w-12 h-12 rounded-2xl bg-amber-100 hover:bg-amber-200 flex items-center justify-center">
+            <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 hover:bg-amber-200 flex items-center justify-center transition shadow-2xs">
               <LifeBuoy className="w-5 h-5" />
             </span>
-            <span className="text-[10px] font-bold leading-tight text-center">How do I say…?</span>
+            <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">How do I say…?</span>
           </button>
 
           {/* Robust Push-To-Talk / Hold-to-Talk / Tap-to-Talk Mic Interface */}
@@ -825,10 +827,10 @@ export const RoleplayStage: React.FC<Props> = ({
           <button
             onClick={endRoleplay}
             disabled={isAnalyzingScorecard || isProcessing || userTurnsCount === 0}
-            className="flex flex-col items-center gap-1 w-24 text-slate-700 disabled:opacity-40 transition-all"
+            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-slate-700 disabled:opacity-40 transition-all active:scale-95"
           >
             <span
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all ${
                 userTurnsCount >= 3
                   ? 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-soft shadow-emerald-500/20 animate-pulse-subtle'
                   : userTurnsCount >= 1
@@ -838,7 +840,7 @@ export const RoleplayStage: React.FC<Props> = ({
             >
               <Flag className="w-5 h-5" />
             </span>
-            <span className="text-[10px] font-extrabold text-center leading-tight">
+            <span className="text-[10px] sm:text-xs font-extrabold text-center leading-tight">
               {userTurnsCount >= 1 ? 'Finish & Get Scorecard' : 'Speak first'}
             </span>
           </button>

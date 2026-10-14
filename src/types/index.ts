@@ -59,6 +59,19 @@ export interface UserProgress {
   completedScenarioIds: string[];
   hasCompletedDailyLessonToday: boolean;
   savedMistakes?: SavedMistake[];
+  hasCompletedPlacement?: boolean;
+  placementDetails?: PlacementAssessmentResult;
+}
+
+export interface PlacementAssessmentResult {
+  level: CEFRLevel;
+  title: string;
+  summary: string;
+  fluencyScore: number;
+  grammarScore: number;
+  strengths: string[];
+  recommendations: string[];
+  assessedAt: string;
 }
 
 export interface AuthUser {
@@ -119,6 +132,7 @@ export interface LessonPlan {
   mockUserReplies: string[]; // fallback transcript when speech recognition is unavailable
   upgrades: PhrasingUpgrade[];
   helpPhrases: HelpPhrase[];
+  gradingRubric?: string; // Specialized scenario grading focus
 }
 
 export interface PronunciationCoachingPoint {

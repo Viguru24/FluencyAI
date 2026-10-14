@@ -182,98 +182,105 @@ export const ScaffoldingStage: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4 scrollbar-none no-scrollbar pb-10">
-        <div className="space-y-1">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
-            Stage 1 of 3 · 3-Phrase Vocabulary Warm-up &amp; Mic Test
-          </span>
-          <h2 className="text-xl font-extrabold text-slate-900">Warm up your key phrases</h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Listen, then say each phrase out loud. You will use them naturally with {plan.persona.name}.
-          </p>
-        </div>
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 scrollbar-none no-scrollbar">
+        <div className="max-w-4xl mx-auto w-full space-y-4">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
+              Stage 1 of 3 · 3-Phrase Vocabulary Warm-up &amp; Mic Test
+            </span>
+            <h2 className="text-xl font-extrabold text-slate-900">Warm up your key phrases</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Listen, then say each phrase out loud. You will use them naturally with {plan.persona.name}.
+            </p>
+          </div>
 
-        {/* Microphone Check Widget */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-brand-50/40 to-emerald-50 border border-brand-200/80 flex items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-                micTestStatus === 'passed'
-                  ? 'bg-emerald-100 text-emerald-700'
-                  : isTestingMic
-                  ? 'bg-rose-100 text-rose-600 animate-pulse'
-                  : 'bg-brand-100 text-brand-700'
-              }`}
-            >
-              <Mic className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-black text-slate-800 flex items-center gap-1.5 truncate">
-                <span>Microphone Test</span>
-                {micTestStatus === 'passed' && (
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md">
-                    Ready ✓
-                  </span>
+          {/* Responsive 2-column grid for Mic Check and Fast-Track Skip banner on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Microphone Check Widget */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-brand-50/40 to-emerald-50 border border-brand-200/80 flex items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                    micTestStatus === 'passed'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : isTestingMic
+                      ? 'bg-rose-100 text-rose-600 animate-pulse'
+                      : 'bg-brand-100 text-brand-700'
+                  }`}
+                >
+                  <Mic className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-slate-800 flex items-center gap-1.5 truncate">
+                    <span>Microphone Test</span>
+                    {micTestStatus === 'passed' && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md">
+                        Ready ✓
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-500 truncate">
+                    {isTestingMic
+                      ? 'Say anything to test input...'
+                      : micTestStatus === 'passed'
+                      ? 'Audio input working cleanly'
+                      : 'Check mic before starting'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {isTestingMic && (
+                  <div className="flex items-end gap-0.5 h-5 px-1" aria-hidden>
+                    {[0.5, 1, 0.8, 1.2, 0.6].map((m, i) => (
+                      <span
+                        key={i}
+                        className="w-1 rounded-full bg-emerald-500 transition-all duration-75"
+                        style={{ height: `${Math.max(4, Math.min(20, Math.max(micTestLevel, 0.25) * 40 * m))}px` }}
+                      />
+                    ))}
+                  </div>
                 )}
+                <button
+                  onClick={handleTestMic}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                    isTestingMic
+                      ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-xs'
+                      : micTestStatus === 'passed'
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                      : 'bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 shadow-xs'
+                  }`}
+                >
+                  {isTestingMic ? 'Stop Test' : micTestStatus === 'passed' ? 'Test Again' : 'Test Mic'}
+                </button>
               </div>
-              <div className="text-[11px] text-slate-500 truncate">
-                {isTestingMic
-                  ? 'Say anything to test input...'
-                  : micTestStatus === 'passed'
-                  ? 'Audio input detected and working cleanly'
-                  : 'Check your microphone before starting'}
+            </div>
+
+            {/* Fast-Track Direct Jump to Roleplay banner */}
+            <div className="rounded-2xl bg-gradient-to-r from-emerald-500/10 via-brand-500/10 to-sky-500/10 border border-emerald-300/60 p-3 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-xl">⚡</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-slate-900 truncate">Talk with {plan.persona.name} directly</div>
+                  <div className="text-[11px] text-slate-600 truncate">Skip phrase drills straight to Stage 2.</div>
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  onComplete(plan.phrases.map((p) => scores[p.id] ?? 85));
+                }}
+                className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-500 hover:to-emerald-500 text-white text-xs font-bold shadow-xs active:scale-95 transition flex items-center gap-1"
+              >
+                <span>Skip</span>
+                <span>&rarr;</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {isTestingMic && (
-              <div className="flex items-end gap-0.5 h-5 px-1" aria-hidden>
-                {[0.5, 1, 0.8, 1.2, 0.6].map((m, i) => (
-                  <span
-                    key={i}
-                    className="w-1 rounded-full bg-emerald-500 transition-all duration-75"
-                    style={{ height: `${Math.max(4, Math.min(20, Math.max(micTestLevel, 0.25) * 40 * m))}px` }}
-                  />
-                ))}
-              </div>
-            )}
-            <button
-              onClick={handleTestMic}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
-                isTestingMic
-                  ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-xs'
-                  : micTestStatus === 'passed'
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                  : 'bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 shadow-xs'
-              }`}
-            >
-              {isTestingMic ? 'Stop Test' : micTestStatus === 'passed' ? 'Test Again' : 'Test Mic'}
-            </button>
-          </div>
-        </div>
-
-        {/* Fast-Track Direct Jump to Roleplay banner */}
-        <div className="rounded-2xl bg-gradient-to-r from-emerald-500/10 via-brand-500/10 to-sky-500/10 border border-emerald-300/60 p-3 flex items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-xl">⚡</span>
-            <div className="min-w-0">
-              <div className="text-xs font-black text-slate-900">Want to talk with {plan.persona.name} directly?</div>
-              <div className="text-[11px] text-slate-600 truncate">Skip phrase drills and jump straight to Stage 2 Live Roleplay.</div>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              playChime('tap');
-              onComplete(plan.phrases.map((p) => scores[p.id] ?? 85));
-            }}
-            className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-500 hover:to-emerald-500 text-white text-xs font-bold shadow-xs active:scale-95 transition flex items-center gap-1"
-          >
-            <span>Skip to {plan.persona.name}</span>
-            <span>&rarr;</span>
-          </button>
-        </div>
+          {/* Phrase Cards Responsive Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
 
         {plan.phrases.map((p, idx) => {
           const done = scores[p.id] !== undefined;
@@ -284,7 +291,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
           return (
             <div
               key={p.id}
-              className={`rounded-3xl border p-4 space-y-3 transition-all ${
+              className={`rounded-3xl border p-4 flex flex-col justify-between space-y-3 transition-all ${
                 done ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200 shadow-soft'
               }`}
             >
@@ -444,49 +451,55 @@ export const ScaffoldingStage: React.FC<Props> = ({
             </div>
           );
         })}
-      </div>
-
-      {/* Unlock footer */}
-      <div className="p-4 border-t border-slate-200 bg-white space-y-2">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-          <span>{practicedCount} of {plan.phrases.length} phrases practised</span>
-          <div className="flex gap-1">
-            {plan.phrases.map((p) => (
-              <span
-                key={p.id}
-                className={`w-6 h-1.5 rounded-full ${
-                  scores[p.id] !== undefined ? 'bg-emerald-500' : 'bg-slate-200'
-                }`}
-              />
-            ))}
           </div>
         </div>
-        <button
-          onClick={() => {
-            playChime('success');
-            onComplete(plan.phrases.map((p) => scores[p.id] ?? 0));
-          }}
-          disabled={!allDone}
-          className="w-full py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition active:scale-95 bg-gradient-to-r from-brand-600 to-emerald-500 text-white shadow-soft disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:shadow-none"
-        >
-          {allDone ? (
-            <>Start Live Roleplay with {plan.persona.name} <ArrowRight className="w-4 h-4" /></>
-          ) : (
-            <><Lock className="w-4 h-4" /> Practise all 3 phrases to unlock</>
-          )}
-        </button>
+      </div>
 
-        {!allDone && (
-          <button
-            onClick={() => {
-              playChime('tap');
-              onComplete(plan.phrases.map((p) => scores[p.id] ?? 80));
-            }}
-            className="w-full text-center text-xs font-semibold text-slate-500 hover:text-brand-600 transition py-1"
-          >
-            Skip warm-up to Live Roleplay &rarr;
-          </button>
-        )}
+      {/* Unlock footer: permanently docked and sticky */}
+      <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 py-3 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-lg">
+        <div className="max-w-4xl mx-auto w-full space-y-2">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+            <span>{practicedCount} of {plan.phrases.length} phrases practised</span>
+            <div className="flex gap-1">
+              {plan.phrases.map((p) => (
+                <span
+                  key={p.id}
+                  className={`w-6 h-1.5 rounded-full ${
+                    scores[p.id] !== undefined ? 'bg-emerald-500' : 'bg-slate-200'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <button
+              onClick={() => {
+                playChime('success');
+                onComplete(plan.phrases.map((p) => scores[p.id] ?? 0));
+              }}
+              disabled={!allDone}
+              className="flex-1 w-full py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition active:scale-95 bg-gradient-to-r from-brand-600 to-emerald-500 text-white shadow-soft disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:shadow-none"
+            >
+              {allDone ? (
+                <>Start Live Roleplay with {plan.persona.name} <ArrowRight className="w-4 h-4" /></>
+              ) : (
+                <><Lock className="w-4 h-4" /> Practise all 3 phrases to unlock</>
+              )}
+            </button>
+
+            {!allDone && (
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  onComplete(plan.phrases.map((p) => scores[p.id] ?? 80));
+                }}
+                className="w-full sm:w-auto px-4 text-center text-xs font-semibold text-slate-500 hover:text-brand-600 transition py-2 whitespace-nowrap"
+              >
+                Skip warm-up to Live Roleplay &rarr;
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -209,8 +209,8 @@ export function App() {
         onOpenJamesTest={() => setIsJamesTestOpen(true)}
       />
 
-      {/* Main Mobile App Container with pb-32 to guarantee floating button never overlaps Conversational Roleplays heading */}
-      <main className="flex-1 w-full max-w-xl mx-auto px-4 py-4 pb-32 space-y-5">
+      {/* Main App Container with responsive max-w-5xl layout and fluid spacing */}
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 pb-32 space-y-6">
         {/* Daily Goal & Welcoming Section */}
         <DailyGoalCard progress={progress} onUpdateProgress={setProgress} onStartLesson={() => openDailyLesson('scaffolding')} />
 

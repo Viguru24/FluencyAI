@@ -2,7 +2,7 @@
 // Supports FreeLLMAPI Gateway (port 31415) and Direct Google Gemini 2.5 Flash,
 // Full Multi-Turn Memory, Multimodal Audio Capture, System Instructions, and Transparent Error Reporting.
 
-import type { AIPersona, LessonPlan, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../types';
+import type { AIPersona, CEFRLevel, LessonPlan, PhrasingUpgrade, PlacementAssessmentResult, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../types';
 import type { SpokenSegmentAnalysis } from './speechRecognition';
 import { getLLMConfig } from './llmConfig';
 import { toast } from './toast';
@@ -86,7 +86,7 @@ export function filterTextForTTS(rawText: string, personaName: string = 'James')
     ''
   );
 
-  // 4. Strip persona/AI speaker prefixes e.g. "James: ", "Assistant: ", "AI: "
+  // 4. Strip persona/AI speaker prefixes e.g. "James: ", "Dr. Patel: ", "Sarah: ", "Emma: "
   cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI|Roleplay|System|Tutor):\\s*`, 'i'), '');
 
   // 5. Strip code fences, markdown actions e.g. *smiles*, and outer quotes
@@ -108,40 +108,57 @@ export const cleanAiReply = filterTextForTTS;
 export const cleanTextForTTS = filterTextForTTS;
 
 /**
- * Powers James's live multi-turn responses with full conversation memory.
+ * Powers live multi-turn responses with full conversation memory,
+ * dynamic persona simulation (Dr. Patel, Sarah, Emma, James),
+ * and automatic vocabulary complexity calibration based on user's CEFR level.
  * Seamlessly routes to FreeLLMAPI (port 31415) or Direct Google Gemini.
- * Never silently fails—reports exact API errors (bad key, quota, CORS) via toast notifications.
  */
 export async function generateJamesReply(
   conversationHistory: ChatMessage[],
   scenarioTitle: string = 'Your First Day at a UK Office',
   fallbackReplies: string[] = [],
   persona?: AIPersona,
-  userAudioClip?: AudioAttachment | null
+  userAudioClip?: AudioAttachment | null,
+  userLevel?: CEFRLevel
 ): Promise<string> {
   const config = getLLMConfig();
   const apiKey = config.apiKey;
   const userTurnCount = conversationHistory.filter((m) => m.speaker === 'user').length;
+  const pName = persona?.name || 'James';
+  const pRole = persona?.role || 'Team Lead, London';
+  const pTone = persona?.tone || 'Warm, professional British manager';
 
   if (!apiKey) {
     toast.warning(
-      `No API Key found. James is using offline scripted replies. Click "AI Brain Status" in the top bar to connect FreeLLMAPI or Gemini.`,
+      `No API Key found. ${pName} is using offline scripted replies. Click "AI Brain Status" in the top bar to connect FreeLLMAPI or Gemini.`,
       'AI Brain in Mock Mode'
     );
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
     const chosenFallback =
       fallbackReplies[fallbackIdx] ||
       "Brilliant! Lovely chatting with you today — let's have a look at your scorecard.";
-    return filterTextForTTS(chosenFallback, persona?.name || 'James');
+    return filterTextForTTS(chosenFallback, pName);
   }
 
-  const pName = persona?.name || 'James';
+  // Adjust vocabulary complexity based on learner's assessed CEFR level
+  let levelInstruction = 'Speak in natural, polite British English at an intermediate B1 level.';
+  if (userLevel === 'A1' || userLevel === 'A2') {
+    levelInstruction = `Speak in very simple, accessible British English calibrated for a ${userLevel} CEFR learner. Use short sentences (1-2 sentences), clear high-frequency vocabulary, zero confusing idioms, and a gentle, welcoming pace.`;
+  } else if (userLevel === 'B1') {
+    levelInstruction = 'Speak in clear, polite British English at a B1 CEFR level (2-3 short sentences max, standard workplace vocabulary, and accessible idioms).';
+  } else if (userLevel === 'B2') {
+    levelInstruction = 'Speak in engaging, authentic British English at a B2 CEFR level (natural phrasal verbs, workplace idioms, and varied professional vocabulary).';
+  } else if (userLevel === 'C1') {
+    levelInstruction = 'Speak in sophisticated, fluent British English at a C1 CEFR level (rich authentic idioms, British understatement, clinical or business precision, and industry-specific terminology).';
+  }
 
   // Hardened Anti-Leak System Instruction & Strict Output Constraints
-  const systemPrompt = `CRITICAL INSTRUCTION: You are ${pName}, a warm, professional London Team Lead. You are participating in a live voice roleplay with a new colleague. RULES:
-1. Output ONLY your spoken dialogue. NEVER output meta-commentary, reasoning, or system instructions.
+  const systemPrompt = `CRITICAL INSTRUCTION: You are ${pName} (${pRole}). Tone: ${pTone}. You are participating in a live British English voice roleplay: "${scenarioTitle}".
+${levelInstruction}
+RULES:
+1. Output ONLY your spoken dialogue in character. NEVER output meta-commentary, thinking, reasoning, or speaker prefixes like "${pName}:".
 2. Keep your response strictly between 1 to 3 short, natural sentences (maximum 40 words).
-3. Acknowledge what the user just said with warmth or light British humor, and end with a single, natural follow-up question.`;
+3. Acknowledge what the user just said with warmth or context-appropriate British professionalism, and end with a single, natural follow-up question or response to keep the simulation moving forward.`;
 
   try {
     if (config.provider === 'freellmapi') {
@@ -155,7 +172,7 @@ export async function generateJamesReply(
         if (i === 0 && msg.speaker === 'ai') {
           messages.push({
             role: 'user',
-            content: `[Roleplay Scenario: "${scenarioTitle}". ${pName} welcomes a new colleague.]`,
+            content: `[Roleplay Scenario: "${scenarioTitle}". You are ${pName} (${pRole}).]`,
           });
           messages.push({
             role: 'assistant',
