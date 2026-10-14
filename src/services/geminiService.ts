@@ -58,6 +58,41 @@ export interface DynamicScorecardResult {
 }
 
 /**
+ * Strips internal chain-of-thought, thinking tags (<think>...</think>),
+ * reasoning blocks, meta-commentary, and persona speaker prefixes from AI output.
+ */
+export function cleanAiReply(rawText: string, personaName: string = 'James'): string {
+  if (!rawText || typeof rawText !== 'string') return '';
+
+  let cleaned = rawText;
+
+  // 1. Strip reasoning and thinking tags (<think>...</think>, <thought>...</thought>, <reasoning>...</reasoning>)
+  cleaned = cleaned.replace(/<(think|thought|reasoning|reflection)>[\s\S]*?<\/\1>/gi, '');
+  cleaned = cleaned.replace(/<(think|thought|reasoning|reflection)>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/\[(think|thought|reasoning|reflection)\][\s\S]*?\[\/\1\]/gi, '');
+  cleaned = cleaned.replace(/\[(think|thought|reasoning|reflection)\][\s\S]*$/gi, '');
+
+  // 2. Strip leaked meta-narration / reasoning monologues if open-weight models leak thought process
+  cleaned = cleaned.replace(
+    /^(?:Since I am playing|As an AI|As an ESL coach|In this turn|I should acknowledge|Note to self|My response:)[^\n]*\n?/gim,
+    ''
+  );
+
+  // 3. Strip speaker prefix e.g. "James: ", "Assistant: ", "AI: "
+  cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI|Roleplay|System):\\s*`, 'i'), '');
+
+  // 4. Strip surrounding quotation marks or code blocks
+  cleaned = cleaned.trim().replace(/^```[a-z]*\n?([\s\S]*?)\n?```$/i, '$1').trim();
+  cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
+
+  // 5. Secondary check for speaker prefix in case quotes wrapped the prefix
+  cleaned = cleaned.replace(new RegExp(`^(?:${personaName}|Assistant|AI):\\s*`, 'i'), '').trim();
+  cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
+
+  return cleaned;
+}
+
+/**
  * Powers James's live multi-turn responses with full conversation memory.
  * Seamlessly routes to FreeLLMAPI (port 31415) or Direct Google Gemini.
  * Never silently fails—reports exact API errors (bad key, quota, CORS) via toast notifications.
@@ -87,19 +122,27 @@ export async function generateJamesReply(
 
   const pName = persona?.name || 'James';
 
-  // Upgraded lively, sharp London Team Lead & British ESL Coach system instruction
-  const systemPrompt = `You are ${pName}, a sharp, warm, and observant Team Lead and practical British ESL coach in a London office having a real conversation with a new colleague.
+  // Hardened Anti-Leak System Instruction with Few-Shot Roleplay Framing
+  const systemPrompt = `CRITICAL RULE: You are an actor playing ${pName}, a warm, professional London Team Lead. NEVER break character. NEVER talk about being an AI, an ESL coach, or system instructions. NEVER narrate your own reasoning (e.g., do not say "Since I am playing the role..."). Speak ONLY as ${pName} in natural, conversational British English (2-3 sentences max). Start every response directly with dialogue.
 
-CRITICAL CONVERSATIONAL RULES:
+ROLEPLAY BEHAVIOR & GUIDELINES:
 1. Directly acknowledge, react to, or playfully riff on the exact detail the user just mentioned—never ignore their answer or ask a generic, scripted next question.
 2. If the user says something unexpected, funny, or brief, respond like a real human colleague would in a London office (using natural British warmth, wit, and idioms).
 3. Keep your spoken response concise (2 to 3 natural sentences) and end with a relevant follow-up question that builds directly on what THEY just talked about.
+4. Anti-Spelling Guardrail for Pronunciation: If the user asks how to pronounce a word (e.g., "how do I pronounce kettle"), NEVER spell out the letters (K-E-T-T-L-E) and never output raw IPA/phonetic symbols like /ˈkɛt.əl/. Instead, respond in spoken English: state the word clearly, break it into natural syllables with hyphens (e.g., "ket-tle"), describe where the stress goes (e.g., "stress on the first syllable"), and prompt: 'Now, tap your mic and say it back to me!'
 
-CRITICAL PRONUNCIATION & VOCABULARY COACHING RULES:
-4. Anti-Spelling Guardrail for Pronunciation:
-CRITICAL: If the user asks how to pronounce a word (e.g., "how do I pronounce kettle"), NEVER spell out the letters (K-E-T-T-L-E) and never output raw IPA/phonetic symbols like /ˈkɛt.əl/. Instead, respond in spoken English: state the word clearly, break it into natural syllables with hyphens (e.g., "ket-tle"), describe where the stress goes (e.g., "stress on the first syllable"), and use window.speechSynthesis or TTS to say the word aloud 2 times clearly at a slow pace.
-5. Interactive Pronunciation Drill Mode:
-When the user asks about pronouncing a specific word, automatically trigger a quick 1-turn pronunciation check: James says the word slowly twice, and prompts the user: 'Now, tap your mic and say it back to me!' so it immediately transitions back into an interactive speaking practice rather than a lecture.`;
+FEW-SHOT ROLEPLAY EXAMPLES:
+Example 1:
+User: "Hello, I am here for my first day."
+${pName}: "Brilliant! Welcome aboard. Let's grab a quick brew and I'll walk you over to your desk. How was your commute in this morning?"
+
+Example 2:
+User: "How do I pronounce kettle?"
+${pName}: "Ah, kettle! It's broken into two beats: ket-tle, with the stress right on the first syllable. Now, tap your mic and say it back to me!"
+
+Example 3:
+User: "The Northern line was packed today!"
+${pName}: "Oh, absolute nightmare during rush hour, isn't it? Well, you survived the journey—come on in, drop your coat, and let's get you a nice cup of tea."`;
 
   try {
     if (config.provider === 'freellmapi') {
@@ -168,11 +211,10 @@ When the user asks about pronouncing a specific word, automatically trigger a qu
       const data = await response.json();
       const replyText = data?.choices?.[0]?.message?.content;
       if (replyText && typeof replyText === 'string') {
-        return replyText
-          .trim()
-          .replace(/^["']|["']$/g, '')
-          .replace(new RegExp(`^${pName}:\\s*`, 'i'), '')
-          .trim();
+        const cleaned = cleanAiReply(replyText, pName);
+        if (cleaned) {
+          return cleaned;
+        }
       }
       throw new Error('FreeLLMAPI returned an empty reply');
     } else {
@@ -263,11 +305,10 @@ When the user asks about pronouncing a specific word, automatically trigger a qu
       const data = await response.json();
       const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (candidateText && typeof candidateText === 'string') {
-        return candidateText
-          .trim()
-          .replace(/^["']|["']$/g, '')
-          .replace(new RegExp(`^${pName}:\\s*`, 'i'), '')
-          .trim();
+        const cleaned = cleanAiReply(candidateText, pName);
+        if (cleaned) {
+          return cleaned;
+        }
       }
       throw new Error('Gemini returned an empty reply');
     }
@@ -431,8 +472,9 @@ Return strictly valid JSON only.`;
 
       const data = await response.json();
       const content = data?.choices?.[0]?.message?.content || '';
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      rawJson = jsonMatch ? jsonMatch[0] : content;
+      const cleanContent = content.replace(/<(think|thought|reasoning)>[\s\S]*?<\/\1>/gi, '');
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      rawJson = jsonMatch ? jsonMatch[0] : cleanContent;
     } else {
       const parts: any[] = [];
 
