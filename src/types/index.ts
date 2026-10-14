@@ -116,6 +116,8 @@ export interface LessonSessionResult {
   helpRequests: number;
   aiTurnsHeard: number;
   fluencyScore?: number;
+  pronunciationScore?: number;
+  listeningScore?: number;
   dynamicUpgrades?: PhrasingUpgrade[];
   phrasesToReview?: string[];
   pronunciationCoachingPoints?: PronunciationCoachingPoint[];

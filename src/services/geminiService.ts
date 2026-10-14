@@ -1,8 +1,10 @@
 // Gemini Service - Real-time Voice Roleplay & Dynamic British English Phrasing Scorecard
-// Supports Multimodal Audio Capture (base64 inlineData -> gemini-2.5-flash) and Acoustic Pronunciation Analysis.
+// Supports Full Multi-Turn Memory, Multimodal Audio Capture (base64 inlineData -> gemini-2.5-flash),
+// System Instructions, and Transparent Error Reporting (no silent fallbacks).
 
 import type { AIPersona, LessonPlan, PhrasingUpgrade, PronunciationCoachingPoint } from '../types';
 import type { SpokenSegmentAnalysis } from './speechRecognition';
+import { toast } from './toast';
 
 export interface AudioAttachment {
   base64: string;
@@ -11,15 +13,40 @@ export interface AudioAttachment {
 
 export function getGeminiApiKey(): string | null {
   if (typeof window === 'undefined') return null;
+
+  // 1. Check user key saved from the UI modal
+  const fluencyKey = localStorage.getItem('fluency_gemini_api_key');
+  if (fluencyKey && fluencyKey.trim().length > 0) {
+    return fluencyKey.trim();
+  }
+
+  // 2. Check legacy storage key
+  const legacyKey = localStorage.getItem('gemini_api_key');
+  if (legacyKey && legacyKey.trim().length > 0) {
+    return legacyKey.trim();
+  }
+
+  // 3. Check environment variables
   const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
   if (envKey && typeof envKey === 'string' && envKey.trim().length > 0) {
     return envKey.trim();
   }
-  const localKey = localStorage.getItem('gemini_api_key');
-  if (localKey && localKey.trim().length > 0) {
-    return localKey.trim();
-  }
+
   return null;
+}
+
+export function saveGeminiApiKey(key: string): void {
+  if (key && key.trim()) {
+    const cleanKey = key.trim();
+    localStorage.setItem('fluency_gemini_api_key', cleanKey);
+    localStorage.setItem('gemini_api_key', cleanKey);
+  } else {
+    localStorage.removeItem('fluency_gemini_api_key');
+    localStorage.removeItem('gemini_api_key');
+  }
+  // Notify listeners to update the Navbar AI Brain Status badge immediately
+  window.dispatchEvent(new Event('gemini_api_key_updated'));
+  window.dispatchEvent(new Event('storage'));
 }
 
 export function isGeminiConfigured(): boolean {
@@ -49,10 +76,9 @@ export interface DynamicScorecardResult {
 }
 
 /**
- * Powers James's live 5-turn responses in character using Gemini 2.5 Flash.
- * When userAudioClip is provided, sends the base64 audio inlineData alongside the conversation history
- * so Gemini can hear the learner's real acoustic speech, intonation, and hesitations directly.
- * Falls back to plan's authentic scripted turns if no key is configured or offline.
+ * Powers James's live multi-turn responses with full conversation memory using Gemini 2.5 Flash.
+ * Sends the entire dialogue history (role: 'user' and role: 'model') so James remembers everything.
+ * Never silently fails—reports exact API errors (bad key, quota, CORS) via toast notifications.
  */
 export async function generateJamesReply(
   conversationHistory: ChatMessage[],
@@ -65,6 +91,10 @@ export async function generateJamesReply(
   const userTurnCount = conversationHistory.filter((m) => m.speaker === 'user').length;
 
   if (!apiKey) {
+    toast.warning(
+      'No Gemini API Key found. James is using offline scripted replies. Click "Offline / Mock Mode" in the top bar to connect Gemini 2.5 Flash.',
+      'AI Brain in Mock Mode'
+    );
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
     return (
       fallbackReplies[fallbackIdx] ||
@@ -73,67 +103,100 @@ export async function generateJamesReply(
   }
 
   const pName = persona?.name || 'James';
-  const pRole = persona?.role || 'Team Lead, London';
-  const pTone = persona?.tone || 'Warm, professional British manager';
-  const isFinalTurn = userTurnCount >= 4;
 
-  const systemPrompt = `You are ${pName}, ${pRole}.
-Tone: ${pTone}.
-Scenario: "${scenarioTitle}".
-Rules:
-1. Speak in authentic, natural, polite British English at a comfortable conversational pace.
-2. Keep your response brief: 1 to 2 sentences max (under 30 words) so it sounds natural as spoken speech.
-3. React directly to what the learner said. Listen to their audio tone, rhythm, and intonation if attached.
-${isFinalTurn ? '4. This is the 5th and final turn: warmly thank them and wrap up so they can view their scorecard.' : '4. Keep the roleplay moving naturally.'}
-5. Return ONLY the spoken dialogue. No quotes, formatting, or prefixes.`;
+  // Upgraded lively, sharp London Team Lead system instruction
+  const systemPrompt = `You are ${pName}, a sharp, warm, and observant Team Lead in a London office having a real conversation with a new colleague. CRITICAL RULES:
+1. Directly acknowledge, react to, or playfully riff on the exact detail the user just mentioned—never ignore their answer or ask a generic, scripted next question.
+2. If the user says something unexpected, funny, or brief, respond like a real human colleague would in a London office (using natural British warmth, wit, and idioms).
+3. Keep your spoken response concise (2 to 3 natural sentences) and end with a relevant follow-up question that builds directly on what THEY just talked about.`;
 
   try {
-    const parts: any[] = [];
+    // Build full multi-turn conversation memory alternating between 'user' and 'model'
+    const contents: Array<{ role: 'user' | 'model'; parts: any[] }> = [];
 
-    // Multimodal Audio Attachment for Gemini 2.5 Flash
-    if (userAudioClip && userAudioClip.base64 && userAudioClip.base64.length > 50) {
-      parts.push({
-        inlineData: {
-          mimeType: userAudioClip.mimeType.split(';')[0] || 'audio/webm',
-          data: userAudioClip.base64,
-        },
+    for (let i = 0; i < conversationHistory.length; i++) {
+      const msg = conversationHistory[i];
+      const isUser = msg.speaker === 'user';
+      const isLatest = i === conversationHistory.length - 1;
+
+      if (i === 0 && !isUser) {
+        // Conversation started with AI opening greeting:
+        // Supply initial context to open conversation so Gemini has a valid user turn
+        contents.push({
+          role: 'user',
+          parts: [{ text: `[Roleplay Scenario: "${scenarioTitle}". ${pName} welcomes a new colleague.]` }],
+        });
+        contents.push({
+          role: 'model',
+          parts: [{ text: msg.text }],
+        });
+      } else {
+        const targetRole = isUser ? 'user' : 'model';
+        const parts: any[] = [];
+
+        // Attach user audio clip to the latest user turn if available
+        if (isLatest && isUser && userAudioClip && userAudioClip.base64 && userAudioClip.base64.length > 50) {
+          parts.push({
+            inlineData: {
+              mimeType: userAudioClip.mimeType.split(';')[0] || 'audio/webm',
+              data: userAudioClip.base64,
+            },
+          });
+        }
+
+        parts.push({ text: msg.text });
+
+        // Merge if consecutive turns share the same role (satisfies Gemini API alternating role constraint)
+        const lastEntry = contents[contents.length - 1];
+        if (lastEntry && lastEntry.role === targetRole) {
+          lastEntry.parts.push(...parts);
+        } else {
+          contents.push({ role: targetRole, parts });
+        }
+      }
+    }
+
+    if (contents.length === 0) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: `Hello ${pName}, I'm ready to begin!` }],
       });
     }
 
-    const conversationText = conversationHistory
-      .map((t) => `${t.speaker === 'ai' ? pName : 'Learner'}: "${t.text}"`)
-      .join('\n');
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+      apiKey
+    )}`;
 
-    parts.push({
-      text: `${systemPrompt}\n\n${
-        userAudioClip ? '[Audio recording of the learner speaking their latest line is attached above.]\n\n' : ''
-      }Conversation so far:\n${conversationText}\n\nWhat do you say next as ${pName}?`,
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.75,
+          maxOutputTokens: 140,
+        },
+      }),
     });
 
-    const contents = [
-      {
-        role: 'user',
-        parts,
-      },
-    ];
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 90,
-          },
-        }),
-      }
-    );
-
     if (!response.ok) {
-      throw new Error(`Gemini status ${response.status}`);
+      const errText = await response.text();
+      let detailedMsg = `HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(errText);
+        detailedMsg = parsed?.error?.message || detailedMsg;
+      } catch {
+        detailedMsg = errText.slice(0, 200) || detailedMsg;
+      }
+
+      toast.error(
+        `Gemini API Error (${response.status}): ${detailedMsg}`,
+        'AI Brain Connection Issue'
+      );
+      throw new Error(`Gemini status ${response.status}: ${detailedMsg}`);
     }
 
     const data = await response.json();
@@ -145,9 +208,15 @@ ${isFinalTurn ? '4. This is the 5th and final turn: warmly thank them and wrap u
         .replace(new RegExp(`^${pName}:\\s*`, 'i'), '')
         .trim();
     }
-    throw new Error('Empty candidate response');
-  } catch (err) {
-    console.warn('[geminiService] Live reply fallback used:', err);
+    throw new Error('Gemini returned an empty reply');
+  } catch (err: any) {
+    console.warn('[geminiService] Live reply fallback used due to error:', err);
+    if (!err?.message?.includes('Gemini status')) {
+      toast.error(
+        `Network / Connection Error: ${err?.message || 'Check your internet or API key'}`,
+        'Gemini Request Failed'
+      );
+    }
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
     return (
       fallbackReplies[fallbackIdx] ||
@@ -162,7 +231,6 @@ export const generateTutorReply = generateJamesReply;
 /**
  * Dynamically generates the Stage 3 JSON Scorecard from the user's actual spoken transcript
  * and multimodal audio clips with Gemini 2.5 Flash.
- * Evaluates real accent, syllable stress, intonation, and lower-confidence phonetic segments.
  */
 export async function generateGeminiScorecard(params: {
   plan: LessonPlan;
@@ -190,21 +258,21 @@ export async function generateGeminiScorecard(params: {
     ? Math.round(phraseScores.reduce((a, b) => a + b, 0) / phraseScores.length)
     : 86;
 
-  // Filter segments with lower confidence (< 0.80) or phonetic alternatives
   const lowConfItems = pronunciationMetadata.filter(
-    (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.80) || s.alternatives.length > 0
+    (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.8) || s.alternatives.length > 0
   );
 
-  const phoneticNotes = lowConfItems.length > 0
-    ? lowConfItems
-        .map(
-          (s) =>
-            `- Spoken phrase: "${s.text}" | Acoustic confidence: ${Math.round(
-              (s.confidence || 0.72) * 100
-            )}% | Phonetic alternatives heard by speech recognition: [${s.alternatives.join(', ')}]`
-        )
-        .join('\n')
-    : 'None detected; speech recognized cleanly.';
+  const phoneticNotes =
+    lowConfItems.length > 0
+      ? lowConfItems
+          .map(
+            (s) =>
+              `- Spoken phrase: "${s.text}" | Acoustic confidence: ${Math.round(
+                (s.confidence || 0.72) * 100
+              )}% | Phonetic alternatives heard: [${s.alternatives.join(', ')}]`
+          )
+          .join('\n')
+      : 'None detected; speech recognized cleanly.';
 
   const prompt = `You are an expert British English language & pronunciation coach grading a student's spoken roleplay.
 Scenario: "${plan.title}" (${plan.contextLabel}) with ${plan.persona.name}.
@@ -279,7 +347,9 @@ Return strictly valid JSON only.`;
     parts.push({ text: prompt });
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+        apiKey
+      )}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -294,7 +364,20 @@ Return strictly valid JSON only.`;
     );
 
     if (!response.ok) {
-      throw new Error(`Gemini scorecard status ${response.status}`);
+      const errText = await response.text();
+      let detailedMsg = `HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(errText);
+        detailedMsg = parsed?.error?.message || detailedMsg;
+      } catch {
+        detailedMsg = errText.slice(0, 200) || detailedMsg;
+      }
+
+      toast.error(
+        `Gemini Scorecard Error (${response.status}): ${detailedMsg}`,
+        'Scorecard Analysis Issue'
+      );
+      throw new Error(`Gemini scorecard status ${response.status}: ${detailedMsg}`);
     }
 
     const data = await response.json();
@@ -303,7 +386,6 @@ Return strictly valid JSON only.`;
 
     const parsed = JSON.parse(rawJson);
     if (parsed && Array.isArray(parsed.upgrades) && parsed.upgrades.length > 0) {
-      // Build dynamic coaching points from Gemini or fallback to lowConfItems
       const coachingPoints: PronunciationCoachingPoint[] = Array.isArray(parsed.pronunciationCoachingPoints)
         ? parsed.pronunciationCoachingPoints.map((p: any) => ({
             wordOrPhrase: p.wordOrPhrase || 'Pronunciation note',
@@ -316,7 +398,9 @@ Return strictly valid JSON only.`;
             wordOrPhrase: item.text,
             confidence: Math.round((item.confidence || 0.75) * 100),
             alternatives: item.alternatives,
-            feedback: `Spoken with acoustic variance. Phonetic alternatives heard: ${item.alternatives.join(', ') || 'alternative sounds'}.`,
+            feedback: `Spoken with acoustic variance. Phonetic alternatives heard: ${
+              item.alternatives.join(', ') || 'alternative sounds'
+            }.`,
           }));
 
       return {
@@ -347,7 +431,7 @@ Return strictly valid JSON only.`;
       };
     }
     return null;
-  } catch (err) {
+  } catch (err: any) {
     console.warn('[geminiService] Scorecard generation fallback:', err);
     return {
       overall: 86,
@@ -360,7 +444,9 @@ Return strictly valid JSON only.`;
         wordOrPhrase: item.text,
         confidence: Math.round((item.confidence || 0.75) * 100),
         alternatives: item.alternatives,
-        feedback: `Focus on clean consonant transitions. Speech recognizer heard phonetic variants: ${item.alternatives.join(', ') || 'approximate sounds'}.`,
+        feedback: `Focus on clean consonant transitions. Speech recognizer heard phonetic variants: ${
+          item.alternatives.join(', ') || 'approximate sounds'
+        }.`,
       })),
       upgrades: defaultUpgrades.map((u) => ({
         ...u,

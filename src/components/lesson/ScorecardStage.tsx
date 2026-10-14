@@ -61,17 +61,32 @@ const Dial: React.FC<{ value: number }> = ({ value }) => {
 export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alreadySavedIds, onSaveMistakes, onFinish }) => {
   const scores = useMemo(() => {
     const base = computeScores(plan, result);
-    if (typeof result.fluencyScore === 'number') {
-      const fluency = Math.max(50, Math.min(100, Math.round(result.fluencyScore)));
-      const overall = Math.round(fluency * 0.45 + base.pronunciation * 0.35 + base.listening * 0.2);
-      return { ...base, fluency, overall };
-    }
-    return base;
+    const fluency =
+      typeof result.fluencyScore === 'number'
+        ? Math.max(50, Math.min(100, Math.round(result.fluencyScore)))
+        : base.fluency;
+    const pronunciation =
+      typeof result.pronunciationScore === 'number'
+        ? Math.max(50, Math.min(100, Math.round(result.pronunciationScore)))
+        : base.pronunciation;
+    const listening =
+      typeof result.listeningScore === 'number'
+        ? Math.max(50, Math.min(100, Math.round(result.listeningScore)))
+        : base.listening;
+    const overall = Math.round(fluency * 0.45 + pronunciation * 0.35 + listening * 0.2);
+    return { ...base, fluency, pronunciation, listening, overall };
   }, [plan, result]);
 
   const upgrades = useMemo(() => {
     if (result.dynamicUpgrades && result.dynamicUpgrades.length > 0) {
-      return result.dynamicUpgrades;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return result.dynamicUpgrades.map((u: any, idx: number) => ({
+        id: u.id || `upg-${idx}`,
+        whatYouSaid: u.whatYouSaid || result.userTurns[idx] || 'What you said',
+        moreNatural: u.moreNaturalBritish || u.moreNatural || 'Natural British English',
+        explanation: u.fluencyTip || u.explanation || 'Polite British phrasing tip',
+        category: u.category || 'Natural Idiom',
+      }));
     }
     return buildUpgrades(plan, result.userTurns);
   }, [plan, result.dynamicUpgrades, result.userTurns]);

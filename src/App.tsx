@@ -10,6 +10,8 @@ import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans
 import type { UserProgress, LessonPlan, PhrasingUpgrade } from './types';
 import { registerServiceWorker } from './pwa';
 import { RefreshCw, Sparkles, BookmarkCheck } from 'lucide-react';
+import { ToastContainer } from './components/ToastContainer';
+
 
 const STORAGE_KEY = 'fluencyai_user_progress_v1';
 const DAILY_ID = 'daily-lesson-today';
@@ -131,7 +133,11 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+      {/* Global Toast System */}
+      <ToastContainer />
+
       {/* PWA Update Banner */}
+
       {hasUpdate && (
         <div className="sticky top-0 z-50 bg-brand-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-md">
           <div className="flex items-center gap-1.5">

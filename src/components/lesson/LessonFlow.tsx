@@ -103,6 +103,7 @@ export const LessonFlow: React.FC<Props> = ({ plan, nativeLanguage, audioSpeed, 
               plan={plan}
               nativeLanguage={nativeLanguage}
               audioSpeed={audioSpeed}
+              phraseScores={phraseScores}
               onMicDenied={() => setMicDenied(true)}
               onEnd={(stats: RoleplayStats) => {
                 setResult({ phraseScores, ...stats });

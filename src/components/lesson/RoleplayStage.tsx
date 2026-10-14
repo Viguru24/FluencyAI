@@ -32,6 +32,8 @@ export interface RoleplayStats {
   helpRequests: number;
   aiTurnsHeard: number;
   fluencyScore?: number;
+  pronunciationScore?: number;
+  listeningScore?: number;
   dynamicUpgrades?: PhrasingUpgrade[];
   phrasesToReview?: string[];
   pronunciationCoachingPoints?: PronunciationCoachingPoint[];
@@ -42,17 +44,18 @@ interface Props {
   plan: LessonPlan;
   nativeLanguage: NativeLanguage;
   audioSpeed: number;
+  phraseScores?: number[];
   onMicDenied: () => void;
   onEnd: (stats: RoleplayStats) => void;
 }
 
 const HOLD_THRESHOLD_MS = 350;
-const MAX_TURNS = 5;
 
 export const RoleplayStage: React.FC<Props> = ({
   plan,
   nativeLanguage,
   audioSpeed,
+  phraseScores = [],
   onMicDenied,
   onEnd,
 }) => {
@@ -83,8 +86,8 @@ export const RoleplayStage: React.FC<Props> = ({
   isEditingBubbleRef.current = isEditingBubble;
 
   const userTurnsCount = turns.filter((t) => t.speaker === 'user').length;
-  const currentTurn = Math.min(MAX_TURNS, userTurnsCount + 1);
-  const conversationOver = userTurnsCount >= MAX_TURNS || aiIndex >= plan.aiTurns.length;
+  const currentTurn = userTurnsCount + 1;
+
 
   const speakAi = useCallback(
     (text: string) => {
@@ -133,7 +136,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
 
   const startRecording = async () => {
-    if (isRecording || isProcessing || conversationOver) return;
+    if (isRecording || isProcessing) return;
     stopSpeaking();
     setIsAiSpeaking(false);
 
@@ -232,38 +235,18 @@ export const RoleplayStage: React.FC<Props> = ({
     ];
     setTurns(newTurns);
 
-    const completedUserTurns = newTurns.filter((t) => t.speaker === 'user').length;
-    const isFinished = completedUserTurns >= MAX_TURNS;
-
     try {
       const historyForGemini = newTurns.map((t) => ({ speaker: t.speaker, text: t.text }));
-      let aiReply = '';
 
-      if (isFinished) {
-        // When 5 turns are completed, James warmly wraps up the first day sprint
-        aiReply = await generateJamesReply(
-          [
-            ...historyForGemini,
-            {
-              speaker: 'user',
-              text: '[Learner has completed all 5 roleplay turns. Conclude warmly in 1-2 British English sentences as James thanking them for their great first day and welcoming them to view their scorecard.]',
-            },
-          ],
-          plan.title,
-          ['Brilliant effort today! You’ve done wonderfully on your first day — let’s check out your scorecard.'],
-          plan.persona,
-          audioAttachment
-        );
-      } else {
-        // Pass base64 audio clip directly into gemini-2.5-flash
-        aiReply = await generateJamesReply(
-          historyForGemini,
-          plan.title,
-          plan.aiTurns,
-          plan.persona,
-          audioAttachment
-        );
-      }
+      // Dynamic conversational turn without hard turn cutoffs:
+      // James listens, riffs, and asks relevant follow-up questions for as many turns as the user wants
+      const aiReply = await generateJamesReply(
+        historyForGemini,
+        plan.title,
+        plan.aiTurns,
+        plan.persona,
+        audioAttachment
+      );
 
       setTurns((prev) => [
         ...prev,
@@ -286,6 +269,7 @@ export const RoleplayStage: React.FC<Props> = ({
   };
 
   stopRecordingRef.current = stopRecording;
+
 
   // Push-to-talk and Tap-to-speak handler
   const pressAction = useRef<'start' | 'stop' | null>(null);
@@ -325,10 +309,11 @@ export const RoleplayStage: React.FC<Props> = ({
     setIsAnalyzingScorecard(true);
 
     try {
-      // Send multimodal audio recordings & low-confidence phonetic metadata to Gemini 2.5 Flash
+      // Send multimodal audio recordings & low-confidence phonetic metadata to Gemini 2.5 Flash / FreeLLMAPI
       const scorecard = await generateGeminiScorecard({
         plan,
         userTurns: userTurnsList,
+        phraseScores,
         defaultUpgrades: plan.upgrades,
         audioClips: recordedClipsRef.current,
         pronunciationMetadata: pronunciationMetadataRef.current,
@@ -340,6 +325,8 @@ export const RoleplayStage: React.FC<Props> = ({
         helpRequests,
         aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
         fluencyScore: scorecard?.fluency,
+        pronunciationScore: scorecard?.pronunciation,
+        listeningScore: scorecard?.listening,
         dynamicUpgrades: scorecard?.upgrades,
         pronunciationCoachingPoints: scorecard?.pronunciationCoachingPoints,
         acousticFeedback: scorecard?.acousticFeedback,
@@ -364,8 +351,8 @@ export const RoleplayStage: React.FC<Props> = ({
     ? `${plan.persona.name} is listening & thinking…`
     : isAiSpeaking
     ? `${plan.persona.name} is speaking — listen carefully`
-    : conversationOver
-    ? 'Conversation complete — great work!'
+    : userTurnsCount >= 3
+    ? 'Keep chatting freely, or click "Finish & Get Scorecard"'
     : 'Your turn — tap the mic to speak';
 
   return (
@@ -373,8 +360,9 @@ export const RoleplayStage: React.FC<Props> = ({
       {/* Stage tag with Turn Count badge + reveal toggle */}
       <div className="flex items-center justify-between px-4 pt-3">
         <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
-          Stage 2 · Turn {currentTurn} of {MAX_TURNS}
+          Stage 2 · Turn {currentTurn} · Open Conversation
         </span>
+
         <button
           onClick={() => {
             playChime('tap');
@@ -557,7 +545,7 @@ export const RoleplayStage: React.FC<Props> = ({
                   else startRecording();
                 }
               }}
-              disabled={isProcessing || isAnalyzingScorecard || conversationOver}
+              disabled={isProcessing || isAnalyzingScorecard}
               className={`relative w-24 h-24 rounded-full flex flex-col items-center justify-center text-white shadow-fab transition-all active:scale-95 touch-none select-none disabled:opacity-40 ${
                 isRecording ? 'bg-rose-500 scale-105 ring-4 ring-rose-200' : 'bg-gradient-to-br from-brand-600 to-emerald-500'
               }`}
@@ -584,18 +572,25 @@ export const RoleplayStage: React.FC<Props> = ({
 
           <button
             onClick={endRoleplay}
-            disabled={isAnalyzingScorecard}
-            className="flex flex-col items-center gap-1 w-20 text-slate-600"
+            disabled={isAnalyzingScorecard || isProcessing || userTurnsCount === 0}
+            className="flex flex-col items-center gap-1 w-24 text-slate-700 disabled:opacity-40 transition-all"
           >
             <span
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                conversationOver ? 'bg-emerald-500 text-white animate-bounce-subtle' : 'bg-slate-100 hover:bg-slate-200'
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+                userTurnsCount >= 3
+                  ? 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-soft shadow-emerald-500/20 animate-pulse-subtle'
+                  : userTurnsCount >= 1
+                  ? 'bg-brand-100 text-brand-700 hover:bg-brand-200'
+                  : 'bg-slate-100 text-slate-400'
               }`}
             >
               <Flag className="w-5 h-5" />
             </span>
-            <span className="text-[10px] font-bold">{conversationOver ? 'See results' : 'End roleplay'}</span>
+            <span className="text-[10px] font-extrabold text-center leading-tight">
+              {userTurnsCount >= 1 ? 'Finish & Get Scorecard' : 'Speak first'}
+            </span>
           </button>
+
         </div>
       </div>
 
