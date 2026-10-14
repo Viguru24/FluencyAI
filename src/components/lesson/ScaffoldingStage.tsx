@@ -254,6 +254,27 @@ export const ScaffoldingStage: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* Fast-Track Direct Jump to Roleplay banner */}
+        <div className="rounded-2xl bg-gradient-to-r from-emerald-500/10 via-brand-500/10 to-sky-500/10 border border-emerald-300/60 p-3 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-xl">⚡</span>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-slate-900">Want to talk with {plan.persona.name} directly?</div>
+              <div className="text-[11px] text-slate-600 truncate">Skip phrase drills and jump straight to Stage 2 Live Roleplay.</div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              playChime('tap');
+              onComplete(plan.phrases.map((p) => scores[p.id] ?? 85));
+            }}
+            className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-500 hover:to-emerald-500 text-white text-xs font-bold shadow-xs active:scale-95 transition flex items-center gap-1"
+          >
+            <span>Skip to {plan.persona.name}</span>
+            <span>&rarr;</span>
+          </button>
+        </div>
+
         {plan.phrases.map((p, idx) => {
           const done = scores[p.id] !== undefined;
           const isRec = recordingId === p.id;

@@ -10,12 +10,14 @@ interface NavbarProps {
   progress: UserProgress;
   onUpdateProgress: (updater: (prev: UserProgress) => UserProgress) => void;
   onOpenInstallGuide: () => void;
+  onOpenJamesTest?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   progress,
   onUpdateProgress,
   onOpenInstallGuide,
+  onOpenJamesTest,
 }) => {
   const [canInstall, setCanInstall] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -223,6 +225,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* James Test Area Button */}
+              {onOpenJamesTest && (
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    onOpenJamesTest();
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-brand-600 hover:from-amber-400 hover:to-brand-500 text-white text-xs font-bold shadow-xs transition active:scale-95"
+                  title="Open James Test Lab (Talk to James directly, 0 word prep)"
+                >
+                  <span>🧑‍💼</span>
+                  <span>Test James</span>
+                </button>
+              )}
 
               {/* PWA Install Button */}
               <button

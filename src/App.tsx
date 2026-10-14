@@ -5,12 +5,14 @@ import { RoleplayList } from './components/RoleplayList';
 import { StartDailyLessonFAB } from './components/StartDailyLessonFAB';
 import { PWAInstallGuideModal } from './components/PWAInstallGuideModal';
 import { LessonFlow } from './components/lesson/LessonFlow';
+import { JamesTestAreaModal } from './components/JamesTestAreaModal';
 import { roleplayScenarios, initialUserProgress } from './data/mockData';
 import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans';
-import type { UserProgress, LessonPlan, PhrasingUpgrade } from './types';
+import type { UserProgress, LessonPlan, PhrasingUpgrade, LessonStage } from './types';
 import { registerServiceWorker } from './pwa';
 import { RefreshCw, Sparkles, BookmarkCheck } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
+import { playChime } from './services/speech';
 
 
 const STORAGE_KEY = 'fluencyai_user_progress_v1';
@@ -29,6 +31,8 @@ export function App() {
   });
 
   const [activePlan, setActivePlan] = useState<LessonPlan | null>(null);
+  const [lessonInitialStage, setLessonInitialStage] = useState<LessonStage>('scaffolding');
+  const [isJamesTestOpen, setIsJamesTestOpen] = useState(false);
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const [hasUpdate, setHasUpdate] = useState(false);
 
@@ -48,8 +52,14 @@ export function App() {
     });
   }, []);
 
-  const openDailyLesson = () => setActivePlan(getDailyLessonPlan());
-  const openScenario = (scenarioId: string) => setActivePlan(getLessonPlanForScenario(scenarioId));
+  const openDailyLesson = (initialStage: LessonStage = 'scaffolding') => {
+    setLessonInitialStage(initialStage);
+    setActivePlan(getDailyLessonPlan());
+  };
+  const openScenario = (scenarioId: string, initialStage: LessonStage = 'scaffolding') => {
+    setLessonInitialStage(initialStage);
+    setActivePlan(getLessonPlanForScenario(scenarioId));
+  };
 
   const handleLessonComplete = (plan: LessonPlan) => {
     setProgress((prev) => {
@@ -159,12 +169,68 @@ export function App() {
         progress={progress}
         onUpdateProgress={setProgress}
         onOpenInstallGuide={() => setIsInstallGuideOpen(true)}
+        onOpenJamesTest={() => setIsJamesTestOpen(true)}
       />
 
       {/* Main Mobile App Container with pb-32 to guarantee floating button never overlaps Conversational Roleplays heading */}
       <main className="flex-1 w-full max-w-xl mx-auto px-4 py-4 pb-32 space-y-5">
         {/* Daily Goal & Welcoming Section */}
-        <DailyGoalCard progress={progress} onUpdateProgress={setProgress} onStartLesson={openDailyLesson} />
+        <DailyGoalCard progress={progress} onUpdateProgress={setProgress} onStartLesson={() => openDailyLesson('scaffolding')} />
+
+        {/* James AI Test Area & Direct Voice Sandbox Card */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-brand-950 to-indigo-950 text-white p-5 shadow-soft border border-brand-500/30">
+          <div className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 rounded-full bg-brand-500/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 w-44 h-44 rounded-full bg-emerald-500/20 blur-3xl" />
+
+          <div className="relative z-10 space-y-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-2xl shadow-inner flex-shrink-0 backdrop-blur-xs">
+                  🧑‍💼
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black tracking-tight text-white">James AI Test Lab</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-400/25 border border-emerald-400/40 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider">
+                      Direct Mode
+                    </span>
+                  </div>
+                  <p className="text-xs text-brand-100/80 mt-0.5">
+                    Talk directly with James • Zero phrase preparation • Test speech & pronunciation
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Test how James responds in real-time, drill difficult words with syllable breakdowns, test grammar slips, or chat freely with your London colleague.
+            </p>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  setIsJamesTestOpen(true);
+                }}
+                className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-brand-500 hover:from-amber-300 hover:to-brand-400 text-slate-950 font-black text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-2"
+              >
+                <span>🎙️ Enter James Test Area</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  openDailyLesson('roleplay');
+                }}
+                className="py-2.5 px-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
+                title="Open Daily Lesson skipping straight to Stage 2 Live Roleplay"
+              >
+                <span>⚡ Stage 2 Roleplay</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Tomorrow's review queue */}
         {reviewCount > 0 && (
@@ -189,7 +255,7 @@ export function App() {
 
       {/* Floating Action Button: Start Daily Lesson */}
       {!activePlan && (
-        <StartDailyLessonFAB onStartLesson={openDailyLesson} isCompletedToday={progress.hasCompletedDailyLessonToday} />
+        <StartDailyLessonFAB onStartLesson={() => openDailyLesson('scaffolding')} isCompletedToday={progress.hasCompletedDailyLessonToday} />
       )}
 
       {/* 3-stage lesson flow: Prep → Live Roleplay → Scorecard */}
@@ -200,9 +266,20 @@ export function App() {
           nativeLanguage={progress.nativeLanguage}
           audioSpeed={progress.audioSpeed}
           savedMistakeIds={(progress.savedMistakes ?? []).map((m) => m.id)}
+          initialStage={lessonInitialStage}
           onSaveMistakes={handleSaveMistakes}
           onComplete={handleLessonComplete}
           onExit={() => setActivePlan(null)}
+        />
+      )}
+
+      {/* James Test Area Modal */}
+      {isJamesTestOpen && (
+        <JamesTestAreaModal
+          isOpen={isJamesTestOpen}
+          onClose={() => setIsJamesTestOpen(false)}
+          audioSpeed={progress.audioSpeed}
+          onOpenLessonRoleplay={() => openDailyLesson('roleplay')}
         />
       )}
 

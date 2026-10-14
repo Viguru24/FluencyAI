@@ -31,6 +31,8 @@ export interface RecognitionDetails {
   confidence: number;
   segments: SpokenSegmentAnalysis[];
   lowConfidenceWords: WordConfidenceInfo[];
+  allWords: WordConfidenceInfo[];
+  rawResults?: any;
 }
 
 export interface RecognitionOptions {
@@ -40,6 +42,7 @@ export interface RecognitionOptions {
   silenceTimeoutMs?: number; // Defaults to 6000ms (6s pause tolerance for ESL learners)
   onSilenceTimeout?: () => void;
   onSegmentAnalysis?: (segments: SpokenSegmentAnalysis[]) => void;
+  onSpeechResults?: (results: any) => void;
 }
 
 export interface RecognitionHandle {
@@ -91,6 +94,7 @@ export function startRecognition(
 
   let accumulatedFinalText = '';
   let latestTranscript = '';
+  let latestRawResults: any = null;
   let isStopped = false;
   let isSilenceTimerPaused = false;
   let rec: AnyRecognition = null;
@@ -135,6 +139,8 @@ export function startRecognition(
 
       rec.onresult = (event: any) => {
         let currentCycleText = '';
+        latestRawResults = event.results;
+        opts.onSpeechResults?.(event.results);
 
         for (let i = 0; i < event.results.length; i++) {
           const item = event.results[i];
@@ -155,9 +161,9 @@ export function startRecognition(
 
           currentCycleText += (currentCycleText ? ' ' : '') + transcript;
 
-          // If final result, record pronunciation metadata for the segment
+          // If final result, record pronunciation metadata for the segment (< 0.75 threshold)
           if (item.isFinal && transcript) {
-            const isLowConfidence = confidence > 0 && confidence < 0.80;
+            const isLowConfidence = confidence > 0 && confidence < 0.75;
             const isAmbiguous = alternatives.length > 0;
 
             const existingIdx = recordedSegments.findIndex((s) => s.text === transcript);
@@ -260,6 +266,28 @@ export function startRecognition(
     return words;
   };
 
+  const extractAllWords = (): WordConfidenceInfo[] => {
+    const words: WordConfidenceInfo[] = [];
+    const seenWords = new Set<string>();
+
+    for (const segment of recordedSegments) {
+      const segWords = segment.text.split(/\s+/).filter((w) => w.length > 1);
+      for (const w of segWords) {
+        const cleanWord = w.toLowerCase().replace(/[^a-z']/g, '');
+        if (!cleanWord || seenWords.has(cleanWord)) continue;
+        seenWords.add(cleanWord);
+
+        words.push({
+          word: cleanWord,
+          confidence: segment.confidence > 0 ? segment.confidence : 0.85,
+          alternatives: segment.alternatives,
+          isLowConfidence: Boolean(segment.isLowConfidence || segment.isAmbiguous),
+        });
+      }
+    }
+    return words;
+  };
+
   const getDetails = (): RecognitionDetails => {
     const text = latestTranscript.trim();
     let totalConf = 0;
@@ -279,6 +307,8 @@ export function startRecognition(
       confidence: avgConfidence,
       segments: [...recordedSegments],
       lowConfidenceWords: extractLowConfidenceWords(),
+      allWords: extractAllWords(),
+      rawResults: latestRawResults,
     };
   };
 
@@ -388,3 +418,46 @@ export function scorePronunciation(target: string, heard: string | null): number
   const score = Math.round((totalMatchScore / targetTokens.length) * 100);
   return Math.min(100, Math.max(10, score));
 }
+
+/**
+ * Extracts word-level confidence scores from SpeechRecognitionResult array.
+ * If any recognized word has a confidence score below 0.75, it is flagged with isLowConfidence = true.
+ */
+export function extractWordsFromSpeechResults(eventResults: any): WordConfidenceInfo[] {
+  const words: WordConfidenceInfo[] = [];
+  if (!eventResults) return words;
+
+  for (let i = 0; i < eventResults.length; i++) {
+    const item = eventResults[i];
+    if (!item || !item[0]) continue;
+    const topAlt = item[0];
+    const transcript = (topAlt.transcript || '').trim();
+    const confidence =
+      typeof topAlt.confidence === 'number' && topAlt.confidence > 0
+        ? topAlt.confidence
+        : 0.72;
+
+    const alternatives: string[] = [];
+    for (let a = 1; a < item.length; a++) {
+      const altText = item[a]?.transcript?.trim();
+      if (altText && altText !== transcript && !alternatives.includes(altText)) {
+        alternatives.push(altText);
+      }
+    }
+
+    const isLowConfidence = confidence < 0.75;
+    const tokens = transcript.split(/\s+/).filter(Boolean);
+    for (const token of tokens) {
+      const cleanWord = token.toLowerCase().replace(/[^a-z']/g, '');
+      if (!cleanWord) continue;
+      words.push({
+        word: cleanWord,
+        confidence: Math.round(confidence * 100) / 100,
+        alternatives,
+        isLowConfidence,
+      });
+    }
+  }
+  return words;
+}
+

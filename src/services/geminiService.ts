@@ -2,7 +2,7 @@
 // Supports FreeLLMAPI Gateway (port 31415) and Direct Google Gemini 2.5 Flash,
 // Full Multi-Turn Memory, Multimodal Audio Capture, System Instructions, and Transparent Error Reporting.
 
-import type { AIPersona, LessonPlan, PhrasingUpgrade, PronunciationCoachingPoint } from '../types';
+import type { AIPersona, LessonPlan, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../types';
 import type { SpokenSegmentAnalysis } from './speechRecognition';
 import { getLLMConfig } from './llmConfig';
 import { toast } from './toast';
@@ -54,7 +54,9 @@ export interface DynamicScorecardResult {
   listening: number;
   upgrades: DynamicScorecardUpgrade[];
   pronunciationCoachingPoints?: PronunciationCoachingPoint[];
+  pronunciationFeedback?: PronunciationFeedbackWord[];
   acousticFeedback?: string;
+  lowConfidenceWords?: string[];
 }
 
 /**
@@ -342,6 +344,7 @@ export async function generateGeminiScorecard(params: {
   defaultUpgrades?: PhrasingUpgrade[];
   audioClips?: AudioAttachment[];
   pronunciationMetadata?: SpokenSegmentAnalysis[];
+  lowConfidenceWords?: string[];
 }): Promise<DynamicScorecardResult | null> {
   const config = getLLMConfig();
   const apiKey = config.apiKey;
@@ -352,6 +355,7 @@ export async function generateGeminiScorecard(params: {
     defaultUpgrades = plan.upgrades,
     audioClips = [],
     pronunciationMetadata = [],
+    lowConfidenceWords = [],
   } = params;
 
   if (!apiKey || userTurns.length === 0) {
@@ -363,7 +367,7 @@ export async function generateGeminiScorecard(params: {
     : 86;
 
   const lowConfItems = pronunciationMetadata.filter(
-    (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.8) || s.alternatives.length > 0
+    (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.75) || s.alternatives.length > 0
   );
 
   const phoneticNotes =
@@ -385,16 +389,16 @@ Warm-up pronunciation accuracy: ${avgPhraseScore}%.
 Student's actual spoken lines:
 ${userTurns.map((turn, i) => `${i + 1}. "${turn}"`).join('\n')}
 
-SpeechRecognition Acoustic Confidence & Phonetic Ambiguities (< 0.80):
+SpeechRecognition Acoustic Confidence & Phonetic Ambiguities (< 0.75):
 ${phoneticNotes}
-
 ${
-  audioClips.length > 0 && config.provider === 'direct-gemini'
-    ? `CRITICAL MULTIMODAL INSTRUCTION:
-${audioClips.length} audio clip(s) of the learner speaking their turns are attached as inlineData.
-Listen directly to their real recorded voice: evaluate their genuine British accent, syllable stress, intonation, vowel length, rhythm, and hesitation—even if the browser's speech-to-text auto-corrected their words.`
+  lowConfidenceWords.length > 0
+    ? `Flagged browser low-confidence words (< 0.75): [${lowConfidenceWords.join(', ')}]`
     : ''
 }
+
+CRITICAL MULTIMODAL PRONUNCIATION INSTRUCTION:
+Listen to the user's recorded audio clip and compare their pronunciation against natural British English phonetics. Return an overall pronunciation percentage (0–100%) and identify up to 2 specific words where their accent, vowel length, or syllable stress made the word ambiguous. Include these in the JSON scorecard under pronunciationFeedback (specifying word, issue, and a short coaching tip).
 
 Analyze their spoken language for:
 1. Authentic British English usage, polite request structures, understatement, and grammar.
@@ -402,11 +406,18 @@ Analyze their spoken language for:
 
 Output a JSON object conforming strictly to this schema:
 {
-  "overall": <number 65-98>,
-  "fluency": <number 65-98>,
-  "pronunciation": <number 65-98>,
-  "listening": <number 65-98>,
+  "overall": <number 0-100>,
+  "fluency": <number 0-100>,
+  "pronunciation": <number 0-100>,
+  "listening": <number 0-100>,
   "acousticFeedback": "<1-2 encouraging sentences describing their intonation, syllable stress, rhythm, or accent heard in the audio>",
+  "pronunciationFeedback": [
+    {
+      "word": "<specific word where accent, vowel length, or syllable stress made the word ambiguous>",
+      "issue": "<concise issue description: accent, vowel length, or syllable stress>",
+      "tip": "<short coaching tip on natural British English phonetics>"
+    }
+  ],
   "pronunciationCoachingPoints": [
     {
       "wordOrPhrase": "<exact word or short phrase with lower confidence or accent challenge>",
@@ -427,7 +438,7 @@ Output a JSON object conforming strictly to this schema:
   ]
 }
 
-Provide 2 or 3 insightful phrasing upgrades and 1 to 3 targeted pronunciation coaching points based on their actual speech and audio.
+Provide 2 or 3 insightful phrasing upgrades and up to 2 specific ambiguous words under pronunciationFeedback based on their actual speech and audio.
 Return strictly valid JSON only.`;
 
   try {
@@ -536,6 +547,46 @@ Return strictly valid JSON only.`;
 
     const parsed = JSON.parse(rawJson);
     if (parsed && Array.isArray(parsed.upgrades) && parsed.upgrades.length > 0) {
+      let pronunciationFeedback: PronunciationFeedbackWord[] = [];
+      if (Array.isArray(parsed.pronunciationFeedback)) {
+        pronunciationFeedback = parsed.pronunciationFeedback
+          .slice(0, 2)
+          .map((item: any) => ({
+            word: String(item.word || '').replace(/^["']|["']$/g, '').trim(),
+            issue: String(item.issue || 'Vowel length & syllable stress').trim(),
+            tip: String(item.tip || item.coachingTip || 'Focus on British English vowel clarity and syllable stress.').trim(),
+          }))
+          .filter((item: PronunciationFeedbackWord) => item.word.length > 0);
+      } else if (parsed.pronunciationFeedback && typeof parsed.pronunciationFeedback === 'object') {
+        const wordsArr =
+          parsed.pronunciationFeedback.words ||
+          parsed.pronunciationFeedback.ambiguousWords ||
+          [];
+        if (Array.isArray(wordsArr)) {
+          pronunciationFeedback = wordsArr
+            .slice(0, 2)
+            .map((item: any) => ({
+              word: String(item.word || '').replace(/^["']|["']$/g, '').trim(),
+              issue: String(item.issue || 'Vowel length & syllable stress').trim(),
+              tip: String(item.tip || item.coachingTip || 'Focus on British English vowel clarity and syllable stress.').trim(),
+            }))
+            .filter((item: PronunciationFeedbackWord) => item.word.length > 0);
+        }
+      }
+
+      // If Gemini did not identify 2 ambiguous words, backfill from low-confidence words detected by speech recognition
+      if (pronunciationFeedback.length === 0 && (lowConfidenceWords.length > 0 || lowConfItems.length > 0)) {
+        const wordsToUse = lowConfidenceWords.length > 0
+          ? lowConfidenceWords.slice(0, 2)
+          : lowConfItems.slice(0, 2).map((s) => s.text);
+
+        pronunciationFeedback = wordsToUse.map((w) => ({
+          word: w,
+          issue: 'Acoustic confidence below 75% · Vowel length or syllable stress',
+          tip: 'Lengthen British long vowels and soften final consonants to improve phonetic clarity.',
+        }));
+      }
+
       const coachingPoints: PronunciationCoachingPoint[] = Array.isArray(parsed.pronunciationCoachingPoints)
         ? parsed.pronunciationCoachingPoints.map((p: any) => ({
             wordOrPhrase: p.wordOrPhrase || 'Pronunciation note',
@@ -554,14 +605,16 @@ Return strictly valid JSON only.`;
           }));
 
       return {
-        overall: Number(parsed.overall) || 88,
-        fluency: Number(parsed.fluency) || 85,
-        pronunciation: Number(parsed.pronunciation) || avgPhraseScore,
-        listening: Number(parsed.listening) || 90,
+        overall: Math.min(100, Math.max(0, Number(parsed.overall) || 88)),
+        fluency: Math.min(100, Math.max(0, Number(parsed.fluency) || 85)),
+        pronunciation: Math.min(100, Math.max(0, Number(parsed.pronunciation) || avgPhraseScore)),
+        listening: Math.min(100, Math.max(0, Number(parsed.listening) || 90)),
         acousticFeedback:
           parsed.acousticFeedback ||
           'Your spoken rhythm is clear and natural. With a little more elongation on British long vowels, your fluency will shine even more.',
+        pronunciationFeedback,
         pronunciationCoachingPoints: coachingPoints,
+        lowConfidenceWords,
         upgrades: parsed.upgrades.map((u: any, i: number) => {
           const what = u.whatYouSaid || userTurns[i] || 'Yes please';
           const more = u.moreNaturalBritish || u.moreNatural || 'Could I get that, please?';
@@ -583,6 +636,10 @@ Return strictly valid JSON only.`;
     return null;
   } catch (err: any) {
     console.warn('[geminiService] Scorecard generation fallback:', err);
+    const fallbackWords = lowConfidenceWords.length > 0
+      ? lowConfidenceWords.slice(0, 2)
+      : lowConfItems.slice(0, 2).map((s) => s.text);
+
     return {
       overall: 86,
       fluency: 84,
@@ -590,6 +647,11 @@ Return strictly valid JSON only.`;
       listening: 88,
       acousticFeedback:
         'Great speaking practice today! Your confidence and conversational flow are developing well.',
+      pronunciationFeedback: fallbackWords.map((w) => ({
+        word: w,
+        issue: 'Acoustic confidence below 75% · Vowel length or syllable stress',
+        tip: 'Practice natural British syllable stress and vowel elongation.',
+      })),
       pronunciationCoachingPoints: lowConfItems.slice(0, 3).map((item) => ({
         wordOrPhrase: item.text,
         confidence: Math.round((item.confidence || 0.75) * 100),
@@ -598,6 +660,7 @@ Return strictly valid JSON only.`;
           item.alternatives.join(', ') || 'approximate sounds'
         }.`,
       })),
+      lowConfidenceWords,
       upgrades: defaultUpgrades.map((u) => ({
         ...u,
         moreNaturalBritish: u.moreNatural,
