@@ -125,14 +125,11 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
   useEffect(() => {
     if (!isOpen || currentStep >= QUESTIONS.length || result) return;
 
-    setActiveInputText(answers[currentStep] || '');
-    setIsEditingText(false);
-
     // Speak James's question
     const q = QUESTIONS[currentStep].question;
-    setIsAiSpeaking(true);
     speakEnglish(q, {
       rate: audioSpeed,
+      onStart: () => setIsAiSpeaking(true),
       onEnd: () => setIsAiSpeaking(false),
     });
 
@@ -140,7 +137,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
       stopSpeaking();
       setIsAiSpeaking(false);
     };
-  }, [currentStep, isOpen, result]);
+  }, [currentStep, isOpen, result, audioSpeed]);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -236,6 +233,8 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
 
     if (currentStep < QUESTIONS.length - 1) {
       setCurrentStep((prev) => prev + 1);
+      setActiveInputText(answers[currentStep + 1] || '');
+      setIsEditingText(false);
     } else {
       // All 3 questions answered! Begin evaluation
       setIsAnalyzing(true);

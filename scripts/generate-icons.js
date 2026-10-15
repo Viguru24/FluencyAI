@@ -50,12 +50,14 @@ async function generate() {
     </svg>
   `;
 
-  await sharp(svgBuffer)
+  const maskableBuffer = Buffer.from(maskableSvg);
+
+  await sharp(maskableBuffer)
     .resize(192, 192)
     .png()
     .toFile(path.join(publicDir, 'icon-maskable-192.png'));
 
-  await sharp(svgBuffer)
+  await sharp(maskableBuffer)
     .resize(512, 512)
     .png()
     .toFile(path.join(publicDir, 'icon-maskable-512.png'));

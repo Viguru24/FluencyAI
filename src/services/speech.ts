@@ -26,15 +26,15 @@ export function cleanTextForSpeech(raw: string): string {
     if (responseMatch && responseMatch[1]?.trim()) {
       cleaned = responseMatch[1];
     } else {
-      cleaned = cleaned.replace(/(?:Thinking Process|Thought Process|Reasoning Process|Chain of [Tt]hought|Internal Reasoning):[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|$)/i, '');
+      cleaned = cleaned.replace(/(?:Thinking Process|Thought Process|Reasoning Process|Chain of [Tt]hought|Internal Reasoning):[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#-])[A-Z"']|$)/i, '');
     }
   }
 
   // Strip standalone numbered thinking steps e.g. "1. **Analyze...**"
-  cleaned = cleaned.replace(/^\s*\d+\.\s+\*\*(?:Analyze|Determine|Formulate|Identify|Consider|Acknowledge|Evaluate|Draft|Check|Plan|Context|Persona)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|^\s*\d+\.|$)/gim, '');
+  cleaned = cleaned.replace(/^\s*\d+\.\s+\*\*(?:Analyze|Determine|Formulate|Identify|Consider|Acknowledge|Evaluate|Draft|Check|Plan|Context|Persona)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#-])[A-Z"']|^\s*\d+\.|$)/gim, '');
 
   // Strip planning bullets like "* Role: James...", "* Start directly with dialogue..."
-  cleaned = cleaned.replace(/^\s*[*•-]\s+\*\*(?:Role|Scenario|Last interaction|Formulate|Tone|Plan)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#\-])[A-Z"']|^\s*[*•-]|$)/gim, '');
+  cleaned = cleaned.replace(/^\s*[*•-]\s+\*\*(?:Role|Scenario|Last interaction|Formulate|Tone|Plan)[^\n]*\*\*[\s\S]*?(?=(?:\r?\n){2,}(?![*\d\s#-])[A-Z"']|^\s*[*•-]|$)/gim, '');
   cleaned = cleaned.replace(/^\s*[*•-]\s+(?:Role|Scenario|Last interaction|Acknowledge|Maintain|Keep it concise|Start directly with dialogue)[^\n]*\n?/gim, '');
 
   return cleaned

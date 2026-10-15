@@ -62,7 +62,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    checkGateway(getLLMConfig());
+    const initialConf = getLLMConfig();
+    if (initialConf.apiKey && initialConf.apiKey.length >= 5) {
+      testGatewayConnection(initialConf).then((res) => {
+        setIsGatewayConnected(res.ok);
+      });
+    }
 
     const handleConfigChange = (e: Event) => {
       const customEvt = e as CustomEvent<LLMConfig>;

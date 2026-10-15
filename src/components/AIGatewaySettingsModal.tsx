@@ -61,15 +61,17 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
 
   useEffect(() => {
     if (isOpen) {
-      const current = getLLMConfig();
-      if (!current.apiKey && (import.meta as any).env?.VITE_FREELLM_API_KEY) {
-        current.apiKey = (import.meta as any).env.VITE_FREELLM_API_KEY;
-      }
-      if (current.apiKey.startsWith('freellma')) {
-        current.provider = 'freellmapi';
-      }
-      setConfig(current);
-      setTestResult(null);
+      queueMicrotask(() => {
+        const current = getLLMConfig();
+        if (!current.apiKey && (import.meta as any).env?.VITE_FREELLM_API_KEY) {
+          current.apiKey = (import.meta as any).env.VITE_FREELLM_API_KEY;
+        }
+        if (current.apiKey.startsWith('freellma')) {
+          current.provider = 'freellmapi';
+        }
+        setConfig(current);
+        setTestResult(null);
+      });
 
       const loadVoices = () => {
         const voices = getAvailableBritishVoices();
