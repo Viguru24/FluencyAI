@@ -33,6 +33,9 @@ export const PersonaSelectorModal: React.FC<PersonaSelectorModalProps> = ({
       personaName: persona.name,
       rate: persona.rate || 0.94,
       pitch: persona.pitch || 1.0,
+      accent: persona.accent || 'UK',
+      voicePreferences: persona.ttsVoicePreference,
+      gender: persona.gender,
       onStart: () => setAuditioningId(persona.id as PersonaId),
       onEnd: () => setAuditioningId(null),
     });
@@ -110,6 +113,13 @@ export const PersonaSelectorModal: React.FC<PersonaSelectorModalProps> = ({
                   </div>
 
                   <p className="text-[11px] font-semibold text-amber-300/90">{p.tagline}</p>
+
+                  {p.vocalProfile && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800/90 border border-slate-700/70 text-[11px] font-medium text-indigo-300">
+                      <span>{p.vocalProfile}</span>
+                    </div>
+                  )}
+
                   <p className="text-xs text-slate-300 leading-relaxed">{p.bio}</p>
 
                   <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 italic">
@@ -128,7 +138,7 @@ export const PersonaSelectorModal: React.FC<PersonaSelectorModalProps> = ({
                     }`}
                   >
                     <Volume2 className={`w-3.5 h-3.5 ${isAuditioning ? 'animate-bounce' : ''}`} />
-                    {isAuditioning ? 'Speaking sample...' : 'Audition Voice'}
+                    {isAuditioning ? `Playing ${p.name}…` : 'Audition Voice'}
                   </button>
 
                   <button

@@ -165,12 +165,15 @@ export const RoleplayStage: React.FC<Props> = ({
         rate: audioSpeed,
         accent: plan.persona.accent,
         personaName: plan.persona.name,
+        pitch: plan.persona.pitch,
+        voicePreferences: plan.persona.ttsVoicePreference,
+        gender: plan.persona.gender,
         onStart: () => setIsAiSpeaking(true),
         onEnd: () => setIsAiSpeaking(false),
       });
       setIsAiSpeaking(true);
     },
-    [audioSpeed, plan.persona.accent, plan.persona.name]
+    [audioSpeed, plan.persona.accent, plan.persona.name, plan.persona.pitch, plan.persona.ttsVoicePreference, plan.persona.gender]
   );
 
   const pushAiTurn = useCallback(

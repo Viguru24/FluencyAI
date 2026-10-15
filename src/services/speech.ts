@@ -1,6 +1,4 @@
-// Web Speech API & Neural British Voice Engine Service
-// Supports Multi-Engine Neural British TTS, Microsoft Edge Online (Natural) Voices,
-// Google UK Cloud Neural Voices, Markdown/Emoji Stripping, and Custom Voice Audition.
+import { ALL_PERSONAS, getActivePersona } from '../data/personas';
 
 // Track active utterance and HTML audio element
 let currentUtterance: SpeechSynthesisUtterance | null = null;
@@ -88,104 +86,126 @@ export function isRoboticVoice(voice: SpeechSynthesisVoice | { name: string; loc
 }
 
 /**
- * Scores voices to prioritize realistic human-like Neural British voices (Ryan, Sonia, Google Cloud)
- * while heavily rejecting robotic offline SAPI voices (Microsoft George, Hazel, David).
+ * Scores voices to prioritize realistic human-like Neural British voices (Ryan, Sonia, Thomas, Emily)
+ * with strict gender and regional accent matching, while penalizing robotic offline SAPI voices.
  */
 export function scoreVoice(
   voice: SpeechSynthesisVoice,
   selectedVoiceName: string | null,
   personaName?: string,
-  accent?: 'UK' | 'US'
+  accent?: 'UK' | 'US',
+  preferences?: string[],
+  gender?: 'male' | 'female'
 ): number {
-  // 1. Robotic SAPI voices get disqualifying negative score
-  if (isRoboticVoice(voice)) {
-    return -100000;
-  }
-
   let score = 0;
   const name = voice.name;
   const lang = voice.lang.replace('_', '-').toLowerCase();
 
-  // 2. User's manually selected neural voice gets top priority
-  if (selectedVoiceName && name === selectedVoiceName) {
-    score += 10000;
+  // 1. Robotic SAPI voices get disqualifying negative score
+  if (isRoboticVoice(voice)) {
+    score -= 40000;
   }
 
+  // 2. User's manually selected neural voice gets top priority only if valid for this persona
+  if (selectedVoiceName && name.toLowerCase() === selectedVoiceName.toLowerCase()) {
+    score += 15000;
+  }
+
+  // Detect voice gender
+  const isVoiceFemale = /(?:female|woman|sonia|libby|maisie|emily|moira|serena|kate|hazel|zira|fiona|orla|stephanie|aria|jenny|clara|victoria)/i.test(name);
+  const isVoiceMale = /(?:male|man\b|ryan|thomas|george|david|daniel|mark|guy|oliver\b|connor|richard)/i.test(name);
+
+  // Detect persona requirements
   const pLower = (personaName || '').toLowerCase();
-  const isEmma = /emma|academic/i.test(pLower);
-  const isOliver = /oliver|ollie|tech/i.test(pLower);
+  const isEmma = /emma|academic|literature/i.test(pLower);
+  const isOliver = /oliver|ollie|tech|founder/i.test(pLower);
   const isAoife = /aoife|irish|dublin|hospitality/i.test(pLower);
-  const isFemalePersona = isEmma || isAoife || /barista|woman|female/i.test(pLower);
-  const isPatel = /patel|doctor/i.test(pLower);
+  const isJames = /james|corporate|mentor|broadcaster/i.test(pLower) || (!isEmma && !isOliver && !isAoife && !/barista|sarah|maya/i.test(pLower));
 
-  const isEdgeNatural = /natural|neural|online/i.test(name);
-  const isRyan = /ryan/i.test(name) && isEdgeNatural;
-  const isSonia = /sonia/i.test(name) && isEdgeNatural;
-  const isLibbyMaisie = /libby|maisie|hazel/i.test(name) && isEdgeNatural;
-  const isThomasOliver = /thomas|oliver/i.test(name) && isEdgeNatural;
-  const isIrish = /emily|ireland|irish|en-ie/i.test(name) || lang.toLowerCase() === 'en-ie';
+  const personaIsFemale = gender === 'female' || isEmma || isAoife || /barista|woman|female|sarah|maya|recruiter/i.test(pLower);
+  const personaIsMale = gender === 'male' || (!personaIsFemale && (isJames || isOliver || /david|carlos|patel|doctor|male/i.test(pLower)));
 
-  const isGoogleMale = /google uk english male/i.test(name);
-  const isGoogleFemale = /google uk english female/i.test(name);
-  const isGoogleUK = /google/i.test(name) && lang.startsWith('en-gb');
-  const isAppleEnhanced = /enhanced|premium/i.test(name) && lang.startsWith('en');
+  // Strict Gender Alignment: never allow male voices for female personas and vice versa
+  if (personaIsFemale) {
+    if (isVoiceFemale) score += 10000;
+    else if (isVoiceMale) score -= 30000;
+  } else if (personaIsMale) {
+    if (isVoiceMale) score += 10000;
+    else if (isVoiceFemale) score -= 30000;
+  }
 
-  // Persona-specific neural voice matching
+  // Preference list matching from persona definitions
+  if (preferences && preferences.length > 0) {
+    for (let i = 0; i < preferences.length; i++) {
+      const pref = preferences[i].toLowerCase();
+      if (name.toLowerCase().includes(pref) || lang.includes(pref)) {
+        score += (preferences.length - i) * 2500;
+        break;
+      }
+    }
+  }
+
+  // Persona-specific matching
   if (isAoife) {
-    if (isIrish) score += 7000;
-    else if (isSonia) score += 6000;
-    else if (isLibbyMaisie) score += 5600;
-    else if (isGoogleFemale) score += 5200;
+    // Irish female voice top priority (Emily in Edge, Moira in iOS/macOS, Orla in Windows)
+    if (/emily|moira|orla|irish|ireland|dublin/i.test(name) || lang === 'en-ie') {
+      score += 16000;
+    } else if (/maisie|sonia|libby/i.test(name)) {
+      score += 7000;
+    } else if (/google.*female/i.test(name)) {
+      score += 6500;
+    }
   } else if (isEmma) {
-    if (isSonia) score += 6500;
-    else if (isLibbyMaisie) score += 6000;
-    else if (isGoogleFemale) score += 5400;
-    else if (isRyan) score += 3000;
+    // Oxford academic British female voice (Sonia in Edge, Serena/Kate in macOS, Google Female in Chrome)
+    if (/sonia/i.test(name)) {
+      score += 14000;
+    } else if (/libby|serena|kate/i.test(name)) {
+      score += 10000;
+    } else if (/google.*female/i.test(name)) {
+      score += 8000;
+    } else if (/hazel/i.test(name)) {
+      score += 4000;
+    }
   } else if (isOliver) {
-    if (isThomasOliver) score += 6500;
-    else if (isRyan) score += 5800;
-    else if (isGoogleMale) score += 5400;
-  } else if (isFemalePersona) {
-    // Other Female Interlocutors (Barista / Recruiter): Prioritize Sonia & female neural
-    if (isSonia) score += 6000;
-    else if (isLibbyMaisie) score += 5500;
-    else if (isGoogleFemale) score += 5200;
-    else if (/female|woman|jenny|aria/i.test(name) && isEdgeNatural) score += 4500;
-    else if (isRyan) score += 3200;
-    else if (isGoogleMale) score += 3000;
-  } else if (isPatel) {
-    // Dr. Patel (Senior NHS Consultant): Prioritize Ryan / Sonia / Google UK
-    if (isRyan) score += 6000;
-    else if (isSonia) score += 5800;
-    else if (isGoogleMale || isGoogleFemale) score += 5500;
-    else if (isThomasOliver) score += 5200;
-    else if (isEdgeNatural) score += 4800;
-  } else {
-    // James (AI British Coach): Prioritize Microsoft Ryan Online (Natural) or Google UK Male
-    if (isRyan) score += 6000;
-    else if (isGoogleMale) score += 5600;
-    else if (isThomasOliver) score += 5200;
-    else if (isSonia) score += 4500;
-    else if (isGoogleFemale) score += 4200;
-    else if (isEdgeNatural) score += 4000;
+    // Manchester modern tech male voice (Thomas in Edge, Oliver in macOS, Google Male in Chrome)
+    if (/thomas/i.test(name)) {
+      score += 14000;
+    } else if (/oliver/i.test(name) && !isVoiceFemale) {
+      score += 11000;
+    } else if (/google.*male/i.test(name)) {
+      score += 8500;
+    } else if (/ryan/i.test(name)) {
+      score += 5500;
+    }
+  } else if (isJames) {
+    // London RP mentor male voice (Ryan in Edge, Daniel in macOS, Google Male in Chrome)
+    if (/ryan/i.test(name)) {
+      score += 14000;
+    } else if (/daniel/i.test(name)) {
+      score += 9000;
+    } else if (/google.*male/i.test(name)) {
+      score += 8500;
+    } else if (/george/i.test(name)) {
+      score += 3000;
+    }
   }
 
   // Cloud Neural & Enhanced bonuses
-  if (!voice.localService) score += 2000;
-  if (isEdgeNatural) score += 1500;
-  if (isGoogleUK) score += 1200;
-  if (isAppleEnhanced) score += 1500;
+  if (!voice.localService) score += 3000;
+  if (/natural|neural|online/i.test(name)) score += 2500;
+  if (/enhanced|premium/i.test(name)) score += 2000;
+  if (/google/i.test(name) && lang.startsWith('en')) score += 1500;
 
-  // British English accent bonus
+  // Regional Accent bonus
   if (accent === 'US') {
-    if (lang === 'en-us') score += 1000;
+    if (lang === 'en-us') score += 1500;
   } else {
-    if (lang === 'en-gb') score += 1000;
-    else if (lang.startsWith('en-gb')) score += 800;
-    else if (/british|united kingdom|uk\b/i.test(name)) score += 600;
+    if (lang === 'en-gb') score += 1500;
+    else if (lang === 'en-ie' && isAoife) score += 4000;
+    else if (lang.startsWith('en-gb') || lang.startsWith('en-ie')) score += 1000;
+    else if (/british|united kingdom|uk\b/i.test(name)) score += 800;
   }
 
-  // General English fallback
   if (lang.startsWith('en')) score += 200;
 
   return score;
@@ -272,35 +292,58 @@ export function ensureVoicesLoaded(): Promise<SpeechSynthesisVoice[]> {
 
 /**
  * Selects the absolute best neural voice for the speaking persona,
- * prioritizing Microsoft Ryan / Sonia / Google UK and never allowing robotic SAPI voices.
+ * prioritizing Microsoft Ryan / Sonia / Thomas / Emily / Google UK with strict gender fidelity.
  */
 export function selectBestVoiceForPersona(
   allVoices: SpeechSynthesisVoice[],
   personaName?: string,
   accent?: 'UK' | 'US',
-  overrideVoiceName?: string
+  overrideVoiceName?: string,
+  preferences?: string[],
+  gender?: 'male' | 'female'
 ): SpeechSynthesisVoice | null {
   if (!allVoices || allVoices.length === 0) return null;
 
-  // Explicitly re-query localStorage for persistent neural voice lock
-  const selectedVoiceName = overrideVoiceName || getSelectedTTSVoice();
+  // 1. Direct override if caller requested a specific voice by name
+  if (overrideVoiceName) {
+    const directMatch = allVoices.find(
+      (v) => v.name.toLowerCase() === overrideVoiceName.toLowerCase()
+    );
+    if (directMatch) return directMatch;
+  }
+
+  // 2. Resolve persona configuration
+  const pLower = (personaName || '').toLowerCase();
+  const matchedPersona =
+    ALL_PERSONAS[pLower as keyof typeof ALL_PERSONAS] ||
+    Object.values(ALL_PERSONAS).find(
+      (p) => p.name.toLowerCase() === pLower || pLower.includes(p.name.toLowerCase())
+    );
+
+  const effectiveGender = gender || matchedPersona?.gender;
+  const effectivePreferences =
+    preferences && preferences.length > 0
+      ? preferences
+      : matchedPersona?.ttsVoicePreference;
+
+  // Only consider global stored voice if we are synthesizing James or no persona specified
+  const isJamesOrUnspecified = !personaName || /james|broadcaster|mentor/i.test(pLower);
+  const selectedVoiceName = isJamesOrUnspecified ? getSelectedTTSVoice() : null;
 
   const englishOnly = allVoices.filter(
     (v) =>
       v.lang.toLowerCase().startsWith('en') ||
-      /british|united kingdom|english|ryan|sonia|libby|maisie|thomas|oliver|google/i.test(v.name)
+      /british|united kingdom|ireland|irish|english|ryan|sonia|libby|maisie|thomas|oliver|emily|moira|google/i.test(v.name)
   );
 
   const candidatePool = englishOnly.length > 0 ? englishOnly : allVoices;
-
-  // Strictly filter out robotic SAPI voices (Microsoft George, Hazel, David)
   const nonRobotic = candidatePool.filter((v) => !isRoboticVoice(v));
   const usablePool = nonRobotic.length > 0 ? nonRobotic : candidatePool;
 
   const sorted = [...usablePool].sort(
     (a, b) =>
-      scoreVoice(b, selectedVoiceName, personaName, accent) -
-      scoreVoice(a, selectedVoiceName, personaName, accent)
+      scoreVoice(b, selectedVoiceName, personaName, accent, effectivePreferences, effectiveGender) -
+      scoreVoice(a, selectedVoiceName, personaName, accent, effectivePreferences, effectiveGender)
   );
 
   return sorted[0] || null;
@@ -332,8 +375,15 @@ export function ensureNeuralVoiceSelected(voices?: SpeechSynthesisVoice[]): stri
     }
   }
 
-  // Lock to the best British neural voice (Ryan or Sonia)
-  const bestVoice = selectBestVoiceForPersona(allVoices, 'James', 'UK');
+  const activePersona = getActivePersona();
+  const bestVoice = selectBestVoiceForPersona(
+    allVoices,
+    activePersona.name,
+    activePersona.accent,
+    undefined,
+    activePersona.ttsVoicePreference,
+    activePersona.gender
+  );
   if (bestVoice) {
     localStorage.setItem(STORAGE_KEY_SELECTED_VOICE, bestVoice.name);
     return bestVoice.name;
@@ -356,7 +406,7 @@ export function getAvailableBritishVoices(): VoiceOption[] {
   const englishOnly = voices.filter(
     (v) =>
       v.lang.toLowerCase().startsWith('en') ||
-      /british|united kingdom|english|ryan|sonia|george|hazel|google/i.test(v.name)
+      /british|united kingdom|ireland|english|ryan|sonia|thomas|libby|emily|george|hazel|google/i.test(v.name)
   );
 
   const scored = englishOnly.map((v) => {
@@ -369,7 +419,7 @@ export function getAvailableBritishVoices(): VoiceOption[] {
       isNeural,
       isOnline: !v.localService,
       isRobotic,
-      score: scoreVoice(v, selected),
+      score: scoreVoice(v, selected, 'James', 'UK'),
     };
   });
 
@@ -387,22 +437,26 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   });
 }
 
+export interface SpeakOptions {
+  rate?: number; // speech speed rate (0.80 - 1.30)
+  pitch?: number; // speech pitch (0.70 - 1.45)
+  accent?: 'UK' | 'US';
+  voiceName?: string;
+  personaName?: string;
+  gender?: 'male' | 'female';
+  voicePreferences?: string[];
+  onStart?: () => void;
+  onEnd?: () => void;
+}
+
 /**
- * High-quality British Neural Voice Synthesis.
- * Automatically selects Edge/Google Online Natural voices, explicitly re-queries
- * localStorage for fluency_selected_tts_voice, strips symbols, and prevents robotic SAPI fallback.
+ * High-quality British & Regional Neural Voice Synthesis.
+ * Automatically selects Edge/Google Online Natural voices matched to persona identity,
+ * cadence, and gender.
  */
 export function speakEnglish(
   rawText: string,
-  options?: {
-    rate?: number; // 0.92 for clear/natural, 1.0 for standard
-    pitch?: number;
-    accent?: 'UK' | 'US';
-    voiceName?: string;
-    personaName?: string;
-    onStart?: () => void;
-    onEnd?: () => void;
-  }
+  options?: SpeakOptions
 ) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     console.warn('Speech synthesis not supported');
@@ -421,25 +475,42 @@ export function speakEnglish(
   }
 
   const executeSynthesis = (allVoices: SpeechSynthesisVoice[]) => {
-    // Explicitly re-query localStorage for persistent neural voice lock
-    const selectedVoiceName = options?.voiceName || getSelectedTTSVoice();
+    // Resolve target persona (fallback to active coach if not specified)
+    const activePersona = getActivePersona();
+    const pLower = (options?.personaName || activePersona.name).toLowerCase();
+    const matchedPersona =
+      ALL_PERSONAS[pLower as keyof typeof ALL_PERSONAS] ||
+      Object.values(ALL_PERSONAS).find(
+        (p) => p.name.toLowerCase() === pLower || pLower.includes(p.name.toLowerCase())
+      ) ||
+      activePersona;
 
-    // Select best neural voice matched to persona and accent
+    const personaName = options?.personaName || matchedPersona.name;
+    const accent = options?.accent || matchedPersona.accent || 'UK';
+    const preferences = options?.voicePreferences || matchedPersona.ttsVoicePreference;
+    const gender = options?.gender || matchedPersona.gender;
+
+    // Select best voice matched to persona identity
     const chosenVoice = selectBestVoiceForPersona(
       allVoices,
-      options?.personaName,
-      options?.accent || 'UK',
-      selectedVoiceName || undefined
+      personaName,
+      accent,
+      options?.voiceName,
+      preferences,
+      gender
     );
 
-    // Calibrate speed: use 0.92x instead of 0.85x to avoid metallic slurred time-stretching
-    const requestedRate = options?.rate ?? 0.92;
-    const calibratedRate = requestedRate < 0.9 ? 0.92 : Math.min(requestedRate, 1.15);
+    // Speed & pitch calibration: respect persona-specific pitch & rate calibrations
+    const baseRate = options?.rate ?? matchedPersona.rate ?? 0.94;
+    const calibratedRate = Math.max(0.80, Math.min(baseRate, 1.30));
+
+    const basePitch = options?.pitch ?? matchedPersona.pitch ?? 1.0;
+    const calibratedPitch = Math.max(0.70, Math.min(basePitch, 1.45));
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = calibratedRate;
-    utterance.pitch = options?.pitch ?? 1.0;
-    utterance.lang = options?.accent === 'US' ? 'en-US' : 'en-GB';
+    utterance.pitch = calibratedPitch;
+    utterance.lang = accent === 'US' ? 'en-US' : (chosenVoice?.lang || 'en-GB');
 
     if (chosenVoice) {
       utterance.voice = chosenVoice;

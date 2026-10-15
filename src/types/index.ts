@@ -108,6 +108,8 @@ export interface AIPersona {
   pitch?: number;
   rate?: number;
   tagline?: string;
+  gender?: 'male' | 'female';
+  vocalProfile?: string;
 }
 
 export interface SRSFlashcard {
