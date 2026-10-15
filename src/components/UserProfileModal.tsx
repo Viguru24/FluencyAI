@@ -29,6 +29,8 @@ import {
 import type { AuthSession, UserProgress } from '../types';
 import { playChime } from '../services/speech';
 import { toast } from '../services/toast';
+import { UserAvatar } from './UserAvatar';
+import { formatDisplayName, normalizeUserAvatar } from '../utils/nameFormatter';
 
 interface Props {
   isOpen: boolean;
@@ -59,8 +61,8 @@ export const UserProfileModal: React.FC<Props> = ({
 
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editName, setEditName] = useState(() => authService.getUser()?.name || progress.name);
-  const [editAvatar, setEditAvatar] = useState(() => authService.getUser()?.picture || progress.avatar || '🧑‍💼');
+  const [editName, setEditName] = useState(() => formatDisplayName(authService.getUser()?.name || progress.name));
+  const [editAvatar, setEditAvatar] = useState(() => normalizeUserAvatar(authService.getUser()?.picture || progress.avatar) || '🧑‍💼');
 
   // VPS Server Config State
   const [serverUrl, setServerUrl] = useState(() => getAuthProviderUrl());
@@ -75,8 +77,8 @@ export const UserProfileModal: React.FC<Props> = ({
     const unsub = authService.onAuthStateChange((newSession) => {
       setSession(newSession);
       if (newSession?.user) {
-        setEditName(newSession.user.name || '');
-        setEditAvatar(newSession.user.picture || '🧑‍💼');
+        setEditName(formatDisplayName(newSession.user.name || ''));
+        setEditAvatar(normalizeUserAvatar(newSession.user.picture) || '🧑‍💼');
       }
     });
     return unsub;
@@ -241,24 +243,27 @@ export const UserProfileModal: React.FC<Props> = ({
       toast.error('Display name cannot be empty');
       return;
     }
+    const cleanName = formatDisplayName(editName.trim());
     setIsLoading(true);
     playChime('tap');
 
     try {
-      await authService.updateProfile({
-        name: editName.trim(),
-        picture: editAvatar,
-      });
-
+      // 1. Immediately update local progress (Local-First!)
       onUpdateProgress((prev) => ({
         ...prev,
-        name: editName.trim(),
+        name: cleanName,
         avatar: editAvatar,
       }));
 
-      // Also sync current XP & streak alongside name
+      // 2. Update authService local session and cloud backend
+      await authService.updateProfile({
+        name: cleanName,
+        picture: editAvatar,
+      });
+
+      // 3. Also sync current XP & streak alongside name
       await authService.syncProgress({
-        name: editName.trim(),
+        name: cleanName,
         picture: editAvatar,
         xp: progress.completedXP,
         streak: progress.streakDays,
@@ -267,9 +272,13 @@ export const UserProfileModal: React.FC<Props> = ({
 
       setIsEditingProfile(false);
       playChime('success');
-      toast.success('Profile updated and saved to VPS database!', 'Profile Saved');
+      toast.success('Profile updated and saved!', 'Profile Saved');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update profile');
+      console.warn('[UserProfileModal] Sync warning:', err);
+      // Local update was already saved
+      setIsEditingProfile(false);
+      playChime('success');
+      toast.success('Profile updated locally!', 'Profile Saved');
     } finally {
       setIsLoading(false);
     }
@@ -345,30 +354,16 @@ export const UserProfileModal: React.FC<Props> = ({
         {/* Modal Top Header */}
         <div className="relative px-6 py-5 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-emerald-400 flex items-center justify-center text-xl shadow-soft">
-              {currentUser?.picture ? (
-                currentUser.picture.startsWith('http') || currentUser.picture.startsWith('data:') ? (
-                  <img
-                    src={currentUser.picture}
-                    alt={currentUser.name}
-                    className="w-full h-full object-cover rounded-2xl"
-                  />
-                ) : (
-                  <span>{currentUser.picture}</span>
-                )
-              ) : progress.avatar ? (
-                <span>{progress.avatar}</span>
-              ) : (
-                <User className="w-5 h-5 text-white" />
-              )}
-              {session && (
-                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
-              )}
-            </div>
+            <UserAvatar
+              picture={currentUser?.picture || progress.avatar}
+              name={formatDisplayName(currentUser?.name || progress.name)}
+              size="lg"
+              showOnlineDot={Boolean(session)}
+            />
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 id="user-profile-title" className="text-base font-extrabold tracking-tight text-white">
-                  {currentUser ? currentUser.name : 'Account & Sync'}
+                  {currentUser ? formatDisplayName(currentUser.name) : 'Account & Sync'}
                 </h3>
                 {session ? (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
@@ -424,6 +419,21 @@ export const UserProfileModal: React.FC<Props> = ({
 
                 {isEditingProfile ? (
                   <div className="space-y-3 pt-1">
+                    {/* Live Preview */}
+                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                      <UserAvatar
+                        picture={editAvatar}
+                        name={editName}
+                        size="md"
+                      />
+                      <div>
+                        <div className="text-xs font-black text-slate-800">
+                          {formatDisplayName(editName) || 'Your Name'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">Live Avatar & Name Preview</div>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="text-[11px] font-bold text-slate-600 uppercase">
                         Display Name
@@ -432,7 +442,7 @@ export const UserProfileModal: React.FC<Props> = ({
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Your Name"
+                        placeholder="Your Name (e.g. Louis de Souza)"
                         className="w-full mt-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                       />
                     </div>
@@ -462,37 +472,25 @@ export const UserProfileModal: React.FC<Props> = ({
                     <button
                       onClick={handleSaveProfile}
                       disabled={isLoading}
-                      className="w-full py-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-1.5 active:scale-95 transition"
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white text-xs font-bold shadow-soft flex items-center justify-center gap-1.5 active:scale-95 transition"
                     >
                       {isLoading ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <Check className="w-3.5 h-3.5" />
                       )}
-                      <span>Save Profile to VPS</span>
+                      <span>Save Profile</span>
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-inner flex items-center justify-center text-2xl flex-shrink-0">
-                      {currentUser?.picture ? (
-                        currentUser.picture.startsWith('http') || currentUser.picture.startsWith('data:') ? (
-                          <img
-                            src={currentUser.picture}
-                            alt={currentUser.name}
-                            className="w-full h-full object-cover rounded-2xl"
-                          />
-                        ) : (
-                          <span>{currentUser.picture}</span>
-                        )
-                      ) : progress.avatar ? (
-                        <span>{progress.avatar}</span>
-                      ) : (
-                        <span>🧑‍💼</span>
-                      )}
-                    </div>
+                    <UserAvatar
+                      picture={currentUser?.picture || progress.avatar}
+                      name={formatDisplayName(currentUser?.name || progress.name)}
+                      size="lg"
+                    />
                     <div>
-                      <div className="text-sm font-black text-slate-900">{currentUser?.name}</div>
+                      <div className="text-sm font-black text-slate-900">{formatDisplayName(currentUser?.name || progress.name)}</div>
                       <div className="text-xs text-slate-500 font-medium">{currentUser?.email}</div>
                       <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />

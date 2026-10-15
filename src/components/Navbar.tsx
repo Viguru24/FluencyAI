@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Volume2, Globe, Download, WifiOff, Check, Server, User } from 'lucide-react';
+import { Sparkles, Volume2, Globe, Download, WifiOff, Check, Server } from 'lucide-react';
 import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession, AIPersona } from '../types';
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
 import { playChime } from '../services/speech';
 import { getLLMConfig, testGatewayConnection, type LLMConfig } from '../services/llmConfig';
 import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
 import { UserProfileModal } from './UserProfileModal';
+import { UserAvatar } from './UserAvatar';
 import { authService } from '../services/authService';
+import { formatDisplayName } from '../utils/nameFormatter';
 
 interface NavbarProps {
   progress: UserProgress;
@@ -271,42 +273,41 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
 
               {/* User Profile & VPS Cloud Sync Button */}
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  setShowProfileModal(true);
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs ${
-                  authSession
-                    ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 text-brand-900 border-brand-200 hover:bg-brand-100'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-                }`}
-                title={
-                  authSession
-                    ? `Signed in as ${authSession.user.name} • VPS Synced`
-                    : 'Sign in to sync your XP, streak, and level with VPS backend'
-                }
-              >
-                <div className="relative flex items-center justify-center w-5 h-5 rounded-lg bg-white border border-slate-200/80 text-xs shadow-2xs overflow-hidden flex-shrink-0">
-                  {authSession?.user?.picture ? (
-                    authSession.user.picture.startsWith('http') || authSession.user.picture.startsWith('data:') ? (
-                      <img src={authSession.user.picture} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{authSession.user.picture}</span>
-                    )
-                  ) : progress.avatar ? (
-                    <span>{progress.avatar}</span>
-                  ) : (
-                    <User className="w-3.5 h-3.5 text-brand-700" />
-                  )}
-                  {authSession && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
-                  )}
-                </div>
-                <span className="max-w-[80px] truncate font-extrabold text-slate-900">
-                  {authSession ? authSession.user.name : progress.name !== 'Alex' ? progress.name : 'Sign In'}
-                </span>
-              </button>
+              {(() => {
+                const rawName = authSession ? authSession.user.name : (progress.name !== 'Alex' ? progress.name : '');
+                const formattedName = formatDisplayName(rawName);
+                const buttonLabel = formattedName || 'Sign In';
+                const pictureUrl = authSession?.user?.picture || progress.avatar;
+
+                return (
+                  <button
+                    onClick={() => {
+                      playChime('tap');
+                      setShowProfileModal(true);
+                    }}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs ${
+                      authSession
+                        ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 text-brand-900 border-brand-200 hover:bg-brand-100'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                    }`}
+                    title={
+                      authSession
+                        ? `Signed in as ${formattedName} • VPS Synced`
+                        : 'Sign in to sync your XP, streak, and level with VPS backend'
+                    }
+                  >
+                    <UserAvatar
+                      picture={pictureUrl}
+                      name={formattedName}
+                      size="xs"
+                      showOnlineDot={Boolean(authSession)}
+                    />
+                    <span className="max-w-[120px] sm:max-w-[150px] truncate font-extrabold text-slate-900">
+                      {buttonLabel}
+                    </span>
+                  </button>
+                );
+              })()}
 
               {/* James Test Area Button */}
               {onOpenJamesTest && (

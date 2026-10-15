@@ -5,6 +5,7 @@ import type { UserProgress } from '../types';
 import { playChime } from '../services/speech';
 import { FluencyHeatmap } from './FluencyHeatmap';
 import { getDueSRSFlashcards } from '../services/srsService';
+import { formatDisplayName } from '../utils/nameFormatter';
 
 interface DailyGoalCardProps {
   progress: UserProgress;
@@ -84,7 +85,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
-              {getGreeting()}, {progress.name}!
+              {getGreeting()}, {formatDisplayName(progress.name)}!
             </h1>
             <span className="inline-block animate-bounce-subtle text-xl">🌱</span>
           </div>

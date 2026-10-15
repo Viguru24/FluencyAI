@@ -17,6 +17,7 @@
  */
 
 import type { AuthSession, AuthUser, CEFRLevel, UserProgress } from '../types';
+import { formatDisplayName, normalizeUserAvatar } from '../utils/nameFormatter';
 
 export type AuthProviderType = 'node-jwt' | 'pocketbase' | 'supabase';
 
@@ -147,10 +148,14 @@ class AuthService {
       const token = localStorage.getItem(STORAGE_TOKEN_KEY);
       const userJson = localStorage.getItem(STORAGE_USER_KEY);
       if (token && userJson) {
+        const parsed = JSON.parse(userJson);
+        if (parsed.name) parsed.name = formatDisplayName(parsed.name);
+        if (parsed.picture) parsed.picture = normalizeUserAvatar(parsed.picture);
         this.currentSession = {
           token,
-          user: JSON.parse(userJson),
+          user: parsed,
         };
+        localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(parsed));
         setSessionCookie(token);
         // Refresh profile in background to get latest server stats
         this.fetchCurrentUser().catch(() => {});
@@ -321,10 +326,16 @@ class AuthService {
         user: {
           id: data.record.id,
           email: data.record.email,
-          name: data.record.name || data.record.email.split('@')[0],
-          picture: data.record.avatar
-            ? `${baseUrl}/api/files/users/${data.record.id}/${data.record.avatar}`
-            : null,
+          name: formatDisplayName(data.record.name || data.record.email.split('@')[0]),
+          picture: normalizeUserAvatar(
+            data.record.avatar
+              ? (data.record.avatar.startsWith('http') || data.record.avatar.startsWith('data:')
+                  ? data.record.avatar
+                  : /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}]/u.test(data.record.avatar)
+                  ? data.record.avatar
+                  : `${baseUrl}/api/files/users/${data.record.id}/${data.record.avatar}`)
+              : null
+          ),
           xp: data.record.xp ?? 0,
           streak: data.record.streak ?? 0,
           level: data.record.level || 'B1',
@@ -347,8 +358,8 @@ class AuthService {
         user: {
           id: data.user.id,
           email: data.user.email,
-          name: data.user.user_metadata?.name || data.user.email.split('@')[0],
-          picture: data.user.user_metadata?.avatar_url || null,
+          name: formatDisplayName(data.user.user_metadata?.name || data.user.email.split('@')[0]),
+          picture: normalizeUserAvatar(data.user.user_metadata?.avatar_url || null),
           xp: 0,
           streak: 0,
           level: 'B1',
@@ -372,7 +383,11 @@ class AuthService {
 
     const session: AuthSession = {
       token: data.token,
-      user: data.user,
+      user: {
+        ...data.user,
+        name: formatDisplayName(data.user?.name),
+        picture: normalizeUserAvatar(data.user?.picture),
+      },
     };
     this.saveSession(session);
     return { session };
@@ -549,27 +564,70 @@ class AuthService {
     name?: string;
     picture?: string;
   }): Promise<{ success: boolean; user?: AuthUser }> {
-    const token = this.getToken();
-    if (!token) throw new Error('You must be logged in to update your profile.');
+    const cleanName = payload.name ? formatDisplayName(payload.name) : undefined;
+    const cleanPicture = payload.picture ? normalizeUserAvatar(payload.picture) : undefined;
 
-    const baseUrl = getAuthProviderUrl();
-    const res = await fetch(`${baseUrl}/api/auth/profile`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || data.message || 'Failed to update profile');
+    // 1. Immediately update local session (Local-First!)
+    if (this.currentSession) {
+      this.currentSession.user = {
+        ...this.currentSession.user,
+        ...(cleanName ? { name: cleanName } : {}),
+        ...(cleanPicture ? { picture: cleanPicture } : {}),
+      };
+      this.saveSession(this.currentSession);
     }
 
-    if (data.user && this.currentSession) {
-      this.currentSession.user = { ...this.currentSession.user, ...data.user };
-      this.saveSession(this.currentSession);
+    const token = this.getToken();
+    if (!token) return { success: true, user: this.currentSession?.user };
+
+    const baseUrl = getAuthProviderUrl();
+    const providerType = getAuthProviderType();
+
+    try {
+      if (providerType === 'pocketbase') {
+        const userId = this.currentSession?.user.id;
+        if (userId) {
+          const pbBody: Record<string, any> = {};
+          if (cleanName) pbBody.name = cleanName;
+          if (cleanPicture && (cleanPicture.startsWith('http') || cleanPicture.startsWith('data:'))) {
+            pbBody.avatar = cleanPicture;
+          }
+          await fetch(`${baseUrl}/api/collections/users/records/${userId}`, {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(pbBody),
+          }).catch(() => {});
+        }
+        return { success: true, user: this.currentSession?.user };
+      }
+
+      const res = await fetch(`${baseUrl}/api/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...(cleanName ? { name: cleanName } : {}),
+          ...(cleanPicture ? { picture: cleanPicture } : {}),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.user && this.currentSession) {
+        this.currentSession.user = {
+          ...this.currentSession.user,
+          ...data.user,
+          name: formatDisplayName(data.user.name || this.currentSession.user.name),
+          picture: normalizeUserAvatar(data.user.picture || this.currentSession.user.picture),
+        };
+        this.saveSession(this.currentSession);
+      }
+    } catch (e) {
+      console.warn('[AuthService] Remote profile update failed, kept local copy', e);
     }
 
     return { success: true, user: this.currentSession?.user };
@@ -595,12 +653,15 @@ export function mergeUserProgressWithRemote(
 ): UserProgress {
   if (!remoteUser) return local;
 
+  const rawName = remoteUser.name || local.name;
+  const formattedName = formatDisplayName(rawName);
+
   const merged: UserProgress = {
     ...local,
-    name: remoteUser.name || local.name,
+    name: formattedName || rawName,
     email: remoteUser.email || local.email,
     id: remoteUser.id,
-    avatar: remoteUser.picture || local.avatar,
+    avatar: normalizeUserAvatar(remoteUser.picture) || local.avatar,
     level: remoteUser.level || local.level,
     completedXP: Math.max(local.completedXP, remoteUser.xp ?? 0),
     streakDays: Math.max(local.streakDays, remoteUser.streak ?? 0),

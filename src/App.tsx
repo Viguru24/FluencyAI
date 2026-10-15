@@ -31,6 +31,7 @@ import { ToastContainer } from './components/ToastContainer';
 import { playChime } from './services/speech';
 import { authService, mergeUserProgressWithRemote } from './services/authService';
 import { toast } from './services/toast';
+import { formatDisplayName, normalizeUserAvatar } from './utils/nameFormatter';
 
 const STORAGE_KEY = 'fluencyai_user_progress_v1';
 const PLACEMENT_ASSESSED_KEY = 'fluency_placement_assessed_v1';
@@ -48,7 +49,13 @@ export function App() {
     }
     const currentUser = authService.getUser();
     if (currentUser) {
-      return mergeUserProgressWithRemote(local, currentUser);
+      local = mergeUserProgressWithRemote(local, currentUser);
+    }
+    if (local.name) {
+      local.name = formatDisplayName(local.name);
+    }
+    if (local.avatar) {
+      local.avatar = normalizeUserAvatar(local.avatar) || local.avatar;
     }
     return local;
   });
