@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import { speakEnglish, playChime, stopSpeaking } from '../services/speech';
 import { startRecognition, type RecognitionHandle } from '../services/speechRecognition';
 import { recordActivity } from '../services/activityService';
+import { calculateEarnedXP, awardGamificationXP } from '../store/rewardSystem';
 import type { AIPersona } from '../types';
 
 interface RapidWarmupModalProps {
@@ -47,9 +48,11 @@ export const RapidWarmupModal: React.FC<RapidWarmupModalProps> = ({
     playChime('streak');
     confetti({ particleCount: 90, spread: 80, origin: { y: 0.5 } });
 
-    // Reward XP and log 2 minutes of active spoken warmup
-    onRewardXP(50);
-    recordActivity(2, 50);
+    // Calculate dynamic XP (+50 Base XP + Streak & Pronunciation bonus)
+    const xpCalc = calculateEarnedXP('sprint-60s', 50);
+    awardGamificationXP(xpCalc, 2);
+    recordActivity(2, xpCalc.totalEarnedXP);
+    onRewardXP(xpCalc.totalEarnedXP);
   }, [onRewardXP]);
 
   const startListening = React.useCallback(() => {

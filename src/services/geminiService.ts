@@ -17,6 +17,7 @@ import type {
 import type { SpokenSegmentAnalysis } from './speechRecognition';
 import { getCandidateGatewayUrls, getLLMConfig } from './llmConfig';
 import { toast } from './toast';
+import { getGamificationState, TIERS_CONFIG, type GamificationTier } from '../store/rewardSystem';
 
 /**
  * Resiliently fetches FreeLLMAPI gateway endpoints.
@@ -178,7 +179,13 @@ export async function generateJamesReply(
   fallbackReplies: string[] = [],
   persona?: AIPersona,
   userAudioClip?: AudioAttachment | null,
-  userLevel?: CEFRLevel
+  userLevel?: CEFRLevel,
+  gamificationContext?: {
+    currentTier?: string;
+    streakDays?: number;
+    pronunciationAvg?: number;
+    unlockedPerks?: string[];
+  }
 ): Promise<string> {
   const config = getLLMConfig();
   const apiKey = config.apiKey;
@@ -211,9 +218,26 @@ export async function generateJamesReply(
     levelInstruction = 'Speak in sophisticated, fluent British English at a C1 CEFR level (rich authentic idioms, British understatement, clinical or business precision, and industry-specific terminology).';
   }
 
+  // Inject Learner Progression, Current Tier, Streak, and Pronunciation Context
+  const gamification = gamificationContext || getGamificationState();
+  const currentTierKey = (gamification.currentTier || 'bronze') as GamificationTier;
+  const tierDef = TIERS_CONFIG[currentTierKey] || TIERS_CONFIG.bronze;
+  const streak = gamification.streakDays || 5;
+  const pronAvg = gamification.pronunciationAvg || 88;
+  const perks = gamification.unlockedPerks?.length ? gamification.unlockedPerks.join(', ') : 'Standard Practice';
+
+  const gamificationPrompt = `LEARNER REWARD & FLUENCY PROGRESS PROFILE:
+- Fluency Tier: ${tierDef.name} (${tierDef.shortName}, CEFR Benchmark: ${tierDef.cefrEquivalent})
+- Daily Speaking Habit Streak: ${streak} consecutive days
+- Rolling Pronunciation Accuracy Average: ${pronAvg}%
+- Unlocked Capabilities: ${perks}
+ROLEPLAY GUIDELINE:
+You are naturally aware of the learner's commitment (${streak}-day streak, ${pronAvg}% pronunciation average, and ${tierDef.name} rank). Naturally reflect this level of fluency in your speech complexity, and occasionally offer encouraging British feedback acknowledging their dedication or clean pronunciation without breaking character or sounding repetitive.`;
+
   // Hardened Anti-Leak System Instruction & Strict Output Constraints
   const systemPrompt = `CRITICAL INSTRUCTION: You are ${pName} (${pRole}). Tone: ${pTone}. You are participating in a live British English voice roleplay: "${scenarioTitle}".
 ${levelInstruction}
+${gamificationPrompt}
 STRICT OUTPUT RULES:
 1. Output ONLY your direct spoken dialogue in character.
 2. NEVER output internal thinking, reasoning steps, chain-of-thought, or analysis (such as "Thinking Process:", "1. Analyze:", or planning bullets).

@@ -35,6 +35,11 @@ import {
 import { getLLMConfig, type LLMConfig } from '../services/llmConfig';
 import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
 import type { AIPersona, LessonPlan } from '../types';
+import {
+  useGamificationStore,
+  calculateEarnedXP,
+  awardGamificationXP,
+} from '../store/rewardSystem';
 
 interface Turn {
   id: string;
@@ -170,6 +175,18 @@ export const JamesTestAreaModal: React.FC<Props> = ({
   const [showGatewayModal, setShowGatewayModal] = useState(false);
   const [llmConfig, setLlmConfig] = useState<LLMConfig>(getLLMConfig);
   const [lastLatency, setLastLatency] = useState<number | null>(null);
+  const [showDevToggle, setShowDevToggle] = useState(true);
+
+  // Gamification Store for real-time tier context & dev testing
+  const {
+    currentTierConfig,
+    totalXP,
+    streakDays,
+    pronunciationAvg,
+    devAddXP,
+    devSetTier,
+    devReset,
+  } = useGamificationStore();
 
   // Scorecard modal/drawer state
   const [isAnalyzingScorecard, setIsAnalyzingScorecard] = useState(false);
@@ -354,6 +371,10 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
       setTurns((prev) => [...prev, aiTurn]);
       speakText(reply);
+
+      // Reward live speaking practice with James (+10 Base XP with active multipliers)
+      const xpResult = calculateEarnedXP('james-test-lab', 10, pronunciationAvg, streakDays);
+      awardGamificationXP(xpResult, 1);
     } catch (err) {
       console.warn('[JamesTestArea] Reply error:', err);
       const fallback = "I caught that! Testing James offline: Splendid job speaking out loud. What would you like to test next?";
@@ -640,6 +661,23 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   <Server className="w-4 h-4 text-emerald-300" />
                 </button>
 
+                {/* Dev Controls Toggle */}
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    setShowDevToggle((prev) => !prev);
+                  }}
+                  className={`px-2 py-1 rounded-xl transition active:scale-95 text-[11px] font-bold flex items-center gap-1 ${
+                    showDevToggle
+                      ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                      : 'bg-white/15 text-white hover:bg-white/25'
+                  }`}
+                  title="Toggle Dev Gamification Simulator Bar"
+                >
+                  <span>🛠️</span>
+                  <span className="hidden sm:inline">Dev Mode</span>
+                </button>
+
                 {/* Close Button */}
                 <button
                   onClick={() => {
@@ -720,6 +758,89 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               )}
             </div>
           </div>
+
+          {/* Dev Test Toggle & Gamification Controls Bar */}
+          {showDevToggle && (
+            <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 text-white flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  Dev Gamification Simulator:
+                </span>
+                <span className="text-[10px] font-bold text-slate-300 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700">
+                  {currentTierConfig.badgeAccent.icon} {currentTierConfig.name} ({totalXP.toLocaleString()} XP)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devAddXP(100);
+                  }}
+                  className="px-2 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] transition active:scale-95 shadow-sm"
+                  title="Simulate earning +100 XP (Triggers floating XP toast)"
+                >
+                  +100 XP
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('silver');
+                  }}
+                  className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-[11px] transition active:scale-95"
+                  title="Trigger Silver promotion"
+                >
+                  🥈 Silver
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('gold');
+                  }}
+                  className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition active:scale-95"
+                  title="Trigger Gold promotion"
+                >
+                  🥇 Gold
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('platinum');
+                  }}
+                  className="px-2 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-[11px] transition active:scale-95"
+                  title="Trigger Platinum promotion"
+                >
+                  💠 Platinum
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('diamond');
+                  }}
+                  className="px-2 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-[11px] transition active:scale-95"
+                  title="Trigger Diamond promotion"
+                >
+                  💎 Diamond
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devReset();
+                  }}
+                  className="px-1.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-[10px] font-bold transition active:scale-95"
+                  title="Reset Demo Gamification State"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Quick-Prompt Suggestions Banner */}
           <div className="px-4 py-2 bg-gradient-to-r from-brand-50 to-sky-50 border-b border-brand-100/60 overflow-x-auto no-scrollbar flex items-center gap-2">

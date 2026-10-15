@@ -13,6 +13,7 @@ import confetti from 'canvas-confetti';
 import { getDueSRSFlashcards, reviewSRSFlashcard, getSRSFlashcards } from '../services/srsService';
 import { speakEnglish, playChime } from '../services/speech';
 import { startRecognition, type RecognitionHandle } from '../services/speechRecognition';
+import { calculateEarnedXP, awardGamificationXP } from '../store/rewardSystem';
 import type { SRSFlashcard, AIPersona } from '../types';
 
 interface SRSFlashcardModalProps {
@@ -125,6 +126,8 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
       // Completed drill!
       playChime('streak');
       confetti({ particleCount: 80, spread: 80, origin: { y: 0.5 } });
+      const xpCalc = calculateEarnedXP('srs-session', 20);
+      awardGamificationXP(xpCalc, 2);
     }
 
     setIsFlipped(false);

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Mic, Sparkles, Layers, Zap, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Flame, Mic, Sparkles, Layers, Zap, Calendar, ChevronDown, ChevronUp, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { UserProgress } from '../types';
 import { playChime } from '../services/speech';
 import { FluencyHeatmap } from './FluencyHeatmap';
 import { getDueSRSFlashcards } from '../services/srsService';
 import { formatDisplayName } from '../utils/nameFormatter';
+import { useGamificationStore } from '../store/rewardSystem';
 
 interface DailyGoalCardProps {
   progress: UserProgress;
@@ -13,6 +14,7 @@ interface DailyGoalCardProps {
   onStartLesson?: () => void;
   onOpenSRS?: () => void;
   onOpenWarmup?: () => void;
+  onOpenRoadmap?: () => void;
 }
 
 export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
@@ -20,7 +22,22 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   onStartLesson,
   onOpenSRS,
   onOpenWarmup,
+  onOpenRoadmap,
 }) => {
+  const {
+    dailyXP,
+    dailyXPTarget,
+    speakingMinutesToday,
+    speakingMinutesTarget,
+    streakDays,
+    pronunciationAvg,
+    currentTierConfig,
+    multiplierInfo,
+    dailyChestClaimed,
+    isDailyGoalMet,
+    claimChest,
+  } = useGamificationStore();
+
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [srsDueCount, setSrsDueCount] = useState(() => getDueSRSFlashcards().length);
   const [reviewCount, setReviewCount] = useState<number>(() => {
@@ -71,17 +88,18 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
     return 'Good evening';
   };
 
+  const currentMinutes = Math.max(progress.completedMinutes, speakingMinutesToday);
   const minutesPercent = Math.min(
     100,
-    Math.round((progress.completedMinutes / progress.dailyGoalMinutes) * 100)
+    Math.round((currentMinutes / speakingMinutesTarget) * 100)
   );
 
-  const isGoalReached = progress.completedMinutes >= progress.dailyGoalMinutes;
+  const isGoalReached = currentMinutes >= speakingMinutesTarget;
 
   return (
     <div className="w-full space-y-3">
       {/* Welcoming Header Banner */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
@@ -94,22 +112,47 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
           </p>
         </div>
 
-        {/* Streak Counter Pill */}
-        <div 
-          onClick={() => {
-            playChime('streak');
-            confetti({ particleCount: 30, spread: 50, origin: { y: 0.2 } });
-          }}
-          className="cursor-pointer group flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200/80 shadow-sm transition active:scale-95"
-          title="Click to celebrate streak!"
-        >
-          <Flame className="w-5 h-5 text-amber-500 fill-amber-500 animate-pulse-subtle group-hover:scale-110 transition-transform" />
-          <div className="text-right">
-            <div className="text-xs font-black text-amber-900 leading-none">
-              {progress.streakDays} Days
+        {/* Tier Pill & Streak Counter Pills */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Interactive Tier Pill */}
+          <button
+            onClick={() => {
+              playChime('tap');
+              onOpenRoadmap?.();
+            }}
+            className={`cursor-pointer group flex items-center gap-2 px-3 py-1.5 rounded-2xl border shadow-sm transition active:scale-95 ${currentTierConfig.badgeAccent.pillBg}`}
+            title={`Current Rank: ${currentTierConfig.name} • Click to open Rewards Roadmap`}
+          >
+            <span className="text-base group-hover:scale-110 transition-transform">
+              {currentTierConfig.badgeAccent.icon}
+            </span>
+            <div className="text-left">
+              <div className="text-xs font-black tracking-tight leading-none">
+                {currentTierConfig.shortName}
+              </div>
+              <div className="text-[9px] font-bold text-slate-600 uppercase tracking-wider mt-0.5">
+                Fluency Tier
+              </div>
             </div>
-            <div className="text-[9px] font-bold text-amber-600 uppercase tracking-wider">
-              Streak
+          </button>
+
+          {/* Streak Counter Pill */}
+          <div 
+            onClick={() => {
+              playChime('streak');
+              confetti({ particleCount: 30, spread: 50, origin: { y: 0.2 } });
+            }}
+            className="cursor-pointer group flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200/80 shadow-sm transition active:scale-95"
+            title="Click to celebrate streak!"
+          >
+            <Flame className="w-5 h-5 text-amber-500 fill-amber-500 animate-pulse-subtle group-hover:scale-110 transition-transform" />
+            <div className="text-right">
+              <div className="text-xs font-black text-amber-900 leading-none">
+                {streakDays} Days
+              </div>
+              <div className="text-[9px] font-bold text-amber-600 uppercase tracking-wider">
+                Streak
+              </div>
             </div>
           </div>
         </div>
@@ -180,28 +223,77 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             </p>
           </div>
 
-          {/* Goal Milestones Row */}
+          {/* Goal Milestones Row with Active Multipliers & Milestone Chest */}
           <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center">
-              <div className="text-[10px] font-bold text-slate-400 uppercase">XP Today</div>
-              <div className="text-sm font-black text-brand-600 mt-0.5">
-                {progress.completedXP}/{progress.dailyGoalXP}
+            {/* Upgraded XP Today Card */}
+            <div className="relative p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center flex flex-col justify-between group shadow-2xs hover:border-brand-300 transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">XP Today</span>
+                <button
+                  onClick={() => {
+                    if (!dailyChestClaimed && isDailyGoalMet) {
+                      playChime('success');
+                      confetti({ particleCount: 70, spread: 70, origin: { y: 0.5 } });
+                      claimChest();
+                    } else {
+                      playChime('tap');
+                      onOpenRoadmap?.();
+                    }
+                  }}
+                  title={
+                    dailyChestClaimed
+                      ? "Today's Daily Milestone Chest Claimed ✓ (+50 XP bonus)"
+                      : isDailyGoalMet
+                      ? "🎁 Daily Milestone Chest Ready! Tap to claim +50 XP bonus"
+                      : `🎁 Daily Chest: reach 100 XP & 15 mins to unlock (${Math.max(0, dailyXPTarget - dailyXP)} XP left)`
+                  }
+                  className={`p-1 rounded-lg transition active:scale-95 ${
+                    dailyChestClaimed
+                      ? 'text-emerald-600 bg-emerald-50'
+                      : isDailyGoalMet
+                      ? 'text-amber-500 bg-amber-100 ring-2 ring-amber-400 animate-bounce'
+                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Gift className={`w-3.5 h-3.5 ${isDailyGoalMet && !dailyChestClaimed ? 'animate-pulse' : ''}`} />
+                </button>
+              </div>
+
+              <div className="text-sm font-black text-brand-600 my-0.5">
+                {dailyXP}/{dailyXPTarget}
+              </div>
+
+              {/* Multiplier Sub-Label */}
+              <div className="text-[9px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200/70 rounded-md py-0.5 px-1 truncate flex items-center justify-center gap-0.5">
+                <span>{multiplierInfo.label}</span>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center">
+            {/* CEFR Fluency Level */}
+            <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center flex flex-col justify-between shadow-2xs">
               <div className="text-[10px] font-bold text-slate-400 uppercase">Fluency CEFR</div>
-              <div className="text-sm font-black text-emerald-600 mt-0.5">
+              <div className="text-sm font-black text-emerald-600 my-0.5">
                 Level {progress.level}
               </div>
+              <div className="text-[9px] font-extrabold text-slate-600 bg-slate-100 border border-slate-200/70 rounded-md py-0.5 px-1 truncate">
+                {currentTierConfig.shortName}
+              </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center">
+            {/* Pronunciation Rolling Average */}
+            <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center flex flex-col justify-between shadow-2xs">
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Pronunciation Avg
               </div>
-              <div className="text-sm font-black text-emerald-600 mt-0.5 flex items-center justify-center gap-1">
-                <span>88%</span>
+              <div className="text-sm font-black text-emerald-600 my-0.5">
+                {pronunciationAvg}%
+              </div>
+              <div className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/70 rounded-md py-0.5 px-1 truncate">
+                {pronunciationAvg >= 90
+                  ? '💎 +25% Bonus'
+                  : pronunciationAvg >= 85
+                  ? '✨ +10% Bonus'
+                  : 'Standard'}
               </div>
             </div>
           </div>

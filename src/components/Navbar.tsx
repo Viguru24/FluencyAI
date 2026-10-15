@@ -9,6 +9,7 @@ import { UserProfileModal } from './UserProfileModal';
 import { UserAvatar } from './UserAvatar';
 import { authService } from '../services/authService';
 import { formatDisplayName } from '../utils/nameFormatter';
+import { useGamificationStore } from '../store/rewardSystem';
 
 interface NavbarProps {
   progress: UserProgress;
@@ -18,6 +19,7 @@ interface NavbarProps {
   onOpenPlacement?: () => void;
   activePersona?: AIPersona;
   onOpenPersonaSelector?: () => void;
+  onOpenRoadmap?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -28,7 +30,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPlacement,
   activePersona,
   onOpenPersonaSelector,
+  onOpenRoadmap,
 }) => {
+  const {
+    currentTier,
+    currentTierConfig,
+    progressToNextTier,
+    unlockedPerks,
+    totalXP,
+  } = useGamificationStore();
+
   const [canInstall, setCanInstall] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -111,9 +122,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleSpeedToggle = () => {
     playChime('tap');
+    const availableSpeeds = unlockedPerks.includes('fast-talker-1.15x')
+      ? [0.85, 1.0, 1.15]
+      : unlockedPerks.includes('audio-speed-1.0')
+      ? [0.85, 1.0]
+      : [0.75, 0.85];
+
+    const currentIndex = availableSpeeds.indexOf(progress.audioSpeed);
+    const nextSpeed =
+      currentIndex >= 0
+        ? availableSpeeds[(currentIndex + 1) % availableSpeeds.length]
+        : availableSpeeds[0];
+
     onUpdateProgress((prev) => ({
       ...prev,
-      audioSpeed: prev.audioSpeed === 0.75 ? 0.9 : prev.audioSpeed === 0.9 ? 1.0 : 0.75,
+      audioSpeed: nextSpeed,
     }));
   };
 
@@ -272,6 +295,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
+              {/* Interactive Fluency Tier Pill */}
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  onOpenRoadmap?.();
+                }}
+                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs hover:shadow-xs ${currentTierConfig.badgeAccent.pillBg}`}
+                title={`Fluency Tier: ${currentTierConfig.name} (${totalXP.toLocaleString()} Lifetime XP) • Click to open Rewards Roadmap`}
+              >
+                <span className="text-sm leading-none group-hover:scale-110 transition-transform">
+                  {currentTierConfig.badgeAccent.icon}
+                </span>
+                <div className="flex flex-col text-left">
+                  <span className="font-black tracking-tight leading-none text-[11px]">
+                    {currentTierConfig.shortName}
+                  </span>
+                  <div className="w-10 h-1 rounded-full bg-slate-300/70 overflow-hidden mt-1">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-brand-600 to-indigo-600 transition-all duration-300"
+                      style={{ width: `${progressToNextTier}%` }}
+                    />
+                  </div>
+                </div>
+              </button>
+
               {/* User Profile & VPS Cloud Sync Button */}
               {(() => {
                 const rawName = authSession ? authSession.user.name : (progress.name !== 'Alex' ? progress.name : '');
@@ -301,6 +349,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       name={formattedName}
                       size="xs"
                       showOnlineDot={Boolean(authSession)}
+                      hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
                     />
                     <span className="max-w-[120px] sm:max-w-[150px] truncate font-extrabold text-slate-900">
                       {buttonLabel}

@@ -15,6 +15,16 @@ import { roleplayScenarios, initialUserProgress } from './data/mockData';
 import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans';
 import { getActivePersona } from './data/personas';
 import { addPhrasesToSRS } from './services/srsService';
+import { XPToastContainer } from './components/XPToast';
+import { TierUpCelebrationModal } from './components/TierUpCelebrationModal';
+import { TierRoadmapModal } from './components/TierRoadmapModal';
+import {
+  calculateEarnedXP,
+  awardGamificationXP,
+  subscribeGamification,
+  type ActivityType,
+} from './store/rewardSystem';
+import { recordActivity } from './services/activityService';
 import type { 
   UserProgress, 
   LessonPlan, 
@@ -71,8 +81,22 @@ export function App() {
   const [isJamesTestOpen, setIsJamesTestOpen] = useState(false);
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const [isPlacementOpen, setIsPlacementOpen] = useState(false);
+  const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
   const [pendingLessonCallback, setPendingLessonCallback] = useState<(() => void) | null>(null);
   const [hasUpdate, setHasUpdate] = useState(false);
+
+  // Sync gamification store state with progress
+  useEffect(() => {
+    const unsub = subscribeGamification((gamState) => {
+      setProgress((prev) => ({
+        ...prev,
+        completedXP: gamState.dailyXP,
+        completedMinutes: Math.max(prev.completedMinutes, gamState.speakingMinutesToday),
+        streakDays: gamState.streakDays,
+      }));
+    });
+    return unsub;
+  }, []);
 
   // Listen for persona changes
   useEffect(() => {
@@ -210,19 +234,22 @@ export function App() {
   };
 
   const handleLessonComplete = (plan: LessonPlan) => {
-    setProgress((prev) => {
-      const isDaily = plan.id === DAILY_ID;
-      return {
-        ...prev,
-        hasCompletedDailyLessonToday: prev.hasCompletedDailyLessonToday || isDaily,
-        completedScenarioIds:
-          isDaily || prev.completedScenarioIds.includes(plan.id)
-            ? prev.completedScenarioIds
-            : [...prev.completedScenarioIds, plan.id],
-        completedXP: Math.min(prev.dailyGoalXP, prev.completedXP + plan.xpReward),
-        completedMinutes: Math.min(prev.dailyGoalMinutes, prev.completedMinutes + plan.minutes),
-      };
-    });
+    const isDaily = plan.id === DAILY_ID;
+    const activityType: ActivityType = isDaily ? 'daily-lesson' : 'full-lesson';
+    const xpCalc = calculateEarnedXP(activityType, plan.xpReward);
+    awardGamificationXP(xpCalc, plan.minutes);
+    recordActivity(plan.minutes, xpCalc.totalEarnedXP);
+
+    setProgress((prev) => ({
+      ...prev,
+      hasCompletedDailyLessonToday: prev.hasCompletedDailyLessonToday || isDaily,
+      completedScenarioIds:
+        isDaily || prev.completedScenarioIds.includes(plan.id)
+          ? prev.completedScenarioIds
+          : [...prev.completedScenarioIds, plan.id],
+      completedXP: Math.min(prev.dailyGoalXP, prev.completedXP + xpCalc.totalEarnedXP),
+      completedMinutes: Math.min(prev.dailyGoalMinutes, prev.completedMinutes + plan.minutes),
+    }));
     setActivePlan(null);
   };
 
@@ -244,10 +271,14 @@ export function App() {
     });
   };
 
-  const handleRewardXP = (amount: number) => {
+  const handleRewardXP = (amount: number, activity: ActivityType = 'custom') => {
+    const xpCalc = calculateEarnedXP(activity, amount);
+    awardGamificationXP(xpCalc, 2);
+    recordActivity(2, xpCalc.totalEarnedXP);
+
     setProgress((prev) => ({
       ...prev,
-      completedXP: prev.completedXP + amount,
+      completedXP: prev.completedXP + xpCalc.totalEarnedXP,
     }));
   };
 
@@ -335,6 +366,7 @@ export function App() {
         onOpenPlacement={() => setIsPlacementOpen(true)}
         activePersona={activePersona}
         onOpenPersonaSelector={() => setIsPersonaSelectorOpen(true)}
+        onOpenRoadmap={() => setIsRoadmapOpen(true)}
       />
 
       {/* Main App Container with responsive max-w-5xl layout and fluid spacing */}
@@ -380,6 +412,7 @@ export function App() {
           onStartLesson={() => openDailyLesson('scaffolding')}
           onOpenSRS={() => setIsSRSOpen(true)}
           onOpenWarmup={() => setIsRapidWarmupOpen(true)}
+          onOpenRoadmap={() => setIsRoadmapOpen(true)}
         />
 
         {/* James AI Test Area & Direct Voice Sandbox Card */}
@@ -551,6 +584,25 @@ export function App() {
 
       {/* PWA Installation Guide Modal */}
       {isInstallGuideOpen && <PWAInstallGuideModal onClose={() => setIsInstallGuideOpen(false)} />}
+
+      {/* Floating Micro-Celebration XP Toast Container */}
+      <XPToastContainer />
+
+      {/* Tier Promotion & Daily Goal Celebration Modal */}
+      <TierUpCelebrationModal
+        onOpenRoadmap={() => setIsRoadmapOpen(true)}
+        onOpenStage2Roleplay={() => openDailyLesson('roleplay')}
+      />
+
+      {/* Full Fluency Journey & Rewards Roadmap Modal */}
+      <TierRoadmapModal
+        isOpen={isRoadmapOpen}
+        onClose={() => setIsRoadmapOpen(false)}
+        onOpenStage2Roleplay={() => {
+          setIsRoadmapOpen(false);
+          openDailyLesson('roleplay');
+        }}
+      />
     </div>
   );
 }

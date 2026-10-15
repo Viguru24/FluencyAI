@@ -8,6 +8,7 @@ interface UserAvatarProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   showOnlineDot?: boolean;
+  hasDiamondBorder?: boolean;
 }
 
 const SIZE_MAP = {
@@ -44,6 +45,7 @@ export function UserAvatar({
   size = 'md',
   className = '',
   showOnlineDot = false,
+  hasDiamondBorder = false,
 }: UserAvatarProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
@@ -56,7 +58,13 @@ export function UserAvatar({
   const initials = getUserInitials(name);
 
   return (
-    <div className={`relative inline-flex items-center justify-center flex-shrink-0 select-none ${className}`}>
+    <div
+      className={`relative inline-flex items-center justify-center flex-shrink-0 select-none ${
+        hasDiamondBorder
+          ? 'p-0.5 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-sm shadow-indigo-500/40 ring-2 ring-indigo-400/50 animate-pulse-subtle'
+          : ''
+      } ${className}`}
+    >
       <div
         className={`${config.container} overflow-hidden flex items-center justify-center transition-transform shadow-2xs font-bold ${
           isUrl && !imgFailed
