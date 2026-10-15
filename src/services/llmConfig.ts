@@ -82,10 +82,10 @@ export function getLLMConfig(): LLMConfig {
   }
 
   let model = saved.model;
-  if (!model || (provider === 'freellmapi' && (model === 'gemini-2.5-flash' || model === 'gemini-2.0-flash' || model === 'auto'))) {
-    model = provider === 'freellmapi' ? DEFAULT_MODEL : 'gemini-2.5-flash';
-  } else if (!model && provider === 'direct-gemini') {
-    model = 'gemini-2.5-flash';
+  if (!model) {
+    model = provider === 'direct-gemini' ? 'gemini-2.5-flash' : DEFAULT_MODEL;
+  } else if (provider === 'freellmapi' && (model === 'gemini-2.5-flash' || model === 'gemini-2.0-flash' || model === 'auto')) {
+    model = DEFAULT_MODEL;
   }
 
   return {
