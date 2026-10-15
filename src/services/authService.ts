@@ -18,6 +18,7 @@
 
 import type { AuthSession, AuthUser, CEFRLevel, UserProgress } from '../types';
 import { formatDisplayName, normalizeUserAvatar } from '../utils/nameFormatter';
+import { getGamificationState, syncGamificationFromRemote } from '../store/rewardSystem';
 
 export type AuthProviderType = 'node-jwt' | 'pocketbase' | 'supabase';
 
@@ -157,6 +158,9 @@ class AuthService {
         };
         localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(parsed));
         setSessionCookie(token);
+        if (parsed.progress_data?.gamification) {
+          syncGamificationFromRemote(parsed.progress_data.gamification);
+        }
         // Refresh profile in background to get latest server stats
         this.fetchCurrentUser().catch(() => {});
       }
@@ -507,6 +511,9 @@ class AuthService {
       if (data.user && this.currentSession) {
         this.currentSession.user = { ...this.currentSession.user, ...data.user };
         this.saveSession(this.currentSession);
+        if (data.user.progress_data?.gamification) {
+          syncGamificationFromRemote(data.user.progress_data.gamification);
+        }
         return this.currentSession.user;
       }
     } catch (e) {
@@ -535,19 +542,40 @@ class AuthService {
 
     const baseUrl = getAuthProviderUrl();
     try {
+      const localGamification = getGamificationState();
+      const enrichedPayload = {
+        ...payload,
+        xp: payload.xp ?? localGamification.totalXP,
+        progress_data: {
+          ...(payload.progress_data || {}),
+          gamification: {
+            totalXP: localGamification.totalXP,
+            currentTier: localGamification.currentTier,
+            streakFreezes: localGamification.streakFreezes,
+            dailyChestClaimed: localGamification.dailyChestClaimed,
+            unlockedPerks: localGamification.unlockedPerks,
+            pronunciationAvg: localGamification.pronunciationAvg,
+            streakDays: localGamification.streakDays,
+          },
+        },
+      };
+
       const res = await fetch(`${baseUrl}/api/auth/progress`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(enrichedPayload),
       });
 
       const data = await res.json();
       if (res.ok && data.user && this.currentSession) {
         this.currentSession.user = { ...this.currentSession.user, ...data.user };
         this.saveSession(this.currentSession);
+        if (data.user.progress_data?.gamification) {
+          syncGamificationFromRemote(data.user.progress_data.gamification);
+        }
         return { success: true, user: this.currentSession.user };
       }
       return { success: res.ok, user: data.user };
@@ -668,6 +696,9 @@ export function mergeUserProgressWithRemote(
   };
 
   if (remoteUser.progress_data && typeof remoteUser.progress_data === 'object') {
+    if (remoteUser.progress_data.gamification) {
+      syncGamificationFromRemote(remoteUser.progress_data.gamification);
+    }
     if (Array.isArray(remoteUser.progress_data.completedScenarioIds)) {
       merged.completedScenarioIds = Array.from(
         new Set([...merged.completedScenarioIds, ...remoteUser.progress_data.completedScenarioIds])

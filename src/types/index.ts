@@ -210,6 +210,8 @@ export interface LessonSessionResult {
   pronunciationFeedback?: PronunciationFeedbackWord[];
   acousticFeedback?: string;
   lowConfidenceWords?: string[];
+  usedTargetPhraseIds?: string[];
+  unblurredTurnCount?: number;
 }
 
 

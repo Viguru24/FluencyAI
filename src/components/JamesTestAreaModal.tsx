@@ -37,6 +37,7 @@ import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
 import type { AIPersona, LessonPlan } from '../types';
 import {
   useGamificationStore,
+  getAvailableAudioSpeeds,
   calculateEarnedXP,
   awardGamificationXP,
 } from '../store/rewardSystem';
@@ -179,6 +180,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
   // Gamification Store for real-time tier context & dev testing
   const {
+    currentTier,
     currentTierConfig,
     totalXP,
     streakDays,
@@ -187,6 +189,8 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     devSetTier,
     devReset,
   } = useGamificationStore();
+
+  const availableSpeeds = getAvailableAudioSpeeds(currentTier);
 
   // Scorecard modal/drawer state
   const [isAnalyzingScorecard, setIsAnalyzingScorecard] = useState(false);
@@ -620,15 +624,18 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
               {/* Action buttons in header */}
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                {/* Audio Speed Pill */}
+                {/* Audio Speed Pill with Tier Lock Awareness */}
                 <button
                   onClick={() => {
                     playChime('tap');
-                    const next = currentSpeed === 0.75 ? 0.9 : currentSpeed === 0.9 ? 1.0 : 0.75;
+                    const unlocked = availableSpeeds.filter((s) => s.unlocked).map((s) => s.speed);
+                    const speeds = unlocked.length > 0 ? unlocked : [0.85];
+                    const currentIndex = speeds.indexOf(currentSpeed);
+                    const next = currentIndex >= 0 ? speeds[(currentIndex + 1) % speeds.length] : speeds[0];
                     setCurrentSpeed(next);
                   }}
-                  className="px-2 py-1 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-[11px] font-bold text-white transition flex items-center gap-1"
-                  title="Toggle speech speed"
+                  className="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-[11px] font-bold text-white transition flex items-center gap-1.5"
+                  title={`Speed: ${currentSpeed}x · Click to toggle tier speeds`}
                 >
                   <Sparkles className="w-3 h-3 text-amber-300" />
                   <span>{currentSpeed}x</span>

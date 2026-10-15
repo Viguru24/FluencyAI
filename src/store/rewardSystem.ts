@@ -68,6 +68,9 @@ export interface XPCalculationResult {
   pronunciationScore: number;
   pronunciationBonusPercent: number;
   pronunciationBonusXP: number;
+  earsOnlyBonusXP?: number;
+  missionPhrasesBonusXP?: number;
+  missionPhrasesCount?: number;
   totalEarnedXP: number;
   breakdownText: string;
   activityLabel: string;
@@ -487,7 +490,11 @@ export function calculateEarnedXP(
   activityType: ActivityType,
   baseXP?: number,
   pronunciationScore?: number,
-  streakDays?: number
+  streakDays?: number,
+  extraBonuses?: {
+    earsOnlyBonus?: boolean;
+    missionPhrasesCount?: number;
+  }
 ): XPCalculationResult {
   const state = getGamificationState();
   const actualStreak = typeof streakDays === 'number' ? streakDays : state.streakDays;
@@ -532,7 +539,15 @@ export function calculateEarnedXP(
 
   const streakBonusXP = Math.round(computedBase * (streakMultiplier - 1.0));
   const pronunciationBonusXP = Math.round(computedBase * pronPercent);
-  const totalEarnedXP = computedBase + streakBonusXP + pronunciationBonusXP;
+
+  const earsOnlyBonusXP = extraBonuses?.earsOnlyBonus ? 15 : 0;
+  const missionPhrasesCount = extraBonuses?.missionPhrasesCount
+    ? Math.min(3, Math.max(0, extraBonuses.missionPhrasesCount))
+    : 0;
+  const missionPhrasesBonusXP = missionPhrasesCount * 10;
+
+  const totalEarnedXP =
+    computedBase + streakBonusXP + pronunciationBonusXP + earsOnlyBonusXP + missionPhrasesBonusXP;
 
   const parts = [`+${computedBase} XP Base`];
   if (streakBonusXP > 0) {
@@ -540,6 +555,12 @@ export function calculateEarnedXP(
   }
   if (pronunciationBonusXP > 0) {
     parts.push(`+ ${pronunciationBonusXP} XP Pronunciation`);
+  }
+  if (earsOnlyBonusXP > 0) {
+    parts.push(`+ ${earsOnlyBonusXP} XP Ears-Only`);
+  }
+  if (missionPhrasesBonusXP > 0) {
+    parts.push(`+ ${missionPhrasesBonusXP} XP Mission Phrases`);
   }
   const breakdownText = `${parts.join(' ')} = +${totalEarnedXP} XP!`;
 
@@ -552,6 +573,9 @@ export function calculateEarnedXP(
     pronunciationScore: actualPron,
     pronunciationBonusPercent: pronPercent,
     pronunciationBonusXP,
+    earsOnlyBonusXP,
+    missionPhrasesBonusXP,
+    missionPhrasesCount,
     totalEarnedXP,
     breakdownText,
     activityLabel: label,
@@ -784,6 +808,85 @@ export function simulateTierUp(targetTier: GamificationTier): void {
  */
 export function resetGamificationState(): void {
   saveGamificationState(initialGamificationState);
+}
+
+/**
+ * Check if a specific perk is currently unlocked for the learner
+ */
+export function isPerkUnlocked(perkId: string): boolean {
+  const state = getGamificationState();
+  return state.unlockedPerks.includes(perkId);
+}
+
+export interface AudioSpeedOption {
+  speed: number;
+  label: string;
+  minTier: GamificationTier;
+  unlocked: boolean;
+  lockReason?: string;
+}
+
+/**
+ * Get configured audio speeds with tier lock enforcement
+ * - 0.85x: Bronze+ (Always unlocked)
+ * - 1.0x: Silver+ (Unlocked at Silver)
+ * - 1.15x: Platinum+ (Unlocked at Platinum)
+ */
+export function getAvailableAudioSpeeds(currentTier?: GamificationTier): AudioSpeedOption[] {
+  const tier = currentTier || getGamificationState().currentTier;
+  const tierIdx = ORDERED_TIERS.indexOf(tier);
+  const silverIdx = ORDERED_TIERS.indexOf('silver');
+  const platinumIdx = ORDERED_TIERS.indexOf('platinum');
+
+  return [
+    {
+      speed: 0.85,
+      label: '0.85x (Guided)',
+      minTier: 'bronze',
+      unlocked: true,
+    },
+    {
+      speed: 1.0,
+      label: '1.0x (Natural)',
+      minTier: 'silver',
+      unlocked: tierIdx >= silverIdx,
+      lockReason: 'Unlocks at Silver Tier (1,000 XP)',
+    },
+    {
+      speed: 1.15,
+      label: '1.15x (Fast Commute)',
+      minTier: 'platinum',
+      unlocked: tierIdx >= platinumIdx,
+      lockReason: 'Unlocks at Platinum Tier (8,000 XP)',
+    },
+  ];
+}
+
+/**
+ * Sync and merge gamification state from authenticated VPS profile
+ */
+export function syncGamificationFromRemote(remote: Partial<GamificationState>): GamificationState {
+  const current = getGamificationState();
+  const mergedTotalXP = Math.max(current.totalXP, typeof remote.totalXP === 'number' ? remote.totalXP : 0);
+  const mergedStreakDays = Math.max(current.streakDays, typeof remote.streakDays === 'number' ? remote.streakDays : 0);
+  const mergedPron = Math.max(current.pronunciationAvg, typeof remote.pronunciationAvg === 'number' ? remote.pronunciationAvg : 0);
+  const mergedTier = evaluateTier(mergedTotalXP, mergedStreakDays, mergedPron);
+  const mergedFreezes = Math.max(current.streakFreezes, Math.min(2, typeof remote.streakFreezes === 'number' ? remote.streakFreezes : 0));
+  const mergedDailyChest = Boolean(current.dailyChestClaimed || remote.dailyChestClaimed);
+
+  const updated: GamificationState = {
+    ...current,
+    totalXP: mergedTotalXP,
+    streakDays: mergedStreakDays,
+    pronunciationAvg: mergedPron,
+    currentTier: mergedTier,
+    streakFreezes: mergedFreezes,
+    unlockedPerks: getAllPerksUpToTier(mergedTier),
+    dailyChestClaimed: mergedDailyChest,
+  };
+
+  saveGamificationState(updated);
+  return updated;
 }
 
 /**

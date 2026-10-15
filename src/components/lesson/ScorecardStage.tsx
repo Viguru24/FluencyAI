@@ -1,11 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Volume2, BookmarkPlus, BookmarkCheck, Home, ArrowRight, Ear, Mic, MessageCircle, Sparkles, Activity } from 'lucide-react';
+import {
+  Volume2,
+  BookmarkPlus,
+  BookmarkCheck,
+  Home,
+  ArrowRight,
+  Ear,
+  Mic,
+  MessageCircle,
+  Sparkles,
+  Activity,
+  Flame,
+  Headphones,
+  Target,
+  Trophy,
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { LessonPlan, LessonSessionResult, PhrasingUpgrade, SavedReviewPhrase, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, playChime } from '../../services/speech';
 import { buildUpgrades, computeScores } from '../../services/lessonAnalysis';
 import { startRecognition, scorePronunciation, type RecognitionHandle } from '../../services/speechRecognition';
 import { PronunciationRadarModal } from './PronunciationRadarModal';
+import { calculateEarnedXP, type XPCalculationResult, type ActivityType } from '../../store/rewardSystem';
 
 const SAVED_REVIEW_KEY = 'savedReviewPhrases';
 
@@ -15,7 +31,7 @@ interface Props {
   audioSpeed: number;
   alreadySavedIds: string[];
   onSaveMistakes: (upgrades: PhrasingUpgrade[]) => void;
-  onFinish: () => void;
+  onFinish: (customXPCalc?: XPCalculationResult) => void;
 }
 
 const Dial: React.FC<{ value: number }> = ({ value }) => {
@@ -77,6 +93,24 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
     const overall = Math.round(fluency * 0.45 + pronunciation * 0.35 + listening * 0.2);
     return { ...base, fluency, pronunciation, listening, overall };
   }, [plan, result]);
+
+  const isEarsOnlyEarned = (result.unblurredTurnCount ?? result.revealsUsed) === 0;
+  const targetPhrasesUsedCount = result.usedTargetPhraseIds?.length ?? 0;
+
+  const xpCalc = useMemo(() => {
+    const isDaily = plan.id === 'daily-lesson' || plan.id.startsWith('daily');
+    const activityType: ActivityType = isDaily ? 'daily-lesson' : 'full-lesson';
+    return calculateEarnedXP(
+      activityType,
+      plan.xpReward,
+      scores.pronunciation,
+      undefined,
+      {
+        earsOnlyBonus: isEarsOnlyEarned,
+        missionPhrasesCount: targetPhrasesUsedCount,
+      }
+    );
+  }, [plan.id, plan.xpReward, scores.pronunciation, isEarsOnlyEarned, targetPhrasesUsedCount]);
 
   const upgrades = useMemo(() => {
     if (result.dynamicUpgrades && result.dynamicUpgrades.length > 0) {
@@ -268,6 +302,102 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                 <span>🗣️ {result.userTurns.length} replies</span>
                 <span>👂 {result.revealsUsed} text reveals</span>
                 <span>🛟 {result.helpRequests} help requests</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Gamification & Live Roleplay Rewards Breakdown Card */}
+          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 border border-amber-400/40 p-4 sm:p-5 shadow-lg text-white space-y-4 animate-fade-in relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex items-center justify-between gap-3 flex-wrap relative z-10">
+              <div className="flex items-center gap-2.5">
+                <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-400 to-amber-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-amber-500/30">
+                  <Trophy className="w-5 h-5 text-slate-950" />
+                </span>
+                <div>
+                  <h3 className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
+                    Lesson Rewards &amp; XP Breakdown
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    Tier progression boost, streak multipliers, and live conversation bonuses
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-sm font-black shadow-md flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4" />
+                  <span>+{xpCalc.totalEarnedXP} Total XP Earned</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Reward Badges Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 relative z-10">
+              {/* Base XP */}
+              <div className="p-3 rounded-2xl bg-white/10 border border-white/15">
+                <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Base XP</div>
+                <div className="text-base font-black text-amber-300 mt-0.5">+{xpCalc.baseXP} XP</div>
+                <div className="text-[11px] text-slate-300 mt-0.5">Lesson completion</div>
+              </div>
+
+              {/* Streak Boost */}
+              <div className="p-3 rounded-2xl bg-white/10 border border-white/15">
+                <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-amber-400 fill-amber-400" />
+                  <span>Streak Boost</span>
+                </div>
+                <div className="text-base font-black text-amber-400 mt-0.5">
+                  +{xpCalc.streakBonusXP} XP ({xpCalc.streakMultiplier}x)
+                </div>
+                <div className="text-[11px] text-slate-300 mt-0.5">{xpCalc.streakDays}-day streak</div>
+              </div>
+
+              {/* Ears-Only Listening Bonus */}
+              <div
+                className={`p-3 rounded-2xl border transition ${
+                  isEarsOnlyEarned
+                    ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                    : 'bg-white/5 border-white/10 text-slate-400'
+                }`}
+              >
+                <div className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <Headphones className="w-3 h-3 text-sky-400" />
+                  <span>Ears-Only Bonus</span>
+                </div>
+                <div className={`text-base font-black mt-0.5 ${isEarsOnlyEarned ? 'text-emerald-300' : 'text-slate-400'}`}>
+                  {isEarsOnlyEarned ? '+15 XP ✓' : '+0 XP'}
+                </div>
+                <div className="text-[11px] mt-0.5 truncate">
+                  {isEarsOnlyEarned ? '0 transcript reveals' : 'Transcript peeked'}
+                </div>
+              </div>
+
+              {/* Mission Target Phrases */}
+              <div
+                className={`p-3 rounded-2xl border transition ${
+                  targetPhrasesUsedCount > 0
+                    ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                    : 'bg-white/5 border-white/10 text-slate-400'
+                }`}
+              >
+                <div className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <Target className="w-3 h-3 text-emerald-400" />
+                  <span>Mission Phrases</span>
+                </div>
+                <div
+                  className={`text-base font-black mt-0.5 ${
+                    targetPhrasesUsedCount > 0 ? 'text-emerald-300' : 'text-slate-400'
+                  }`}
+                >
+                  +{xpCalc.missionPhrasesBonusXP} XP
+                </div>
+                <div className="text-[11px] mt-0.5 truncate">
+                  {targetPhrasesUsedCount}/3 spoken aloud
+                </div>
               </div>
             </div>
           </div>
@@ -638,10 +768,10 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
             {saved ? '✓ Saved to Tomorrow’s Warm-up!' : 'Save Mistakes to Tomorrow’s Review'}
           </button>
           <button
-            onClick={onFinish}
-            className="flex-1 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-emerald-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-soft active:scale-95"
+            onClick={() => onFinish(xpCalc)}
+            className="flex-1 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 via-emerald-600 to-teal-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-soft hover:shadow-md active:scale-95 transition"
           >
-            <Home className="w-4 h-4" /> Collect +{plan.xpReward} XP &amp; Finish <ArrowRight className="w-4 h-4" />
+            <Home className="w-4 h-4" /> Collect +{xpCalc.totalEarnedXP} XP &amp; Finish <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>

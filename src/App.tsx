@@ -23,6 +23,7 @@ import {
   awardGamificationXP,
   subscribeGamification,
   type ActivityType,
+  type XPCalculationResult,
 } from './store/rewardSystem';
 import { recordActivity } from './services/activityService';
 import type { 
@@ -233,10 +234,10 @@ export function App() {
     }
   };
 
-  const handleLessonComplete = (plan: LessonPlan) => {
+  const handleLessonComplete = (plan: LessonPlan, customXPCalc?: XPCalculationResult) => {
     const isDaily = plan.id === DAILY_ID;
     const activityType: ActivityType = isDaily ? 'daily-lesson' : 'full-lesson';
-    const xpCalc = calculateEarnedXP(activityType, plan.xpReward);
+    const xpCalc = customXPCalc || calculateEarnedXP(activityType, plan.xpReward);
     awardGamificationXP(xpCalc, plan.minutes);
     recordActivity(plan.minutes, xpCalc.totalEarnedXP);
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, MicOff, Check } from 'lucide-react';
 import type { CEFRLevel, LessonPlan, LessonStage, LessonSessionResult, NativeLanguage, PhrasingUpgrade } from '../../types';
+import type { XPCalculationResult } from '../../store/rewardSystem';
 import { stopSpeaking } from '../../services/speech';
 import { ScaffoldingStage } from './ScaffoldingStage';
 import { RoleplayStage, type RoleplayStats } from './RoleplayStage';
@@ -14,7 +15,7 @@ interface Props {
   savedMistakeIds: string[];
   initialStage?: LessonStage;
   onSaveMistakes: (plan: LessonPlan, upgrades: PhrasingUpgrade[]) => void;
-  onComplete: (plan: LessonPlan) => void;
+  onComplete: (plan: LessonPlan, customXPCalc?: XPCalculationResult) => void;
   onExit: () => void;
 }
 
@@ -148,7 +149,12 @@ export const LessonFlow: React.FC<Props> = ({
               phraseScores={phraseScores}
               onMicDenied={() => setMicDenied(true)}
               onEnd={(stats: RoleplayStats) => {
-                setResult({ phraseScores, ...stats });
+                setResult({
+                  phraseScores,
+                  ...stats,
+                  usedTargetPhraseIds: stats.usedTargetPhraseIds || [],
+                  unblurredTurnCount: stats.unblurredTurnCount ?? stats.revealsUsed,
+                });
                 setMicDenied(false);
                 setStage('scorecard');
               }}
@@ -162,7 +168,7 @@ export const LessonFlow: React.FC<Props> = ({
               audioSpeed={audioSpeed}
               alreadySavedIds={savedMistakeIds}
               onSaveMistakes={(ups) => onSaveMistakes(plan, ups)}
-              onFinish={() => onComplete(plan)}
+              onFinish={(customXPCalc) => onComplete(plan, customXPCalc)}
             />
           )}
         </div>

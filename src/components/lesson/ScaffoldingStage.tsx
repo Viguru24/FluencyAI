@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { 
   Volume2, 
   Mic, 
@@ -23,6 +23,7 @@ import {
   type RecognitionHandle 
 } from '../../services/speechRecognition';
 import { AudioVisualizerController } from '../../services/audioVisualizer';
+import { getDueSRSFlashcards } from '../../services/srsService';
 
 interface Props {
   plan: LessonPlan;
@@ -51,6 +52,15 @@ export const ScaffoldingStage: React.FC<Props> = ({
   const [micTestStatus, setMicTestStatus] = useState<'idle' | 'testing' | 'passed'>('idle');
   const [micTestLevel, setMicTestLevel] = useState(0);
   const [radarPhrase, setRadarPhrase] = useState<string | null>(null);
+
+  const dueSRSCard = useMemo(() => {
+    try {
+      const due = getDueSRSFlashcards();
+      return due.find((c) => c.box === 1 || c.box === 2) || null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const recRef = useRef<RecognitionHandle | null>(null);
   const vizRef = useRef(new AudioVisualizerController());
@@ -197,6 +207,38 @@ export const ScaffoldingStage: React.FC<Props> = ({
               Listen, then say each phrase out loud. You will use them naturally with {plan.persona.name}.
             </p>
           </div>
+
+          {/* Due SRS Mistake Integration Badge */}
+          {dueSRSCard && (
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/50 to-orange-50 border border-amber-300 flex items-center justify-between gap-3 shadow-2xs animate-fade-in">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-xs">
+                  ⚡
+                </span>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-amber-950 flex items-center gap-1.5 truncate">
+                    <span>⚡ 1 Due SRS Phrase Added for Bonus XP</span>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.2 rounded-md">
+                      Box {dueSRSCard.box} Review
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-amber-900 truncate">
+                    From past mistake: <em>"{dueSRSCard.phrase}"</em> · Use it in Stage 2 roleplay for bonus points!
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => speakEnglish(dueSRSCard.phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
+                className="px-2.5 py-1.5 rounded-xl bg-white text-amber-900 text-xs font-bold border border-amber-300 hover:bg-amber-100 active:scale-95 transition flex items-center gap-1 flex-shrink-0 shadow-2xs"
+                title="Listen to this review phrase"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Listen</span>
+              </button>
+            </div>
+          )}
 
           {/* Responsive 2-column grid for Mic Check and Fast-Track Skip banner on desktop */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

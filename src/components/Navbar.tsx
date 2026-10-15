@@ -9,7 +9,7 @@ import { UserProfileModal } from './UserProfileModal';
 import { UserAvatar } from './UserAvatar';
 import { authService } from '../services/authService';
 import { formatDisplayName } from '../utils/nameFormatter';
-import { useGamificationStore } from '../store/rewardSystem';
+import { useGamificationStore, getAvailableAudioSpeeds } from '../store/rewardSystem';
 
 interface NavbarProps {
   progress: UserProgress;
@@ -122,17 +122,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleSpeedToggle = () => {
     playChime('tap');
-    const availableSpeeds = unlockedPerks.includes('fast-talker-1.15x')
-      ? [0.85, 1.0, 1.15]
-      : unlockedPerks.includes('audio-speed-1.0')
-      ? [0.85, 1.0]
-      : [0.75, 0.85];
+    const available = getAvailableAudioSpeeds(currentTier)
+      .filter((opt) => opt.unlocked)
+      .map((opt) => opt.speed);
 
-    const currentIndex = availableSpeeds.indexOf(progress.audioSpeed);
+    const speeds = available.length > 0 ? available : [0.85];
+    const currentIndex = speeds.indexOf(progress.audioSpeed);
     const nextSpeed =
       currentIndex >= 0
-        ? availableSpeeds[(currentIndex + 1) % availableSpeeds.length]
-        : availableSpeeds[0];
+        ? speeds[(currentIndex + 1) % speeds.length]
+        : speeds[0];
 
     onUpdateProgress((prev) => ({
       ...prev,

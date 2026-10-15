@@ -6,10 +6,11 @@ import {
   BookOpen, 
   CheckCircle2,
   Wand2,
-  Sparkles
+  Sparkles,
 } from 'lucide-react';
 import type { RoleplayScenario, UserProgress } from '../types';
 import { speakEnglish, playChime } from '../services/speech';
+import { useGamificationStore } from '../store/rewardSystem';
 
 interface RoleplayListProps {
   scenarios: RoleplayScenario[];
@@ -24,6 +25,7 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
   onSelectScenario,
   onOpenCustomBuilder,
 }) => {
+  const { unlockedPerks } = useGamificationStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [expandedVocabId, setExpandedVocabId] = useState<string | null>(null);
   const [playingWord, setPlayingWord] = useState<string | null>(null);
@@ -168,6 +170,20 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                     >
                       {scenario.cefrLevel}
                     </span>
+
+                    {/* Career & Tech Gold Tier Perk Badge */}
+                    {scenario.category === 'Career & Tech' && (
+                      <span
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border transition ${
+                          unlockedPerks.includes('career-tech-roleplay')
+                            ? 'bg-amber-100 text-amber-950 border-amber-300'
+                            : 'bg-amber-50 text-amber-900 border-amber-200'
+                        }`}
+                        title="Career & Tech Roleplay Pack (Gold Tier Perk)"
+                      >
+                        <span>💼 Gold Perk</span>
+                      </span>
+                    )}
 
                     {/* Duration */}
                     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium">

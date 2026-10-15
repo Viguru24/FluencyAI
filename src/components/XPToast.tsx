@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Flame, Mic, X } from 'lucide-react';
+import { Sparkles, Flame, Mic, X, Headphones, Target } from 'lucide-react';
 import type { XPCalculationResult } from '../store/rewardSystem';
 import { playChime } from '../services/speech';
 
@@ -88,6 +88,20 @@ export const XPToastContainer: React.FC = () => {
               <span className="inline-flex items-center gap-1 text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
                 <Mic className="w-3 h-3 text-emerald-400" />
                 +{activeToast.pronunciationBonusXP} Pronunciation
+              </span>
+            )}
+
+            {activeToast.earsOnlyBonusXP !== undefined && activeToast.earsOnlyBonusXP > 0 && (
+              <span className="inline-flex items-center gap-1 text-sky-300 bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.5 rounded-md">
+                <Headphones className="w-3 h-3 text-sky-400" />
+                +{activeToast.earsOnlyBonusXP} Ears-Only
+              </span>
+            )}
+
+            {activeToast.missionPhrasesBonusXP !== undefined && activeToast.missionPhrasesBonusXP > 0 && (
+              <span className="inline-flex items-center gap-1 text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
+                <Target className="w-3 h-3 text-emerald-400" />
+                +{activeToast.missionPhrasesBonusXP} Phrases ({activeToast.missionPhrasesCount}/3)
               </span>
             )}
           </div>

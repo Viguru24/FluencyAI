@@ -1,5 +1,25 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send, Square, ArrowRight, Zap } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Mic,
+  Eye,
+  EyeOff,
+  LifeBuoy,
+  Volume2,
+  Flag,
+  Loader2,
+  Pencil,
+  Check,
+  Send,
+  Square,
+  ArrowRight,
+  Zap,
+  CheckCircle2,
+  Target,
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  Headphones,
+} from 'lucide-react';
 import type { CEFRLevel, LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, stopSpeaking, playChime, isCurrentlySpeaking } from '../../services/speech';
 import {
@@ -20,6 +40,78 @@ import {
   cleanTextForTTS,
   type AudioAttachment,
 } from '../../services/geminiService';
+import { getDueSRSFlashcards } from '../../services/srsService';
+import { getAvailableAudioSpeeds, useGamificationStore } from '../../store/rewardSystem';
+
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'to', 'in', 'on', 'at', 'for', 'of', 'with', 'it', 'that', 'this', 'and', 'or', 'so'
+]);
+
+const CONTRACTION_MAP: Record<string, string> = {
+  "i'd": 'i would',
+  "i'm": 'i am',
+  "i'll": 'i will',
+  "i've": 'i have',
+  "can't": 'cannot',
+  "don't": 'do not',
+  "won't": 'will not',
+  "didn't": 'did not',
+  "couldn't": 'could not',
+  "wouldn't": 'would not',
+  "shouldn't": 'should not',
+  "it's": 'it is',
+  "that's": 'that is',
+  "we're": 'we are',
+  "you're": 'you are',
+  "they're": 'they are',
+  "there's": 'there is',
+  "what's": 'what is',
+  "let's": 'let us',
+};
+
+function normalizeText(text: string): string {
+  let lower = text.toLowerCase();
+  for (const [contraction, expanded] of Object.entries(CONTRACTION_MAP)) {
+    lower = lower.replaceAll(contraction, expanded);
+  }
+  return lower.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Fuzzy token & keyword matcher for target phrase usage
+ * Returns true if direct substring matches OR >= 70% of core keywords are present
+ */
+function matchesTargetPhrase(spokenText: string, targetPhrase: string): boolean {
+  if (!spokenText || !targetPhrase) return false;
+  const normSpoken = normalizeText(spokenText);
+  const normTarget = normalizeText(targetPhrase);
+
+  if (!normSpoken || !normTarget) return false;
+
+  // 1. Direct substring match
+  if (normSpoken.includes(normTarget)) {
+    return true;
+  }
+
+  // 2. Token overlap and core keyword matching
+  const targetTokens = normTarget.split(' ').filter(Boolean);
+  const spokenTokens = new Set(normSpoken.split(' ').filter(Boolean));
+
+  const coreTargetWords = targetTokens.filter((w) => !STOP_WORDS.has(w));
+  const wordsToCheck = coreTargetWords.length >= 2 ? coreTargetWords : targetTokens;
+
+  if (wordsToCheck.length === 0) return false;
+
+  let matched = 0;
+  for (const word of wordsToCheck) {
+    if (spokenTokens.has(word)) {
+      matched++;
+    }
+  }
+
+  const ratio = matched / wordsToCheck.length;
+  return ratio >= 0.7;
+}
 
 interface Turn {
   id: string;
@@ -34,6 +126,8 @@ interface Turn {
 export interface RoleplayStats {
   userTurns: string[];
   revealsUsed: number;
+  unblurredTurnCount?: number;
+  usedTargetPhraseIds?: string[];
   helpRequests: number;
   aiTurnsHeard: number;
   fluencyScore?: number;
@@ -87,6 +181,25 @@ export const RoleplayStage: React.FC<Props> = ({
   const [analyzingSeconds, setAnalyzingSeconds] = useState(0);
   const scorecardCancelledRef = useRef(false);
 
+  // Gamification, live mission tracking & speed control
+  const [currentSpeed, setCurrentSpeed] = useState<number>(audioSpeed);
+  const [unblurredTurnCount, setUnblurredTurnCount] = useState<number>(0);
+  const [usedTargetPhraseIds, setUsedTargetPhraseIds] = useState<Set<string>>(new Set());
+  const [isMissionsCollapsed, setIsMissionsCollapsed] = useState<boolean>(false);
+  const [justMatchedPhraseId, setJustMatchedPhraseId] = useState<string | null>(null);
+
+  const { currentTier } = useGamificationStore();
+  const availableSpeeds = useMemo(() => getAvailableAudioSpeeds(currentTier), [currentTier]);
+
+  const dueSRSCard = useMemo(() => {
+    try {
+      const due = getDueSRSFlashcards();
+      return due.find((c) => c.box === 1 || c.box === 2) || null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     let timer: any;
     if (isAnalyzingScorecard) {
@@ -106,6 +219,8 @@ export const RoleplayStage: React.FC<Props> = ({
     onEnd({
       userTurns: userTurnsList,
       revealsUsed,
+      unblurredTurnCount,
+      usedTargetPhraseIds: Array.from(usedTargetPhraseIds),
       helpRequests,
       aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
       lowConfidenceWords: Array.from(sessionLowConfidenceWordsRef.current),
@@ -162,7 +277,7 @@ export const RoleplayStage: React.FC<Props> = ({
       if (!cleaned) return;
 
       speakEnglish(cleaned, {
-        rate: audioSpeed,
+        rate: currentSpeed,
         accent: plan.persona.accent,
         personaName: plan.persona.name,
         pitch: plan.persona.pitch,
@@ -173,7 +288,7 @@ export const RoleplayStage: React.FC<Props> = ({
       });
       setIsAiSpeaking(true);
     },
-    [audioSpeed, plan.persona.accent, plan.persona.name, plan.persona.pitch, plan.persona.ttsVoicePreference, plan.persona.gender]
+    [currentSpeed, plan.persona.accent, plan.persona.name, plan.persona.pitch, plan.persona.ttsVoicePreference, plan.persona.gender]
   );
 
   const pushAiTurn = useCallback(
@@ -349,6 +464,40 @@ export const RoleplayStage: React.FC<Props> = ({
     const userSpokeReal = Boolean(finalTranscript.length > 0);
     const text = userSpokeReal ? finalTranscript : fallback;
 
+    // Live Target Phrase & SRS Matcher
+    if (userSpokeReal) {
+      const phrasesToCheck = [...plan.phrases];
+      if (dueSRSCard) {
+        phrasesToCheck.push({
+          id: dueSRSCard.id,
+          phrase: dueSRSCard.phrase,
+          ipa: dueSRSCard.ipa,
+          usageContext: dueSRSCard.context,
+          translations: {},
+        });
+      }
+
+      const newlyMatched: string[] = [];
+      phrasesToCheck.forEach((tp) => {
+        if (!usedTargetPhraseIds.has(tp.id)) {
+          if (matchesTargetPhrase(text, tp.phrase)) {
+            newlyMatched.push(tp.id);
+          }
+        }
+      });
+
+      if (newlyMatched.length > 0) {
+        setUsedTargetPhraseIds((prev) => {
+          const next = new Set(prev);
+          newlyMatched.forEach((id) => next.add(id));
+          return next;
+        });
+        setJustMatchedPhraseId(newlyMatched[0]);
+        setTimeout(() => setJustMatchedPhraseId(null), 3500);
+        playChime('success');
+      }
+    }
+
     const newTurns: Turn[] = [
       ...turns,
       {
@@ -471,6 +620,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const revealTurn = (id: string) => {
     const target = turns.find((x) => x.id === id);
     if (!target || target.revealed) return;
+    setUnblurredTurnCount((c) => c + 1);
     setRevealsUsed((n) => n + 1);
     setTurns((t) => t.map((x) => (x.id === id ? { ...x, revealed: true } : x)));
   };
@@ -505,6 +655,8 @@ export const RoleplayStage: React.FC<Props> = ({
       onEnd({
         userTurns: userTurnsList,
         revealsUsed,
+        unblurredTurnCount,
+        usedTargetPhraseIds: Array.from(usedTargetPhraseIds),
         helpRequests,
         aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
         fluencyScore: scorecard?.fluency,
@@ -522,6 +674,8 @@ export const RoleplayStage: React.FC<Props> = ({
       onEnd({
         userTurns: userTurnsList,
         revealsUsed,
+        unblurredTurnCount,
+        usedTargetPhraseIds: Array.from(usedTargetPhraseIds),
         helpRequests,
         aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
         lowConfidenceWords: Array.from(sessionLowConfidenceWordsRef.current),
@@ -546,28 +700,187 @@ export const RoleplayStage: React.FC<Props> = ({
 
   return (
     <div className="relative flex flex-col h-[85vh] max-h-[85vh] flex-1 min-h-0 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
-      {/* Stage tag with Turn Count badge + reveal toggle */}
-      <div className="flex items-center justify-between px-4 sm:px-6 pt-3 flex-shrink-0">
-        <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
-          Stage 2 · Turn {currentTurn} · Open Conversation
-        </span>
+      {/* Stage tag with Turn Count, Ears-Only Status badge, Speed Selector & reveal toggle */}
+      <div className="flex items-center justify-between px-4 sm:px-6 pt-3 flex-shrink-0 gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
+            Stage 2 · Turn {currentTurn}
+          </span>
 
-        <button
-          onClick={() => {
-            playChime('tap');
-            setRevealAll((r) => !r);
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
-            revealAll
-              ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
-              : 'bg-white text-slate-700 border-slate-200 shadow-xs hover:bg-slate-50'
-          }`}
-          aria-pressed={revealAll}
-          title="Toggle blurred transcript for ear training"
-        >
-          {revealAll ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          {revealAll ? 'Transcript: Revealed' : 'Transcript: Blurred'}
-        </button>
+          {/* Ears-Only Bonus Status Badge */}
+          {unblurredTurnCount === 0 ? (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-50 to-sky-50 text-emerald-800 border border-emerald-300 text-[11px] font-extrabold shadow-2xs animate-fade-in"
+              title="Keep transcripts blurred and listen with your ears to earn +15 XP bonus!"
+            >
+              <Headphones className="w-3 h-3 text-emerald-600" />
+              <span>🎧 Ears-Only Bonus Active (+15 XP)</span>
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-semibold"
+              title="Transcript was unblurred · Ears-Only bonus used"
+            >
+              <Eye className="w-3 h-3 text-slate-400" />
+              <span>👁️ Transcript Peeked (Bonus Used)</span>
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Active Tier Audio Speed Selector Pills */}
+          <div
+            className="flex items-center bg-slate-100/90 p-0.5 rounded-xl border border-slate-200 shadow-2xs"
+            title="Speaking playback speed (unlocked via Tiers)"
+          >
+            {availableSpeeds.map((opt) => {
+              const isSelected = currentSpeed === opt.speed;
+              return (
+                <button
+                  key={opt.speed}
+                  type="button"
+                  disabled={!opt.unlocked}
+                  onClick={() => {
+                    if (opt.unlocked) {
+                      playChime('tap');
+                      setCurrentSpeed(opt.speed);
+                    }
+                  }}
+                  title={opt.unlocked ? opt.label : opt.lockReason || 'Tier perk locked'}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all ${
+                    isSelected
+                      ? 'bg-white text-brand-700 shadow-2xs ring-1 ring-black/5'
+                      : opt.unlocked
+                      ? 'text-slate-600 hover:text-slate-900 active:scale-95'
+                      : 'text-slate-400 opacity-60 cursor-not-allowed'
+                  }`}
+                >
+                  {!opt.unlocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
+                  <span>{opt.speed}x</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => {
+              playChime('tap');
+              setRevealAll((r) => {
+                const next = !r;
+                if (next) setUnblurredTurnCount((c) => c + 1);
+                return next;
+              });
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+              revealAll
+                ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
+                : 'bg-white text-slate-700 border-slate-200 shadow-xs hover:bg-slate-50'
+            }`}
+            aria-pressed={revealAll}
+            title="Toggle blurred transcript for auditory ear training"
+          >
+            {revealAll ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{revealAll ? 'Transcript: Revealed' : 'Transcript: Blurred'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Live "Target Phrase Tracker" Mission HUD Bar */}
+      <div className="px-4 sm:px-6 pt-2 flex-shrink-0">
+        <div className="rounded-2xl bg-gradient-to-r from-amber-50/80 via-emerald-50/60 to-sky-50/70 border border-slate-200/90 shadow-2xs overflow-hidden">
+          {/* HUD Summary Bar */}
+          <div
+            onClick={() => setIsMissionsCollapsed((c) => !c)}
+            className="flex items-center justify-between px-3.5 py-1.5 cursor-pointer hover:bg-black/[0.02] transition"
+          >
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="flex items-center gap-1 text-xs font-extrabold text-slate-900">
+                <Target className="w-3.5 h-3.5 text-brand-600" />
+                <span>Mission Phrases ({usedTargetPhraseIds.size}/{plan.phrases.length})</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black">
+                +{usedTargetPhraseIds.size * 10} XP Bonus
+              </span>
+              {dueSRSCard && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300">
+                  ⚡ 1 Due SRS Phrase Added for Bonus XP
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
+              <span className="hidden sm:inline">{isMissionsCollapsed ? 'Show targets' : 'Hide'}</span>
+              {isMissionsCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </div>
+          </div>
+
+          {/* Collapsible phrase pill chips */}
+          {!isMissionsCollapsed && (
+            <div className="px-3 pb-2 pt-0.5 flex flex-wrap gap-1.5 border-t border-slate-200/50 animate-fade-in">
+              {plan.phrases.map((phrase) => {
+                const isUsed = usedTargetPhraseIds.has(phrase.id);
+                const isJustMatched = justMatchedPhraseId === phrase.id;
+                return (
+                  <div
+                    key={phrase.id}
+                    onClick={() => {
+                      playChime('tap');
+                      speakEnglish(phrase.phrase, {
+                        rate: currentSpeed,
+                        accent: plan.persona.accent,
+                        personaName: plan.persona.name,
+                      });
+                    }}
+                    title="Speak this phrase aloud in conversation for +10 Bonus XP! Tap to hear pronunciation."
+                    className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 ${
+                      isUsed
+                        ? 'bg-emerald-500 text-white shadow-xs font-bold ring-2 ring-emerald-300'
+                        : 'bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-2xs hover:border-brand-300'
+                    } ${isJustMatched ? 'scale-105 ring-4 ring-emerald-400 animate-pulse' : ''}`}
+                  >
+                    {isUsed ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                    )}
+                    <span className="truncate max-w-[200px] sm:max-w-[280px]">“{phrase.phrase}”</span>
+                    <span className={`text-[10px] font-black ${isUsed ? 'text-emerald-100' : 'text-emerald-600'}`}>
+                      {isUsed ? '+10 XP ✓' : '+10 XP'}
+                    </span>
+                  </div>
+                );
+              })}
+
+              {dueSRSCard && (
+                <div
+                  key={dueSRSCard.id}
+                  onClick={() => {
+                    playChime('tap');
+                    speakEnglish(dueSRSCard.phrase, {
+                      rate: currentSpeed,
+                      accent: plan.persona.accent,
+                      personaName: plan.persona.name,
+                    });
+                  }}
+                  title="Past mistake due for review — say it aloud for bonus practice!"
+                  className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                    usedTargetPhraseIds.has(dueSRSCard.id)
+                      ? 'bg-amber-500 text-slate-950 font-bold ring-2 ring-amber-300 shadow-xs'
+                      : 'bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-100'
+                  }`}
+                >
+                  {usedTargetPhraseIds.has(dueSRSCard.id) ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-slate-950 flex-shrink-0" />
+                  ) : (
+                    <span className="text-[11px]">⚡</span>
+                  )}
+                  <span className="truncate max-w-[180px]">“{dueSRSCard.phrase}”</span>
+                  <span className="text-[10px] font-extrabold text-amber-800">SRS +10 XP</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Persona + waveform */}
