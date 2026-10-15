@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send, Square } from 'lucide-react';
+import { Mic, Eye, EyeOff, LifeBuoy, Volume2, Flag, Loader2, Pencil, Check, Send, Square, ArrowRight, Zap } from 'lucide-react';
 import type { CEFRLevel, LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, stopSpeaking, playChime, isCurrentlySpeaking } from '../../services/speech';
 import {
@@ -84,6 +84,33 @@ export const RoleplayStage: React.FC<Props> = ({
   const [helpOpen, setHelpOpen] = useState(false);
   const [revealsUsed, setRevealsUsed] = useState(0);
   const [helpRequests, setHelpRequests] = useState(0);
+  const [analyzingSeconds, setAnalyzingSeconds] = useState(0);
+  const scorecardCancelledRef = useRef(false);
+
+  useEffect(() => {
+    let timer: any;
+    if (isAnalyzingScorecard) {
+      setAnalyzingSeconds(0);
+      scorecardCancelledRef.current = false;
+      timer = setInterval(() => {
+        setAnalyzingSeconds((s) => s + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isAnalyzingScorecard]);
+
+  const handleSkipWaitAndProceed = () => {
+    scorecardCancelledRef.current = true;
+    setIsAnalyzingScorecard(false);
+    const userTurnsList = turns.filter((t) => t.speaker === 'user').map((t) => t.text);
+    onEnd({
+      userTurns: userTurnsList,
+      revealsUsed,
+      helpRequests,
+      aiTurnsHeard: turns.filter((t) => t.speaker === 'ai').length,
+      lowConfidenceWords: Array.from(sessionLowConfidenceWordsRef.current),
+    });
+  };
 
   const vizRef = useRef(new AudioVisualizerController());
   const recorderRef = useRef(new AudioRecorderController());
@@ -456,8 +483,8 @@ export const RoleplayStage: React.FC<Props> = ({
 
     try {
       const sessionLowConf = Array.from(sessionLowConfidenceWordsRef.current);
-      // Send multimodal audio recordings & low-confidence phonetic metadata to Gemini 2.5 Flash / FreeLLMAPI
-      const scorecard = await generateGeminiScorecard({
+      // Fast timeout safeguard: 6 seconds max
+      const scorecardPromise = generateGeminiScorecard({
         plan,
         userTurns: userTurnsList,
         phraseScores,
@@ -466,6 +493,11 @@ export const RoleplayStage: React.FC<Props> = ({
         pronunciationMetadata: pronunciationMetadataRef.current,
         lowConfidenceWords: sessionLowConf,
       });
+
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000));
+      const scorecard = await Promise.race([scorecardPromise, timeoutPromise]);
+
+      if (scorecardCancelledRef.current) return;
 
       onEnd({
         userTurns: userTurnsList,
@@ -483,6 +515,7 @@ export const RoleplayStage: React.FC<Props> = ({
       });
     } catch (err) {
       console.warn('Scorecard analysis error:', err);
+      if (scorecardCancelledRef.current) return;
       onEnd({
         userTurns: userTurnsList,
         revealsUsed,
@@ -865,14 +898,27 @@ export const RoleplayStage: React.FC<Props> = ({
 
       {/* Scorecard Grading Overlay with Multimodal Gemini AI */}
       {isAnalyzingScorecard && (
-        <div className="absolute inset-0 z-30 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <div className="absolute inset-0 z-30 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fade-in">
           <div className="w-16 h-16 rounded-3xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600 mb-4 shadow-soft">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
           <h3 className="text-lg font-black text-slate-900">Grading Your Spoken Roleplay</h3>
           <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
-            James &amp; Gemini AI are listening to your recorded audio to evaluate British phrasing, intonation, syllable stress, and natural office vocabulary…
+            {analyzingSeconds < 2
+              ? 'Analyzing speech rhythm and phonetics with Gemini AI…'
+              : 'Polishing your British phrasing upgrades and acoustic scores…'}
           </p>
+
+          {analyzingSeconds >= 2 && (
+            <button
+              onClick={handleSkipWaitAndProceed}
+              className="mt-5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2 active:scale-95 animate-fade-in"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <span>View Scorecard Instantly</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+          )}
         </div>
       )}
     </div>

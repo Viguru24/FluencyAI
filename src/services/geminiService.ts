@@ -254,6 +254,11 @@ STRICT OUTPUT RULES:
         });
       }
 
+      const freeLLMModel =
+        config.model && config.model !== 'auto' && config.model !== 'gemini-2.5-flash' && config.model !== 'gemini-2.0-flash'
+          ? config.model
+          : 'gemini-3.1-flash-lite';
+
       const response = await fetchFreeLLMWithFallback(
         '/chat/completions',
         {
@@ -263,7 +268,7 @@ STRICT OUTPUT RULES:
             ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
           },
           body: JSON.stringify({
-            model: config.model || 'auto',
+            model: freeLLMModel,
             messages,
             temperature: 0.75,
             max_tokens: 600,
@@ -528,10 +533,18 @@ Output a JSON object conforming strictly to this schema:
 Provide 2 or 3 insightful phrasing upgrades and up to 2 specific ambiguous words under pronunciationFeedback based on their actual speech and audio.
 Return strictly valid JSON only.`;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7500);
+
   try {
     let rawJson: string | null = null;
 
     if (config.provider === 'freellmapi') {
+      const freeLLMModel =
+        config.model && config.model !== 'auto' && config.model !== 'gemini-2.5-flash' && config.model !== 'gemini-2.0-flash'
+          ? config.model
+          : 'gemini-3.1-flash-lite';
+
       const response = await fetchFreeLLMWithFallback(
         '/chat/completions',
         {
@@ -540,8 +553,9 @@ Return strictly valid JSON only.`;
             'Content-Type': 'application/json',
             ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
           },
+          signal: controller.signal,
           body: JSON.stringify({
-            model: config.model || 'auto',
+            model: freeLLMModel,
             messages: [
               {
                 role: 'system',
@@ -554,6 +568,7 @@ Return strictly valid JSON only.`;
               },
             ],
             temperature: 0.3,
+            max_tokens: 800,
           }),
         },
         config.baseUrl
@@ -579,35 +594,40 @@ Return strictly valid JSON only.`;
       rawJson = jsonMatch ? jsonMatch[0] : cleanContent;
     } else {
       const parts: any[] = [];
+      const directModel = config.model && config.model !== 'auto' ? config.model : 'gemini-2.5-flash';
 
+      // Limit audio attachment to at most 1 recent clip under 500KB to avoid massive payloads stalling network
       if (audioClips.length > 0) {
-        const recentClips = audioClips.slice(-3);
-        for (const clip of recentClips) {
-          if (clip.base64 && clip.base64.length > 50) {
-            parts.push({
-              inlineData: {
-                mimeType: clip.mimeType.split(';')[0] || 'audio/webm',
-                data: clip.base64,
-              },
-            });
-          }
+        const latestClip = audioClips[audioClips.length - 1];
+        if (latestClip?.base64 && latestClip.base64.length > 50 && latestClip.base64.length < 500000) {
+          parts.push({
+            inlineData: {
+              mimeType: latestClip.mimeType.split(';')[0] || 'audio/webm',
+              data: latestClip.base64,
+            },
+          });
         }
       }
 
       parts.push({ text: prompt });
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+        `https://generativelanguage.googleapis.com/v1beta/models/${directModel}:generateContent?key=${encodeURIComponent(
           apiKey
         )}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             contents: [{ role: 'user', parts }],
             generationConfig: {
               temperature: 0.3,
+              maxOutputTokens: 800,
               responseMimeType: 'application/json',
+              ...(directModel.includes('2.5') || directModel.includes('2.0')
+                ? { thinkingConfig: { thinkingBudget: 0 } }
+                : {}),
             },
           }),
         }
@@ -758,6 +778,8 @@ Return strictly valid JSON only.`;
         fluencyTip: u.explanation,
       })),
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -901,6 +923,11 @@ Return strictly valid JSON conforming to this schema:
     let rawJson: string | null = null;
 
     if (config.provider === 'freellmapi') {
+      const freeLLMModel =
+        config.model && config.model !== 'auto' && config.model !== 'gemini-2.5-flash' && config.model !== 'gemini-2.0-flash'
+          ? config.model
+          : 'gemini-3.1-flash-lite';
+
       const response = await fetchFreeLLMWithFallback(
         '/chat/completions',
         {
@@ -910,7 +937,7 @@ Return strictly valid JSON conforming to this schema:
             ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
           },
           body: JSON.stringify({
-            model: config.model || 'auto',
+            model: freeLLMModel,
             messages: [
               {
                 role: 'system',
@@ -922,6 +949,7 @@ Return strictly valid JSON conforming to this schema:
               },
             ],
             temperature: 0.2,
+            max_tokens: 600,
           }),
         },
         config.baseUrl
@@ -937,8 +965,9 @@ Return strictly valid JSON conforming to this schema:
       const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
       rawJson = jsonMatch ? jsonMatch[0] : cleanContent;
     } else {
+      const directModel = config.model && config.model !== 'auto' ? config.model : 'gemini-2.5-flash';
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+        `https://generativelanguage.googleapis.com/v1beta/models/${directModel}:generateContent?key=${encodeURIComponent(
           apiKey
         )}`,
         {
@@ -948,7 +977,11 @@ Return strictly valid JSON conforming to this schema:
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.2,
+              maxOutputTokens: 600,
               responseMimeType: 'application/json',
+              ...(directModel.includes('2.5') || directModel.includes('2.0')
+                ? { thinkingConfig: { thinkingBudget: 0 } }
+                : {}),
             },
           }),
         }
@@ -1178,6 +1211,11 @@ Output STRICTLY valid JSON only (no markdown, no backticks, no thinking):
     let rawJson: string | null = null;
 
     if (config.provider === 'freellmapi') {
+      const freeLLMModel =
+        config.model && config.model !== 'auto' && config.model !== 'gemini-2.5-flash' && config.model !== 'gemini-2.0-flash'
+          ? config.model
+          : 'gemini-3.1-flash-lite';
+
       const response = await fetchFreeLLMWithFallback(
         '/chat/completions',
         {
@@ -1187,7 +1225,7 @@ Output STRICTLY valid JSON only (no markdown, no backticks, no thinking):
             ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
           },
           body: JSON.stringify({
-            model: config.model || 'auto',
+            model: freeLLMModel,
             messages: [
               {
                 role: 'system',
@@ -1196,6 +1234,7 @@ Output STRICTLY valid JSON only (no markdown, no backticks, no thinking):
               { role: 'user', content: prompt },
             ],
             temperature: 0.3,
+            max_tokens: 800,
           }),
         },
         config.baseUrl
@@ -1208,8 +1247,9 @@ Output STRICTLY valid JSON only (no markdown, no backticks, no thinking):
       const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
       rawJson = jsonMatch ? jsonMatch[0] : cleanContent;
     } else {
+      const directModel = config.model && config.model !== 'auto' ? config.model : 'gemini-2.5-flash';
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+        `https://generativelanguage.googleapis.com/v1beta/models/${directModel}:generateContent?key=${encodeURIComponent(
           apiKey
         )}`,
         {
@@ -1219,7 +1259,11 @@ Output STRICTLY valid JSON only (no markdown, no backticks, no thinking):
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.3,
+              maxOutputTokens: 800,
               responseMimeType: 'application/json',
+              ...(directModel.includes('2.5') || directModel.includes('2.0')
+                ? { thinkingConfig: { thinkingBudget: 0 } }
+                : {}),
             },
           }),
         }
