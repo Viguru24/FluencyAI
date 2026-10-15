@@ -2,7 +2,18 @@
 // Supports FreeLLMAPI Gateway (port 31415) and Direct Google Gemini 2.5 Flash,
 // Full Multi-Turn Memory, Multimodal Audio Capture, System Instructions, and Transparent Error Reporting.
 
-import type { AIPersona, CEFRLevel, LessonPlan, PhrasingUpgrade, PlacementAssessmentResult, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../types';
+import type { 
+  AIPersona, 
+  CEFRLevel, 
+  LessonPlan, 
+  PhrasingUpgrade, 
+  PlacementAssessmentResult, 
+  PronunciationCoachingPoint, 
+  PronunciationFeedbackWord,
+  NativeLanguage,
+  RoleplayScenario,
+  ScaffoldingTargetPhrase
+} from '../types';
 import type { SpokenSegmentAnalysis } from './speechRecognition';
 import { getCandidateGatewayUrls, getLLMConfig } from './llmConfig';
 import { toast } from './toast';
@@ -972,4 +983,339 @@ Return strictly valid JSON conforming to this schema:
     return computeFallbackAssessment();
   }
 }
+
+/**
+ * AI-Powered Real-World Scenario Generator:
+ * Generates custom CEFR-calibrated roleplay scenarios and structured lesson plans on demand.
+ */
+export async function generateCustomScenario(
+  topicPrompt: string,
+  level: CEFRLevel = 'B1',
+  persona: AIPersona,
+  nativeLang: NativeLanguage = 'Spanish'
+): Promise<{ scenario: RoleplayScenario; plan: LessonPlan }> {
+  const config = getLLMConfig();
+  const apiKey = config.apiKey;
+  const safeTopic = topicPrompt.trim() || 'Ordering afternoon tea in Covent Garden';
+  const scenarioId = `custom-${Date.now()}`;
+
+  const createFallback = (): { scenario: RoleplayScenario; plan: LessonPlan } => {
+    const title = safeTopic.length > 45 ? `${safeTopic.slice(0, 42)}...` : safeTopic;
+    const plan: LessonPlan = {
+      id: scenarioId,
+      title: `Custom: ${title}`,
+      contextLabel: 'Real-World Practice',
+      persona,
+      xpReward: 45,
+      minutes: 6,
+      phrases: [
+        {
+          id: `${scenarioId}-p1`,
+          phrase: "I was wondering if you might be able to help me with this?",
+          ipa: "/aɪ wəz ˈwʌndərɪŋ ɪf juː maɪt biː ˈeɪbl tuː hɛlp miː wɪð ðɪs/",
+          usageContext: "A polite, understated British opening for making any request.",
+          translations: { [nativeLang]: "Me preguntaba si podría ayudarme con esto." } as any,
+        },
+        {
+          id: `${scenarioId}-p2`,
+          phrase: "Could you possibly clarify how that works in practice?",
+          ipa: "/kʊd juː ˈpɒsəbli ˈklærɪfaɪ haʊ ðæt wɜːks ɪn ˈpræktɪs/",
+          usageContext: "Asking for specific details without sounding confrontational.",
+          translations: { [nativeLang]: "¿Podría aclarar cómo funciona eso en la práctica?" } as any,
+        },
+        {
+          id: `${scenarioId}-p3`,
+          phrase: "That makes complete sense — I appreciate you sorting that out.",
+          ipa: "/ðæt meɪks kəmˈpliːt sɛns — aɪ əˈpriːʃieɪt juː ˈsɔːtɪŋ ðæt aʊt/",
+          usageContext: "A gracious British closing showing appreciation.",
+          translations: { [nativeLang]: "Tiene todo el sentido, le agradezco que lo haya solucionado." } as any,
+        },
+      ],
+      aiTurns: [
+        `Hello there! I understand we are working on: "${title}". How can I assist you today?`,
+        "That's completely understandable. Could you tell me a little more about what outcome you're hoping for?",
+        "Spot on. I'll make sure that's taken care of right away. Anything else before you head off?",
+      ],
+      mockUserReplies: [
+        "I was wondering if you might be able to help me with this?",
+        "Could you possibly clarify how that works in practice?",
+        "That makes complete sense — I appreciate you sorting that out.",
+      ],
+      upgrades: [
+        {
+          id: `${scenarioId}-u1`,
+          whatYouSaid: "Help me please.",
+          moreNatural: "I was wondering if you might be able to help me?",
+          explanation: "In British English, soft modal openings sound much warmer and more courteous.",
+          category: 'Politeness',
+        },
+        {
+          id: `${scenarioId}-u2`,
+          whatYouSaid: "Explain this more.",
+          moreNatural: "Could you possibly clarify how that works in practice?",
+          explanation: "Using 'could you possibly' softens direct imperatives elegantly.",
+          category: 'Natural Idiom',
+        },
+      ],
+      helpPhrases: [
+        {
+          id: `${scenarioId}-h1`,
+          keywords: ['help', 'start', 'begin', 'polite'],
+          english: "I was wondering if you might be able to help me?",
+          ipa: "/aɪ wəz ˈwʌndərɪŋ ɪf juː maɪt biː ˈeɪbl tuː hɛlp miː/",
+          note: "Standard courteous opener",
+        },
+      ],
+    };
+
+    const scenario: RoleplayScenario = {
+      id: scenarioId,
+      title: `Custom: ${title}`,
+      tagline: `Interactive practice: ${safeTopic}`,
+      category: 'Daily Life',
+      cefrLevel: level,
+      durationMinutes: 6,
+      aiPersona: persona,
+      description: `Tailored roleplay created to practice: "${safeTopic}". Calibrated for ${level} CEFR learners.`,
+      learningGoals: [
+        'Master polite British conversational framing',
+        'Express personal preferences with confidence',
+        'Handle follow-up questions smoothly',
+      ],
+      keyVocabulary: [
+        {
+          word: 'wondering',
+          ipa: '/ˈwʌndərɪŋ/',
+          partOfSpeech: 'verb (polite softener)',
+          translations: { [nativeLang]: 'preguntándose' } as any,
+          example: 'I was wondering if you had a moment?',
+        },
+        {
+          word: 'clarify',
+          ipa: '/ˈklærɪfaɪ/',
+          partOfSpeech: 'verb',
+          translations: { [nativeLang]: 'aclarar' } as any,
+          example: 'Could you clarify the deadline for us?',
+        },
+      ],
+      dialogueFlow: [
+        {
+          step: 1,
+          speaker: 'ai',
+          message: `Hello! I understand you wanted to go over: "${title}". How can I help today?`,
+        },
+        {
+          step: 2,
+          speaker: 'user',
+          message: 'I was wondering if you might be able to help me with this?',
+        },
+      ],
+      badgeColor: 'bg-gradient-to-r from-teal-500 to-indigo-600',
+      gradient: 'from-teal-600 via-indigo-600 to-purple-700',
+    };
+
+    return { scenario, plan };
+  };
+
+  if (!apiKey) {
+    return createFallback();
+  }
+
+  const prompt = `You are a premier British English curriculum designer.
+Generate a structured, authentic CEFR ${level} roleplay scenario and 3-phrase lesson plan for this situation:
+"${safeTopic}"
+Persona: ${persona.name} (${persona.role}, Tone: ${persona.tone}).
+Learner Native Language: ${nativeLang}.
+
+Output STRICTLY valid JSON only (no markdown, no backticks, no thinking):
+{
+  "title": "<Concise 3-6 word British scenario title>",
+  "tagline": "<Snappy one-sentence scenario hook>",
+  "category": "Daily Life" | "Career & Tech" | "Travel" | "Social" | "Healthcare",
+  "learningGoals": ["<goal 1>", "<goal 2>", "<goal 3>"],
+  "phrases": [
+    {
+      "phrase": "<Target phrase 1 in authentic British English>",
+      "ipa": "<IPA transcription>",
+      "usageContext": "<When and why to use it>",
+      "translation": "<Translation in ${nativeLang}>"
+    },
+    {
+      "phrase": "<Target phrase 2>",
+      "ipa": "<IPA>",
+      "usageContext": "<Context>",
+      "translation": "<Translation>"
+    },
+    {
+      "phrase": "<Target phrase 3>",
+      "ipa": "<IPA>",
+      "usageContext": "<Context>",
+      "translation": "<Translation>"
+    }
+  ],
+  "aiTurns": [
+    "<AI opening turn welcoming the user into character>",
+    "<AI second turn responding to user's first query>",
+    "<AI third turn concluding the interaction warmly>"
+  ],
+  "upgrades": [
+    {
+      "whatYouSaid": "<Common clumsy or direct non-native phrase>",
+      "moreNatural": "<Polished natural British phrasing>",
+      "explanation": "<Why British speakers phrase it this way>",
+      "category": "Politeness" | "Natural Idiom" | "Grammar" | "Fluency"
+    },
+    {
+      "whatYouSaid": "<Another common non-native phrasing>",
+      "moreNatural": "<More natural British upgrade>",
+      "explanation": "<Pedagogical tip>",
+      "category": "Natural Idiom"
+    }
+  ]
+}`;
+
+  try {
+    let rawJson: string | null = null;
+
+    if (config.provider === 'freellmapi') {
+      const response = await fetchFreeLLMWithFallback(
+        '/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: config.model || 'auto',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert Cambridge English curriculum architect. Output ONLY valid JSON.',
+              },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.3,
+          }),
+        },
+        config.baseUrl
+      );
+
+      if (!response.ok) throw new Error(`FreeLLMAPI status ${response.status}`);
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content || '';
+      const cleanContent = content.replace(/<(think|thought|reasoning)>[\s\S]*?<\/\1>/gi, '');
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      rawJson = jsonMatch ? jsonMatch[0] : cleanContent;
+    } else {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+          apiKey
+        )}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.3,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
+      );
+      if (!response.ok) throw new Error(`Gemini status ${response.status}`);
+      const data = await response.json();
+      rawJson = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
+
+    if (!rawJson) return createFallback();
+    const parsed = JSON.parse(rawJson);
+
+    const title = parsed.title || safeTopic;
+    const phrases: ScaffoldingTargetPhrase[] = Array.isArray(parsed.phrases)
+      ? parsed.phrases.slice(0, 3).map((p: any, idx: number) => ({
+          id: `${scenarioId}-p${idx + 1}`,
+          phrase: String(p.phrase || '').trim(),
+          ipa: String(p.ipa || '').trim(),
+          usageContext: String(p.usageContext || 'Essential British conversational phrasing').trim(),
+          translations: { [nativeLang]: String(p.translation || '').trim() } as any,
+        }))
+      : createFallback().plan.phrases;
+
+    const aiTurns: string[] = Array.isArray(parsed.aiTurns) && parsed.aiTurns.length >= 2
+      ? parsed.aiTurns.map((t: any) => String(t).trim())
+      : createFallback().plan.aiTurns;
+
+    const upgrades: PhrasingUpgrade[] = Array.isArray(parsed.upgrades)
+      ? parsed.upgrades.map((u: any, idx: number) => ({
+          id: `${scenarioId}-u${idx + 1}`,
+          whatYouSaid: String(u.whatYouSaid || 'Can you help me?').trim(),
+          moreNatural: String(u.moreNatural || 'I was wondering if you might be able to help?').trim(),
+          explanation: String(u.explanation || 'British phrasing softens requests with courteous modals.').trim(),
+          category: (['Politeness', 'Natural Idiom', 'Grammar', 'Fluency'].includes(u.category)
+            ? u.category
+            : 'Natural Idiom') as PhrasingUpgrade['category'],
+        }))
+      : createFallback().plan.upgrades;
+
+    const plan: LessonPlan = {
+      id: scenarioId,
+      title,
+      contextLabel: 'Custom Situation',
+      persona,
+      xpReward: 50,
+      minutes: 6,
+      phrases,
+      aiTurns,
+      mockUserReplies: phrases.map((p) => p.phrase),
+      upgrades,
+      helpPhrases: [
+        {
+          id: `${scenarioId}-h1`,
+          keywords: ['help', 'repeat', 'start'],
+          english: phrases[0]?.phrase || "I was wondering if you might be able to help me?",
+          ipa: phrases[0]?.ipa || "/aɪ wəz ˈwʌndərɪŋ/",
+          note: "Polite opening",
+        },
+      ],
+    };
+
+    const scenario: RoleplayScenario = {
+      id: scenarioId,
+      title,
+      tagline: parsed.tagline || `Real-world practice: ${safeTopic}`,
+      category: (['Daily Life', 'Career & Tech', 'Travel', 'Social', 'Healthcare'].includes(parsed.category)
+        ? parsed.category
+        : 'Daily Life') as RoleplayScenario['category'],
+      cefrLevel: level,
+      durationMinutes: 6,
+      aiPersona: persona,
+      description: `Practicing: "${safeTopic}". Calibrated for ${level} level.`,
+      learningGoals: Array.isArray(parsed.learningGoals) && parsed.learningGoals.length > 0
+        ? parsed.learningGoals
+        : ['Master conversational composure', 'Learn natural British phrasing', 'Express ideas fluently'],
+      keyVocabulary: phrases.map((p) => ({
+        word: p.phrase.split(/\s+/).slice(0, 2).join(' '),
+        ipa: p.ipa,
+        partOfSpeech: 'phrase',
+        translations: p.translations as any,
+        example: p.phrase,
+      })),
+      dialogueFlow: aiTurns.map((turn, i) => ({
+        step: i + 1,
+        speaker: 'ai' as const,
+        message: turn,
+      })),
+      badgeColor: 'bg-gradient-to-r from-emerald-500 to-indigo-600',
+      gradient: 'from-emerald-600 via-teal-600 to-indigo-700',
+    };
+
+    return { scenario, plan };
+  } catch (err) {
+    console.warn('[geminiService] Custom scenario generation error, using fallback:', err);
+    return createFallback();
+  }
+}
+
 

@@ -7,9 +7,24 @@ import { PWAInstallGuideModal } from './components/PWAInstallGuideModal';
 import { LessonFlow } from './components/lesson/LessonFlow';
 import { JamesTestAreaModal } from './components/JamesTestAreaModal';
 import { PlacementModal } from './components/PlacementModal';
+import { PersonaSelectorModal } from './components/PersonaSelectorModal';
+import { SRSFlashcardModal } from './components/SRSFlashcardModal';
+import { CustomScenarioModal } from './components/CustomScenarioModal';
+import { RapidWarmupModal } from './components/RapidWarmupModal';
 import { roleplayScenarios, initialUserProgress } from './data/mockData';
 import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans';
-import type { UserProgress, LessonPlan, PhrasingUpgrade, LessonStage, CEFRLevel, PlacementAssessmentResult } from './types';
+import { getActivePersona } from './data/personas';
+import { addPhrasesToSRS } from './services/srsService';
+import type { 
+  UserProgress, 
+  LessonPlan, 
+  PhrasingUpgrade, 
+  LessonStage, 
+  CEFRLevel, 
+  PlacementAssessmentResult, 
+  AIPersona, 
+  RoleplayScenario 
+} from './types';
 import { registerServiceWorker } from './pwa';
 import { RefreshCw, Sparkles, BookmarkCheck } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
@@ -40,11 +55,29 @@ export function App() {
 
   const [activePlan, setActivePlan] = useState<LessonPlan | null>(null);
   const [lessonInitialStage, setLessonInitialStage] = useState<LessonStage>('scaffolding');
+  const [activePersona, setActivePersonaState] = useState<AIPersona>(getActivePersona);
+  const [isPersonaSelectorOpen, setIsPersonaSelectorOpen] = useState(false);
+  const [isSRSOpen, setIsSRSOpen] = useState(false);
+  const [isCustomScenarioOpen, setIsCustomScenarioOpen] = useState(false);
+  const [isRapidWarmupOpen, setIsRapidWarmupOpen] = useState(false);
+  const [customScenarios, setCustomScenarios] = useState<RoleplayScenario[]>([]);
   const [isJamesTestOpen, setIsJamesTestOpen] = useState(false);
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const [isPlacementOpen, setIsPlacementOpen] = useState(false);
   const [pendingLessonCallback, setPendingLessonCallback] = useState<(() => void) | null>(null);
   const [hasUpdate, setHasUpdate] = useState(false);
+
+  // Listen for persona changes
+  useEffect(() => {
+    const handlePersonaChange = (e: Event) => {
+      const customEvt = e as CustomEvent<AIPersona>;
+      if (customEvt.detail) {
+        setActivePersonaState(customEvt.detail);
+      }
+    };
+    window.addEventListener('fluency_persona_changed', handlePersonaChange);
+    return () => window.removeEventListener('fluency_persona_changed', handlePersonaChange);
+  }, []);
 
   // Listen for auth state changes (login, logout, profile update)
   useEffect(() => {
@@ -187,6 +220,7 @@ export function App() {
   };
 
   const handleSaveMistakes = (plan: LessonPlan, upgrades: PhrasingUpgrade[]) => {
+    addPhrasesToSRS(upgrades);
     setProgress((prev) => {
       const existing = prev.savedMistakes ?? [];
       const existingIds = new Set(existing.map((m) => m.id));
@@ -201,6 +235,19 @@ export function App() {
         }));
       return { ...prev, savedMistakes: [...existing, ...fresh] };
     });
+  };
+
+  const handleRewardXP = (amount: number) => {
+    setProgress((prev) => ({
+      ...prev,
+      completedXP: prev.completedXP + amount,
+    }));
+  };
+
+  const handleLaunchCustomScenario = (scenario: RoleplayScenario, plan: LessonPlan) => {
+    setCustomScenarios((prev) => [scenario, ...prev.filter((s) => s.id !== scenario.id)]);
+    setActivePlan(plan);
+    setLessonInitialStage('scaffolding');
   };
 
   const handleReloadApp = () => {
@@ -279,6 +326,8 @@ export function App() {
         onOpenInstallGuide={() => setIsInstallGuideOpen(true)}
         onOpenJamesTest={() => setIsJamesTestOpen(true)}
         onOpenPlacement={() => setIsPlacementOpen(true)}
+        activePersona={activePersona}
+        onOpenPersonaSelector={() => setIsPersonaSelectorOpen(true)}
       />
 
       {/* Main App Container with responsive max-w-5xl layout and fluid spacing */}
@@ -318,7 +367,13 @@ export function App() {
         )}
 
         {/* Daily Goal & Welcoming Section */}
-        <DailyGoalCard progress={progress} onUpdateProgress={setProgress} onStartLesson={() => openDailyLesson('scaffolding')} />
+        <DailyGoalCard
+          progress={progress}
+          onUpdateProgress={setProgress}
+          onStartLesson={() => openDailyLesson('scaffolding')}
+          onOpenSRS={() => setIsSRSOpen(true)}
+          onOpenWarmup={() => setIsRapidWarmupOpen(true)}
+        />
 
         {/* James AI Test Area & Direct Voice Sandbox Card */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-brand-950 to-indigo-950 text-white p-5 shadow-soft border border-brand-500/30">
@@ -390,9 +445,10 @@ export function App() {
 
         {/* Upcoming Roleplay Scenarios Section */}
         <RoleplayList
-          scenarios={roleplayScenarios}
+          scenarios={[...customScenarios, ...roleplayScenarios]}
           progress={progress}
           onSelectScenario={(scenario) => openScenario(scenario.id)}
+          onOpenCustomBuilder={() => setIsCustomScenarioOpen(true)}
         />
       </main>
 
@@ -414,6 +470,51 @@ export function App() {
           onSaveMistakes={handleSaveMistakes}
           onComplete={handleLessonComplete}
           onExit={() => setActivePlan(null)}
+        />
+      )}
+
+      {/* Dynamic Multi-Persona Voice Coach Selector */}
+      {isPersonaSelectorOpen && (
+        <PersonaSelectorModal
+          isOpen={isPersonaSelectorOpen}
+          onClose={() => setIsPersonaSelectorOpen(false)}
+          activePersona={activePersona}
+          onSelectPersona={(p) => {
+            setActivePersonaState(p);
+            setProgress((prev) => ({ ...prev, activePersonaId: p.id }));
+          }}
+        />
+      )}
+
+      {/* Spaced Repetition (SRS) Flashcard Drill Studio */}
+      {isSRSOpen && (
+        <SRSFlashcardModal
+          isOpen={isSRSOpen}
+          onClose={() => setIsSRSOpen(false)}
+          onRewardXP={handleRewardXP}
+          persona={activePersona}
+        />
+      )}
+
+      {/* AI-Powered Real-World Scenario Builder */}
+      {isCustomScenarioOpen && (
+        <CustomScenarioModal
+          isOpen={isCustomScenarioOpen}
+          onClose={() => setIsCustomScenarioOpen(false)}
+          activePersona={activePersona}
+          userLevel={progress.level}
+          nativeLanguage={progress.nativeLanguage}
+          onLaunchScenario={handleLaunchCustomScenario}
+        />
+      )}
+
+      {/* 60-Second Rapid-Fire Spoken Warmup */}
+      {isRapidWarmupOpen && (
+        <RapidWarmupModal
+          isOpen={isRapidWarmupOpen}
+          onClose={() => setIsRapidWarmupOpen(false)}
+          onRewardXP={handleRewardXP}
+          persona={activePersona}
         />
       )}
 

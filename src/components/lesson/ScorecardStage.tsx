@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Volume2, BookmarkPlus, BookmarkCheck, Home, ArrowRight, Ear, Mic, MessageCircle, Sparkles } from 'lucide-react';
+import { Volume2, BookmarkPlus, BookmarkCheck, Home, ArrowRight, Ear, Mic, MessageCircle, Sparkles, Activity } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { LessonPlan, LessonSessionResult, PhrasingUpgrade, SavedReviewPhrase, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, playChime } from '../../services/speech';
 import { buildUpgrades, computeScores } from '../../services/lessonAnalysis';
 import { startRecognition, scorePronunciation, type RecognitionHandle } from '../../services/speechRecognition';
+import { PronunciationRadarModal } from './PronunciationRadarModal';
 
 const SAVED_REVIEW_KEY = 'savedReviewPhrases';
 
@@ -138,6 +139,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
   const [practicingId, setPracticingId] = useState<string | null>(null);
   const [practicedScores, setPracticedScores] = useState<Record<string, number>>({});
   const [practicedHeard, setPracticedHeard] = useState<Record<string, string>>({});
+  const [radarWord, setRadarWord] = useState<string | null>(null);
   const recRef = useRef<RecognitionHandle | null>(null);
 
   useEffect(() => {
@@ -372,6 +374,15 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                             aria-label={`Listen to ${item.word}`}
                           >
                             <Volume2 className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            onClick={() => setRadarWord(item.word)}
+                            className="p-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 active:scale-95 transition"
+                            title="View Syllable Stress & Pitch Radar"
+                            aria-label={`View Syllable Stress & Pitch Radar for ${item.word}`}
+                          >
+                            <Activity className="w-4 h-4" />
                           </button>
 
                           <button
@@ -634,6 +645,14 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           </button>
         </div>
       </div>
+
+      <PronunciationRadarModal
+        isOpen={Boolean(radarWord)}
+        onClose={() => setRadarWord(null)}
+        targetPhrase={radarWord || ''}
+        persona={plan.persona}
+        initialScore={scores.pronunciation}
+      />
     </div>
   );
 };

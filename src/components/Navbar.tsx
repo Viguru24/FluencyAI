@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Volume2, Globe, Download, WifiOff, Check, Server, User } from 'lucide-react';
-import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession } from '../types';
+import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession, AIPersona } from '../types';
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
 import { playChime } from '../services/speech';
 import { getLLMConfig, testGatewayConnection, type LLMConfig } from '../services/llmConfig';
@@ -14,6 +14,8 @@ interface NavbarProps {
   onOpenInstallGuide: () => void;
   onOpenJamesTest?: () => void;
   onOpenPlacement?: () => void;
+  activePersona?: AIPersona;
+  onOpenPersonaSelector?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,6 +24,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenInstallGuide,
   onOpenJamesTest,
   onOpenPlacement,
+  activePersona,
+  onOpenPersonaSelector,
 }) => {
   const [canInstall, setCanInstall] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -162,6 +166,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Volume2 className="w-3.5 h-3.5 text-brand-600" />
                 <span>{progress.audioSpeed}x</span>
               </button>
+
+              {/* Coach Selector Button */}
+              {onOpenPersonaSelector && (
+                <button
+                  onClick={onOpenPersonaSelector}
+                  title="Switch British / Regional English Coach"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold transition active:scale-95 shadow-2xs"
+                >
+                  <span className="text-sm">{activePersona?.avatar || '🧑‍💼'}</span>
+                  <span className="hidden sm:inline font-bold">{activePersona?.name || 'James'}</span>
+                </button>
+              )}
 
               {/* CEFR Level Selector */}
               <div className="relative">

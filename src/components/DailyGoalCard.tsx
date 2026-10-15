@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Mic, Sparkles } from 'lucide-react';
+import { Flame, Mic, Sparkles, Layers, Zap, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { UserProgress } from '../types';
 import { playChime } from '../services/speech';
+import { FluencyHeatmap } from './FluencyHeatmap';
+import { getDueSRSFlashcards } from '../services/srsService';
 
 interface DailyGoalCardProps {
   progress: UserProgress;
   onUpdateProgress: (updater: (prev: UserProgress) => UserProgress) => void;
   onStartLesson?: () => void;
+  onOpenSRS?: () => void;
+  onOpenWarmup?: () => void;
 }
 
 export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   progress,
   onStartLesson,
+  onOpenSRS,
+  onOpenWarmup,
 }) => {
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [srsDueCount, setSrsDueCount] = useState(() => getDueSRSFlashcards().length);
   const [reviewCount, setReviewCount] = useState<number>(() => {
     try {
       const stored = localStorage.getItem('savedReviewPhrases');
@@ -42,12 +50,15 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
         /* ignore */
       }
       setReviewCount((progress.savedMistakes?.length && progress.savedMistakes.length > 0) ? progress.savedMistakes.length : 3);
+      setSrsDueCount(getDueSRSFlashcards().length);
     };
 
     window.addEventListener('savedReviewPhrasesUpdated', updateCount);
+    window.addEventListener('fluency_srs_updated', updateCount);
     window.addEventListener('storage', updateCount);
     return () => {
       window.removeEventListener('savedReviewPhrasesUpdated', updateCount);
+      window.removeEventListener('fluency_srs_updated', updateCount);
       window.removeEventListener('storage', updateCount);
     };
   }, [progress.savedMistakes]);
@@ -194,6 +205,45 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             </div>
           </div>
 
+          {/* Quick Immersion Actions: 60s Sprint & SRS Flashcards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            {onOpenWarmup && (
+              <button
+                onClick={onOpenWarmup}
+                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-rose-500/10 hover:from-amber-500/20 hover:to-rose-500/20 border border-amber-300/80 text-amber-950 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                    <Zap className="w-3.5 h-3.5 animate-pulse" />
+                  </span>
+                  <span className="text-left leading-tight">
+                    <span className="block font-extrabold text-amber-950">60s Spoken Sprint</span>
+                    <span className="text-[10px] text-amber-700 font-medium">Rapid warm-up · +50 XP</span>
+                  </span>
+                </span>
+                <span className="text-xs text-amber-600 font-extrabold group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+              </button>
+            )}
+
+            {onOpenSRS && (
+              <button
+                onClick={onOpenSRS}
+                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-200 text-indigo-950 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <Layers className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-left leading-tight">
+                    <span className="block font-extrabold text-indigo-950">SRS Flashcards</span>
+                    <span className="text-[10px] text-indigo-700 font-medium">{srsDueCount} cards due for recall</span>
+                  </span>
+                </span>
+                <span className="text-xs text-indigo-600 font-extrabold group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+              </button>
+            )}
+          </div>
+
           {/* Spaced repetition review banner */}
           {onStartLesson && (
             <button
@@ -205,17 +255,36 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-amber-700" />
                 </span>
                 <span>
-                  <strong className="text-amber-900 font-extrabold">Spaced Repetition:</strong>{' '}
-                  <span className="text-slate-700 font-semibold">{reviewCount} phrases from yesterday ready for review</span>
+                  <strong className="text-amber-900 font-extrabold">Full Lesson Plan:</strong>{' '}
+                  <span className="text-slate-700 font-semibold">{reviewCount} phrases ready for practice</span>
                 </span>
               </span>
               <span className="text-[11px] font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 flex-shrink-0">
-                Review &rarr;
+                Start Lesson &rarr;
               </span>
             </button>
           )}
+
+          {/* Toggle 365-Day Fluency Heatmap */}
+          <div className="pt-1">
+            <button
+              onClick={() => setShowHeatmap((prev) => !prev)}
+              className="w-full py-2 px-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-98"
+            >
+              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{showHeatmap ? 'Hide Immersion Heatmap' : 'View 365-Day Speaking Heatmap'}</span>
+              {showHeatmap ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Expandable Heatmap Component */}
+      {showHeatmap && (
+        <div className="animate-fade-in pt-1">
+          <FluencyHeatmap />
+        </div>
+      )}
     </div>
   );
 };

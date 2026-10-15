@@ -112,14 +112,18 @@ export function scoreVoice(
   }
 
   const pLower = (personaName || '').toLowerCase();
-  const isFemalePersona = /emma|barista|woman|female/i.test(pLower);
+  const isEmma = /emma|academic/i.test(pLower);
+  const isOliver = /oliver|ollie|tech/i.test(pLower);
+  const isAoife = /aoife|irish|dublin|hospitality/i.test(pLower);
+  const isFemalePersona = isEmma || isAoife || /barista|woman|female/i.test(pLower);
   const isPatel = /patel|doctor/i.test(pLower);
 
   const isEdgeNatural = /natural|neural|online/i.test(name);
   const isRyan = /ryan/i.test(name) && isEdgeNatural;
   const isSonia = /sonia/i.test(name) && isEdgeNatural;
-  const isLibbyMaisie = /libby|maisie/i.test(name) && isEdgeNatural;
+  const isLibbyMaisie = /libby|maisie|hazel/i.test(name) && isEdgeNatural;
   const isThomasOliver = /thomas|oliver/i.test(name) && isEdgeNatural;
+  const isIrish = /emily|ireland|irish|en-ie/i.test(name) || lang.toLowerCase() === 'en-ie';
 
   const isGoogleMale = /google uk english male/i.test(name);
   const isGoogleFemale = /google uk english female/i.test(name);
@@ -127,8 +131,22 @@ export function scoreVoice(
   const isAppleEnhanced = /enhanced|premium/i.test(name) && lang.startsWith('en');
 
   // Persona-specific neural voice matching
-  if (isFemalePersona) {
-    // Emma (Female Barista / Recruiter / Interlocutor): Prioritize Sonia & female neural
+  if (isAoife) {
+    if (isIrish) score += 7000;
+    else if (isSonia) score += 6000;
+    else if (isLibbyMaisie) score += 5600;
+    else if (isGoogleFemale) score += 5200;
+  } else if (isEmma) {
+    if (isSonia) score += 6500;
+    else if (isLibbyMaisie) score += 6000;
+    else if (isGoogleFemale) score += 5400;
+    else if (isRyan) score += 3000;
+  } else if (isOliver) {
+    if (isThomasOliver) score += 6500;
+    else if (isRyan) score += 5800;
+    else if (isGoogleMale) score += 5400;
+  } else if (isFemalePersona) {
+    // Other Female Interlocutors (Barista / Recruiter): Prioritize Sonia & female neural
     if (isSonia) score += 6000;
     else if (isLibbyMaisie) score += 5500;
     else if (isGoogleFemale) score += 5200;

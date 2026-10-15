@@ -10,10 +10,12 @@ import {
   ArrowRight, 
   Languages, 
   Sparkles,
-  Edit3
+  Edit3,
+  Activity
 } from 'lucide-react';
 import type { LessonPlan, NativeLanguage } from '../../types';
 import { speakEnglish, playChime } from '../../services/speech';
+import { PronunciationRadarModal } from './PronunciationRadarModal';
 import { 
   startRecognition, 
   scorePronunciation, 
@@ -48,6 +50,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
   const [isTestingMic, setIsTestingMic] = useState(false);
   const [micTestStatus, setMicTestStatus] = useState<'idle' | 'testing' | 'passed'>('idle');
   const [micTestLevel, setMicTestLevel] = useState(0);
+  const [radarPhrase, setRadarPhrase] = useState<string | null>(null);
 
   const recRef = useRef<RecognitionHandle | null>(null);
   const vizRef = useRef(new AudioVisualizerController());
@@ -317,13 +320,23 @@ export const ScaffoldingStage: React.FC<Props> = ({
                   )}
                   {p.ipa && <p className="text-xs font-mono text-slate-500">{p.ipa}</p>}
                 </div>
-                <button
-                  onClick={() => speakEnglish(p.phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
-                  className="flex-shrink-0 p-3 rounded-2xl bg-brand-100 hover:bg-brand-200 text-brand-700 active:scale-95 transition"
-                  aria-label={`Listen to: ${p.phrase}`}
-                >
-                  <Volume2 className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => setRadarPhrase(p.phrase)}
+                    className="p-2.5 sm:p-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 active:scale-95 transition"
+                    title="Analyze Syllable Stress & Pitch Radar"
+                    aria-label={`Analyze Syllable Stress & Pitch: ${p.phrase}`}
+                  >
+                    <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                  <button
+                    onClick={() => speakEnglish(p.phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
+                    className="p-2.5 sm:p-3 rounded-2xl bg-brand-100 hover:bg-brand-200 text-brand-700 active:scale-95 transition"
+                    aria-label={`Listen to: ${p.phrase}`}
+                  >
+                    <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </div>
               </div>
 
               <p className="text-xs text-slate-600">{p.usageContext}</p>
@@ -501,6 +514,14 @@ export const ScaffoldingStage: React.FC<Props> = ({
           </div>
         </div>
       </div>
+
+      <PronunciationRadarModal
+        isOpen={Boolean(radarPhrase)}
+        onClose={() => setRadarPhrase(null)}
+        targetPhrase={radarPhrase || ''}
+        persona={plan.persona}
+        initialScore={radarPhrase ? (scores[plan.phrases.find((p) => p.phrase === radarPhrase)?.id || ''] || 85) : 85}
+      />
     </div>
   );
 };

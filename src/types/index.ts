@@ -61,6 +61,7 @@ export interface UserProgress {
   savedMistakes?: SavedMistake[];
   hasCompletedPlacement?: boolean;
   placementDetails?: PlacementAssessmentResult;
+  activePersonaId?: PersonaId;
 }
 
 export interface PlacementAssessmentResult {
@@ -91,13 +92,56 @@ export interface AuthSession {
   user: AuthUser;
 }
 
+export type PersonaId = 'james' | 'emma' | 'oliver' | 'aoife';
+
 export interface AIPersona {
+  id?: PersonaId;
   name: string;
   role: string;
   avatar: string;
   accent: 'US' | 'UK';
   greeting: string;
   tone: string;
+  bio?: string;
+  sampleVoicePhrase?: string;
+  ttsVoicePreference?: string[];
+  pitch?: number;
+  rate?: number;
+  tagline?: string;
+}
+
+export interface SRSFlashcard {
+  id: string;
+  phrase: string;
+  ipa: string;
+  context: string;
+  meaning: string;
+  box: 1 | 2 | 3 | 4 | 5; // Leitner box (1 = daily, 5 = mastered)
+  nextReviewDate: string; // YYYY-MM-DD
+  lastReviewed?: string;
+  successCount: number;
+  failureCount: number;
+  scenarioTitle?: string;
+  translations?: Partial<Record<NativeLanguage, string>>;
+}
+
+export interface DailyActivityRecord {
+  date: string; // YYYY-MM-DD
+  minutes: number;
+  xp: number;
+  sessionsCount: number;
+}
+
+export interface SyllableStressInfo {
+  word: string;
+  syllables: {
+    text: string;
+    isStressed: boolean;
+    ipa: string;
+    userAccuracyScore?: number;
+  }[];
+  phonemeAdvice?: string;
+  targetPitchCurve: number[];
 }
 
 export interface ScaffoldingTargetPhrase {
