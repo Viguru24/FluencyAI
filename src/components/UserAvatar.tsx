@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { User } from 'lucide-react';
 import { getUserInitials, normalizeUserAvatar } from '../utils/nameFormatter';
 
@@ -45,15 +45,11 @@ export function UserAvatar({
   className = '',
   showOnlineDot = false,
 }: UserAvatarProps) {
-  const [imgFailed, setImgFailed] = useState(false);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   // Normalize any corrupted URLs that contain emoji paths
   const cleanPicture = normalizeUserAvatar(picture);
-
-  // Reset error state if the picture prop changes
-  useEffect(() => {
-    setImgFailed(false);
-  }, [cleanPicture]);
+  const imgFailed = cleanPicture ? failedUrl === cleanPicture : false;
 
   const config = SIZE_MAP[size] || SIZE_MAP.md;
   const isUrl = cleanPicture && (cleanPicture.startsWith('http') || cleanPicture.startsWith('data:'));
@@ -74,7 +70,7 @@ export function UserAvatar({
           <img
             src={cleanPicture}
             alt={name || 'Avatar'}
-            onError={() => setImgFailed(true)}
+            onError={() => setFailedUrl(cleanPicture)}
             loading="lazy"
             className="w-full h-full object-cover"
           />
