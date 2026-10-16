@@ -701,26 +701,26 @@ export const RoleplayStage: React.FC<Props> = ({
     : 'Your turn — hold or tap the mic to speak';
 
   return (
-    <div className="relative flex flex-col h-[85vh] max-h-[85vh] flex-1 min-h-0 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
+    <div className="relative flex flex-col h-[85vh] max-h-[85vh] flex-1 min-h-0 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 overflow-hidden">
       {/* Stage tag with Turn Count, Ears-Only Status badge, Speed Selector & reveal toggle */}
       <div className="flex items-center justify-between px-4 sm:px-6 pt-3 flex-shrink-0 gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
+          <span className="px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-[11px] font-bold border border-brand-200 dark:border-brand-800">
             Stage 2 · Turn {currentTurn}
           </span>
 
           {/* Ears-Only Bonus Status Badge */}
           {unblurredTurnCount === 0 ? (
             <span
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-50 to-sky-50 text-emerald-800 border border-emerald-300 text-[11px] font-extrabold shadow-2xs animate-fade-in"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-50 to-sky-50 dark:from-emerald-950/40 dark:to-sky-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[11px] font-extrabold shadow-2xs animate-fade-in"
               title="Keep transcripts blurred and listen with your ears to earn +15 XP bonus!"
             >
-              <Headphones className="w-3 h-3 text-emerald-600" />
+              <Headphones className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               <span>🎧 Ears-Only Bonus Active (+15 XP)</span>
             </span>
           ) : (
             <span
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold"
               title="Transcript was unblurred · Ears-Only bonus used"
             >
               <Eye className="w-3 h-3 text-slate-400" />
@@ -732,7 +732,7 @@ export const RoleplayStage: React.FC<Props> = ({
         <div className="flex items-center gap-2">
           {/* Active Tier Audio Speed Selector Pills */}
           <div
-            className="flex items-center bg-slate-100/90 p-0.5 rounded-xl border border-slate-200 shadow-2xs"
+            className="flex items-center bg-slate-100/90 dark:bg-slate-850 p-0.5 rounded-xl border border-slate-200 dark:border-slate-750 shadow-2xs"
             title="Speaking playback speed (unlocked via Tiers)"
           >
             {availableSpeeds.map((opt) => {
@@ -751,13 +751,13 @@ export const RoleplayStage: React.FC<Props> = ({
                   title={opt.unlocked ? opt.label : opt.lockReason || 'Tier perk locked'}
                   className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all ${
                     isSelected
-                      ? 'bg-white text-brand-700 shadow-2xs ring-1 ring-black/5'
+                      ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-2xs ring-1 ring-black/5'
                       : opt.unlocked
-                      ? 'text-slate-600 hover:text-slate-900 active:scale-95'
-                      : 'text-slate-400 opacity-60 cursor-not-allowed'
+                      ? 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white active:scale-95'
+                      : 'text-slate-400 dark:text-slate-600 opacity-60 cursor-not-allowed'
                   }`}
                 >
-                  {!opt.unlocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
+                  {!opt.unlocked && <Lock className="w-2.5 h-2.5 text-slate-400 dark:text-slate-500" />}
                   <span>{opt.speed}x</span>
                 </button>
               );
@@ -776,7 +776,7 @@ export const RoleplayStage: React.FC<Props> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
               revealAll
                 ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
-                : 'bg-white text-slate-700 border-slate-200 shadow-xs hover:bg-slate-50'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-750'
             }`}
             aria-pressed={revealAll}
             title="Toggle blurred transcript for auditory ear training"
@@ -789,28 +789,28 @@ export const RoleplayStage: React.FC<Props> = ({
 
       {/* Live "Target Phrase Tracker" Mission HUD Bar */}
       <div className="px-4 sm:px-6 pt-2 flex-shrink-0">
-        <div className="rounded-2xl bg-gradient-to-r from-amber-50/80 via-emerald-50/60 to-sky-50/70 border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="rounded-2xl bg-gradient-to-r from-amber-50/80 via-emerald-50/60 to-sky-50/70 dark:from-amber-950/30 dark:via-emerald-950/20 dark:to-sky-950/20 border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
           {/* HUD Summary Bar */}
           <div
             onClick={() => setIsMissionsCollapsed((c) => !c)}
-            className="flex items-center justify-between px-3.5 py-1.5 cursor-pointer hover:bg-black/[0.02] transition"
+            className="flex items-center justify-between px-3.5 py-1.5 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition"
           >
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="flex items-center gap-1 text-xs font-extrabold text-slate-900">
-                <Target className="w-3.5 h-3.5 text-brand-600" />
+              <span className="flex items-center gap-1 text-xs font-extrabold text-slate-900 dark:text-white">
+                <Target className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 <span>Mission Phrases ({usedTargetPhraseIds.size}/{plan.phrases.length})</span>
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black">
                 +{usedTargetPhraseIds.size * 10} XP Bonus
               </span>
               {dueSRSCard && (
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300">
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 text-[10px] font-bold border border-amber-300 dark:border-amber-700">
                   ⚡ 1 Due SRS Phrase Added for Bonus XP
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
+            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
               <span className="hidden sm:inline">{isMissionsCollapsed ? 'Show targets' : 'Hide'}</span>
               {isMissionsCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
             </div>
@@ -818,7 +818,7 @@ export const RoleplayStage: React.FC<Props> = ({
 
           {/* Collapsible phrase pill chips */}
           {!isMissionsCollapsed && (
-            <div className="px-3 pb-2 pt-0.5 flex flex-wrap gap-1.5 border-t border-slate-200/50 animate-fade-in">
+            <div className="px-3 pb-2 pt-0.5 flex flex-wrap gap-1.5 border-t border-slate-200/50 dark:border-slate-800/50 animate-fade-in">
               {plan.phrases.map((phrase) => {
                 const isUsed = usedTargetPhraseIds.has(phrase.id);
                 const isJustMatched = justMatchedPhraseId === phrase.id;
@@ -836,8 +836,8 @@ export const RoleplayStage: React.FC<Props> = ({
                     title="Speak this phrase aloud in conversation for +10 Bonus XP! Tap to hear pronunciation."
                     className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 ${
                       isUsed
-                        ? 'bg-emerald-500 text-white shadow-xs font-bold ring-2 ring-emerald-300'
-                        : 'bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-2xs hover:border-brand-300'
+                        ? 'bg-emerald-500 text-white shadow-xs font-bold ring-2 ring-emerald-300 dark:ring-emerald-600'
+                        : 'bg-white/95 dark:bg-slate-850 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-750 shadow-2xs hover:border-brand-300'
                     } ${isJustMatched ? 'scale-105 ring-4 ring-emerald-400 animate-pulse' : ''}`}
                   >
                     {isUsed ? (
@@ -846,7 +846,7 @@ export const RoleplayStage: React.FC<Props> = ({
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
                     )}
                     <span className="truncate max-w-[200px] sm:max-w-[280px]">“{phrase.phrase}”</span>
-                    <span className={`text-[10px] font-black ${isUsed ? 'text-emerald-100' : 'text-emerald-600'}`}>
+                    <span className={`text-[10px] font-black ${isUsed ? 'text-emerald-100' : 'text-emerald-600 dark:text-emerald-400'}`}>
                       {isUsed ? '+10 XP ✓' : '+10 XP'}
                     </span>
                   </div>
@@ -890,8 +890,8 @@ export const RoleplayStage: React.FC<Props> = ({
         <div className="flex items-center gap-2">
           <span className="text-2xl">{plan.persona.avatar}</span>
           <div className="text-left">
-            <div className="text-sm font-extrabold text-slate-900">{plan.persona.name}</div>
-            <div className="text-[11px] text-slate-500">
+            <div className="text-sm font-extrabold text-slate-900 dark:text-white">{plan.persona.name}</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">
               {plan.persona.role} · {plan.persona.accent === 'UK' ? '🇬🇧 British' : '🇺🇸 American'}
             </div>
           </div>
@@ -914,7 +914,7 @@ export const RoleplayStage: React.FC<Props> = ({
             </button>
           )}
         </div>
-        <p className="text-xs sm:text-sm font-semibold text-slate-600 mb-1.5 px-6 text-center" aria-live="polite">
+        <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 px-6 text-center" aria-live="polite">
           {statusText}
         </p>
       </div>
@@ -933,7 +933,7 @@ export const RoleplayStage: React.FC<Props> = ({
                 className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   t.speaker === 'user'
                     ? 'bg-brand-600 text-white rounded-br-md'
-                    : 'bg-white border border-slate-200 text-slate-800 rounded-bl-md shadow-sm'
+                    : 'bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-750 text-slate-800 dark:text-slate-100 rounded-bl-md shadow-sm'
                 }`}
               >
                 {t.speaker === 'ai' ? (
@@ -947,7 +947,7 @@ export const RoleplayStage: React.FC<Props> = ({
                         <span className="block py-0.5 blur-[5px] select-none transition-all duration-300">
                           {t.text}
                         </span>
-                        <span className="block mt-1 text-[11px] font-bold text-brand-600">
+                        <span className="block mt-1 text-[11px] font-bold text-brand-600 dark:text-brand-400">
                           Listen first · tap to reveal
                         </span>
                       </button>
@@ -1005,7 +1005,7 @@ export const RoleplayStage: React.FC<Props> = ({
                 {t.speaker === 'ai' && (
                   <button
                     onClick={() => speakAi(t.text)}
-                    className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-brand-600"
+                    className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-brand-600 dark:text-brand-400"
                   >
                     <Volume2 className="w-3 h-3" /> Replay
                   </button>
@@ -1018,25 +1018,25 @@ export const RoleplayStage: React.FC<Props> = ({
       </div>
 
       {/* Controls Container with Push-to-Talk Interface & Live Transcription (Permanently Docked & Sticky) */}
-      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-4 sm:pb-5 pt-3 border-t border-slate-200/90 bg-white/95 backdrop-blur-md shadow-lg">
+      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-4 sm:pb-5 pt-3 border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg">
         {/* Real-time live transcription bubble floating above the PTT button */}
         {isRecording && (
           <div className="absolute bottom-[calc(100%+12px)] left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-xl z-20 animate-slide-up">
-            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-rose-200/90 shadow-2xl text-slate-800">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+            <div className="relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl p-3.5 border border-rose-200/90 dark:border-rose-900/80 shadow-2xl text-slate-800 dark:text-slate-100">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
                   </span>
-                  <span className="text-[11px] font-extrabold text-rose-600 tracking-wide uppercase">
+                  <span className="text-[11px] font-extrabold text-rose-600 dark:text-rose-400 tracking-wide uppercase">
                     Live Transcription
                   </span>
                   <span className="text-[11px] text-slate-400 hidden sm:inline">
                     · Mic open (no cutoff)
                   </span>
                   {liveLowConfidenceWords.length > 0 && (
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                       Flagged (&lt;75%): {liveLowConfidenceWords.join(', ')}
                     </span>
@@ -1053,7 +1053,7 @@ export const RoleplayStage: React.FC<Props> = ({
                         setIsEditingBubble(true);
                       }
                     }}
-                    className="px-2 py-1 rounded-lg text-slate-500 hover:text-brand-600 hover:bg-slate-100 text-[11px] font-medium flex items-center gap-1 transition"
+                    className="px-2 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-medium flex items-center gap-1 transition"
                     title="Edit misheard words"
                   >
                     <Pencil className="w-3 h-3" />
@@ -1077,7 +1077,7 @@ export const RoleplayStage: React.FC<Props> = ({
                     type="text"
                     value={bubbleEditValue}
                     onChange={(e) => setBubbleEditValue(e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-brand-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 shadow-inner"
+                    className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-brand-300 dark:border-brand-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 dark:text-white shadow-inner"
                     placeholder="Correct misheard word..."
                     autoFocus
                   />
@@ -1094,12 +1094,12 @@ export const RoleplayStage: React.FC<Props> = ({
               ) : (
                 <div className="min-h-[28px] flex items-center">
                   {livePreview ? (
-                    <div className="text-sm font-semibold text-slate-900 leading-relaxed max-h-28 overflow-y-auto pr-1">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white leading-relaxed max-h-28 overflow-y-auto pr-1">
                       “{livePreview}”
                       <span className="inline-block w-1.5 h-3.5 ml-1 bg-rose-500 animate-pulse align-middle rounded-xs" />
                     </div>
                   ) : (
-                    <p className="text-xs font-medium text-slate-500 italic flex items-center gap-2 py-0.5">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 italic flex items-center gap-2 py-0.5">
                       <span className="text-sm">🎙️</span>
                       <span>Listening… Speak freely at your own pace. Pauses will not cut you off.</span>
                     </p>
@@ -1108,7 +1108,7 @@ export const RoleplayStage: React.FC<Props> = ({
               )}
 
               {/* Downward pointer to mic */}
-              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white rotate-45 border-r border-b border-rose-200/90 shadow-xs" />
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white dark:bg-slate-900 rotate-45 border-r border-b border-rose-200/90 dark:border-rose-900/80 shadow-xs" />
             </div>
           </div>
         )}
@@ -1120,9 +1120,9 @@ export const RoleplayStage: React.FC<Props> = ({
               setHelpOpen(true);
               setHelpRequests((n) => n + 1);
             }}
-            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-amber-700 hover:text-amber-800 transition active:scale-95"
+            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 transition active:scale-95"
           >
-            <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 hover:bg-amber-200 flex items-center justify-center transition shadow-2xs">
+            <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 flex items-center justify-center transition shadow-2xs">
               <LifeBuoy className="w-5 h-5" />
             </span>
             <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">How do I say…?</span>
@@ -1176,12 +1176,12 @@ export const RoleplayStage: React.FC<Props> = ({
             {/* Clear contextual instruction below the button */}
             <div className="h-5 flex items-center justify-center mt-1.5">
               {isRecording ? (
-                <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1 animate-pulse">
+                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 animate-pulse">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   {isHolding ? 'Release to Send' : 'Tap to Finish & Send'}
                 </span>
               ) : (
-                <span className="text-[10px] font-semibold text-slate-500">
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                   Hold or tap to speak
                 </span>
               )}
@@ -1191,15 +1191,15 @@ export const RoleplayStage: React.FC<Props> = ({
           <button
             onClick={endRoleplay}
             disabled={isAnalyzingScorecard || isProcessing || userTurnsCount === 0}
-            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-slate-700 disabled:opacity-40 transition-all active:scale-95"
+            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-slate-700 dark:text-slate-300 disabled:opacity-40 transition-all active:scale-95"
           >
             <span
               className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all ${
                 userTurnsCount >= 3
                   ? 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-soft shadow-emerald-500/20 animate-pulse-subtle'
                   : userTurnsCount >= 1
-                  ? 'bg-brand-100 text-brand-700 hover:bg-brand-200'
-                  : 'bg-slate-100 text-slate-400'
+                  ? 'bg-brand-100 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 hover:bg-brand-200'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
               }`}
             >
               <Flag className="w-5 h-5" />
@@ -1225,8 +1225,8 @@ export const RoleplayStage: React.FC<Props> = ({
 
       {/* Scorecard Grading Overlay with Multimodal Gemini AI */}
       {isAnalyzingScorecard && (
-        <div className="absolute inset-0 z-30 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-          <div className="w-16 h-16 rounded-3xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600 mb-4 shadow-soft">
+        <div className="absolute inset-0 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-600 dark:text-brand-400 mb-4 shadow-soft">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
           <h3 className="text-lg font-black text-slate-900">Grading Your Spoken Roleplay</h3>

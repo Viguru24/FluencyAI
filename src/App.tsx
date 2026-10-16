@@ -120,7 +120,7 @@ export function App() {
   const reviewCount = Math.max(savedCardsCount, progress.savedMistakes?.length ?? 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       <ToastContainer />
 
       {hasUpdate && (
@@ -201,14 +201,14 @@ export function App() {
 
         {/* Review Queue Indicator */}
         {reviewCount > 0 && (
-          <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
                 <BookmarkCheck className="w-5 h-5" />
               </div>
-              <div className="text-xs text-amber-900">
+              <div className="text-xs text-amber-900 dark:text-amber-200">
                 <div className="font-bold">{reviewCount} saved phrases in your review deck</div>
-                <div className="text-amber-700">Automatically included in Stage 1 Prep &amp; SRS Flashcards.</div>
+                <div className="text-amber-700 dark:text-amber-400">Automatically included in Stage 1 Prep &amp; SRS Flashcards.</div>
               </div>
             </div>
             <button
@@ -216,7 +216,7 @@ export function App() {
                 playChime('tap');
                 setIsSRSOpen(true);
               }}
-              className="px-3 py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 text-amber-950 text-xs font-bold transition flex-shrink-0"
+              className="px-3 py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 text-xs font-bold transition flex-shrink-0"
             >
               Review Deck
             </button>

@@ -6,6 +6,7 @@ import { stopSpeaking } from '../../services/speech';
 import { ScaffoldingStage } from './ScaffoldingStage';
 import { RoleplayStage, type RoleplayStats } from './RoleplayStage';
 import { ScorecardStage } from './ScorecardStage';
+import { ThemeToggle } from '../ThemeToggle';
 
 interface Props {
   plan: LessonPlan;
@@ -60,7 +61,7 @@ export const LessonFlow: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fade-in">
-      <div className="relative w-full max-w-5xl h-[85vh] max-h-[85vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-5xl h-[85vh] max-h-[85vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-transparent dark:border-slate-800 flex flex-col overflow-hidden">
         {/* Header with interactive stage stepper */}
         <header className="px-4 sm:px-6 py-3 bg-gradient-to-r from-brand-600 via-sky-600 to-emerald-600 text-white flex-shrink-0">
           <div className="flex items-center justify-between gap-3">
@@ -78,6 +79,7 @@ export const LessonFlow: React.FC<Props> = ({
                   ⚡ Skip to James
                 </button>
               )}
+              <ThemeToggle variant="icon-only" />
               <button onClick={handleClose} className="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95" aria-label="Exit lesson">
                 <X className="w-5 h-5" />
               </button>
@@ -175,12 +177,12 @@ export const LessonFlow: React.FC<Props> = ({
 
         {/* Exit confirmation */}
         {confirmExit && (
-          <div className="absolute inset-0 z-40 bg-slate-900/50 flex items-center justify-center p-6 animate-fade-in">
-            <div className="w-full max-w-xs bg-white rounded-3xl p-5 space-y-3 text-center shadow-2xl">
-              <h3 className="font-extrabold text-slate-900">Leave this lesson?</h3>
-              <p className="text-sm text-slate-600">Your progress in this lesson won’t be saved. You can start again any time.</p>
+          <div className="absolute inset-0 z-40 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-6 animate-fade-in">
+            <div className="w-full max-w-xs bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-750 rounded-3xl p-5 space-y-3 text-center shadow-2xl">
+              <h3 className="font-extrabold text-slate-900 dark:text-white">Leave this lesson?</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300">Your progress in this lesson won’t be saved. You can start again any time.</p>
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setConfirmExit(false)} className="flex-1 py-2.5 rounded-2xl bg-brand-600 text-white text-sm font-bold">
+                <button onClick={() => setConfirmExit(false)} className="flex-1 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold active:scale-95 transition">
                   Keep going
                 </button>
                 <button
@@ -188,7 +190,7 @@ export const LessonFlow: React.FC<Props> = ({
                     stopSpeaking();
                     onExit();
                   }}
-                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold"
+                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold active:scale-95 transition"
                 >
                   Leave
                 </button>

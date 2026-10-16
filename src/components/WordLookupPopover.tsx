@@ -208,7 +208,7 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-slide-up"
+        className="w-full max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-slide-up"
       >
         {/* Header */}
         <div className="px-5 py-3.5 bg-gradient-to-r from-brand-700 via-indigo-700 to-slate-900 text-white flex items-center justify-between">
@@ -230,8 +230,8 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
         {/* Body */}
         <div className="p-5 space-y-4">
           {isLoading ? (
-            <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-500">
-              <Loader2 className="w-6 h-6 animate-spin text-brand-600" />
+            <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
+              <Loader2 className="w-6 h-6 animate-spin text-brand-600 dark:text-brand-400" />
               <span className="text-xs font-semibold">Looking up &ldquo;{word}&rdquo;…</span>
             </div>
           ) : entry ? (
@@ -239,11 +239,11 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
               {/* Word, IPA & Audio Button */}
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 capitalize tracking-tight">
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white capitalize tracking-tight">
                     {entry.word}
                   </h3>
                   {entry.ipa && (
-                    <span className="inline-block mt-0.5 text-xs font-mono font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-lg border border-brand-200/70">
+                    <span className="inline-block mt-0.5 text-xs font-mono font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-lg border border-brand-200/70 dark:border-brand-800">
                       {entry.ipa}
                     </span>
                   )}
@@ -263,16 +263,16 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
                 {entry.meanings.map((m, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1"
+                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/70 space-y-1"
                   >
-                    <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800">
+                    <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300">
                       {m.partOfSpeech}
                     </span>
-                    <p className="text-xs text-slate-800 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
                       {m.definition}
                     </p>
                     {m.example && (
-                      <p className="text-[11px] text-slate-500 italic pt-0.5">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 italic pt-0.5">
                         &ldquo;{m.example}&rdquo;
                       </p>
                     )}
@@ -281,7 +281,7 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
                         {m.synonyms.map((syn, sIdx) => (
                           <span
                             key={sIdx}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
                           >
                             {syn}
                           </span>
@@ -294,8 +294,8 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
 
               {/* Context quote if available */}
               {contextSentence && (
-                <div className="text-[11px] text-slate-500 bg-amber-50/70 border border-amber-200/70 rounded-xl px-3 py-2">
-                  <strong className="text-amber-900">In conversation:</strong> &ldquo;{contextSentence}&rdquo;
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/60 rounded-xl px-3 py-2">
+                  <strong className="text-amber-900 dark:text-amber-300">In conversation:</strong> &ldquo;{contextSentence}&rdquo;
                 </div>
               )}
 
@@ -306,13 +306,13 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
                   disabled={isSaved}
                   className={`flex-1 py-2.5 px-3 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition active:scale-95 ${
                     isSaved
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
                       : 'bg-amber-400 hover:bg-amber-500 text-amber-950 shadow-xs'
                   }`}
                 >
                   {isSaved ? (
                     <>
-                      <BookmarkCheck className="w-4 h-4 text-emerald-600" />
+                      <BookmarkCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <span>Saved in SRS Deck</span>
                     </>
                   ) : (
@@ -328,11 +328,11 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => playChime('tap')}
-                  className="py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
+                  className="py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
                   title="Hear real British speakers use this word in context on YouGlish"
                 >
                   <span>🇬🇧 YouGlish</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                 </a>
               </div>
             </>

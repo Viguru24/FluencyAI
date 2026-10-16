@@ -62,15 +62,15 @@ const Dial: React.FC<{ value: number }> = ({ value }) => {
             <stop offset="100%" stopColor="#10b981" />
           </linearGradient>
         </defs>
-        <circle cx="80" cy="80" r={r} fill="none" stroke="#e2e8f0" strokeWidth="14" />
+        <circle cx="80" cy="80" r={r} fill="none" stroke="#e2e8f0" className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="14" />
         <circle
           cx="80" cy="80" r={r} fill="none" stroke="url(#dialGrad)" strokeWidth="14" strokeLinecap="round"
           strokeDasharray={c} strokeDashoffset={c * (1 - shown / 100)}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-black text-slate-900">{shown}%</span>
-        <span className="text-xs font-bold text-emerald-600">{label}</span>
+        <span className="text-4xl font-black text-slate-900 dark:text-white">{shown}%</span>
+        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{label}</span>
       </div>
     </div>
   );
@@ -257,9 +257,9 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
   };
 
   const subScores = [
-    { label: 'Fluency', value: scores.fluency, icon: MessageCircle, color: 'text-brand-600 bg-brand-50' },
-    { label: 'Pronunciation', value: scores.pronunciation, icon: Mic, color: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Listening', value: scores.listening, icon: Ear, color: 'text-lavender-600 bg-lavender-50' },
+    { label: 'Fluency', value: scores.fluency, icon: MessageCircle, color: 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60' },
+    { label: 'Pronunciation', value: scores.pronunciation, icon: Mic, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60' },
+    { label: 'Listening', value: scores.listening, icon: Ear, color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60' },
   ];
 
   return (
@@ -267,25 +267,25 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-5 scrollbar-none no-scrollbar">
         <div className="max-w-4xl mx-auto w-full space-y-5">
           <div className="text-center space-y-1">
-            <span className="inline-block px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
+            <span className="inline-block px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-[11px] font-bold border border-brand-200 dark:border-brand-800">
               Stage 3 of 3 · Pronunciation &amp; British Phrasing Scorecard
             </span>
-            <h2 className="text-xl font-extrabold text-slate-900">Well done — you spoke English for real!</h2>
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Well done — you spoke English for real!</h2>
             <div className="flex items-center justify-center gap-2 pt-0.5">
-              <p className="text-xs sm:text-sm text-slate-600">{plan.title}</p>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">{plan.title}</p>
               <button
                 onClick={handleShareScorecard}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-300 text-xs font-semibold transition active:scale-95"
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-700 text-xs font-semibold transition active:scale-95"
                 title="Share Scorecard"
               >
                 {shareCopied ? (
                   <>
-                    <Check className="w-3 h-3 text-emerald-600" />
-                    <span className="text-emerald-700">Copied!</span>
+                    <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-emerald-700 dark:text-emerald-300">Copied!</span>
                   </>
                 ) : (
                   <>
-                    <Share2 className="w-3 h-3 text-brand-600" />
+                    <Share2 className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                     <span>Share</span>
                   </>
                 )}
@@ -294,26 +294,26 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           </div>
 
           {/* Balanced top score overview card */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-center justify-around gap-4 sm:gap-6">
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-center justify-around gap-4 sm:gap-6">
             <div className="flex flex-col items-center gap-1 flex-shrink-0">
               <Dial value={scores.overall} />
-              <p className="text-xs font-semibold text-slate-500">Overall Fluency &amp; Pronunciation</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Overall Fluency &amp; Pronunciation</p>
             </div>
 
             <div className="flex-1 w-full space-y-3">
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {subScores.map(({ label, value, icon: Icon, color }) => (
-                  <div key={label} className="p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80 text-center shadow-2xs">
+                  <div key={label} className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-750 text-center shadow-2xs">
                     <div className={`w-8 h-8 mx-auto rounded-xl flex items-center justify-center ${color}`}>
                       <Icon className="w-4 h-4" />
                     </div>
-                    <div className="text-lg font-black text-slate-900 mt-1">{value}%</div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase">{label}</div>
+                    <div className="text-lg font-black text-slate-900 dark:text-white mt-1">{value}%</div>
+                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{label}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-around text-xs font-semibold text-slate-500 bg-slate-100/60 p-2.5 rounded-xl border border-slate-200/60">
+              <div className="flex justify-around text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100/60 dark:bg-slate-850 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-750">
                 <span>🗣️ {result.userTurns.length} replies</span>
                 <span>👂 {result.revealsUsed} text reveals</span>
                 <span>🛟 {result.helpRequests} help requests</span>
@@ -418,7 +418,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           </div>
 
         {/* Dedicated Pronunciation Breakdown Card */}
-        <div className="rounded-3xl bg-gradient-to-br from-white via-emerald-50/40 to-sky-50/50 border border-emerald-200/90 shadow-sm p-4 sm:p-5 space-y-4 animate-fade-in relative overflow-hidden">
+        <div className="rounded-3xl bg-gradient-to-br from-white via-emerald-50/40 to-sky-50/50 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900 border border-emerald-200/90 dark:border-emerald-800/60 shadow-sm p-4 sm:p-5 space-y-4 animate-fade-in relative overflow-hidden">
           {/* Subtle decorative glow */}
           <div className="absolute -top-10 -right-10 w-36 h-36 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -429,8 +429,8 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                 <Mic className="w-4 h-4" />
               </span>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Pronunciation Breakdown</h3>
-                <p className="text-[11px] font-semibold text-slate-500">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Pronunciation Breakdown</h3>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                   Multimodal British RP Phonetic Analysis · Gemini 2.5 Flash
                 </p>
               </div>
@@ -445,13 +445,13 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           </div>
 
           {/* Acoustic Accuracy Progress Bar & Clarity Tier */}
-          <div className="space-y-2 bg-white/90 backdrop-blur-sm p-3.5 rounded-2xl border border-emerald-100/90 shadow-2xs">
+          <div className="space-y-2 bg-white/90 dark:bg-slate-850/90 backdrop-blur-sm p-3.5 rounded-2xl border border-emerald-100/90 dark:border-slate-750 shadow-2xs">
             <div className="flex justify-between items-center text-xs font-bold">
-              <span className="text-slate-700 flex items-center gap-1.5">
+              <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <span>Acoustic Accuracy</span>
                 <span className="text-[10px] text-slate-400 font-medium">({scores.pronunciation}/100)</span>
               </span>
-              <span className="text-emerald-700 font-extrabold">
+              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">
                 {scores.pronunciation >= 85
                   ? 'Excellent British Clarity'
                   : scores.pronunciation >= 75
@@ -459,14 +459,14 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                   : 'Developing Accent & Stress'}
               </span>
             </div>
-            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden p-0.5">
+            <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
               <div
                 className="h-full bg-gradient-to-r from-teal-500 via-emerald-500 to-brand-500 rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${Math.min(100, Math.max(10, scores.pronunciation))}%` }}
               />
             </div>
             {result.acousticFeedback && (
-              <p className="text-xs text-slate-600 pt-1 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-300 pt-1 leading-relaxed">
                 {result.acousticFeedback}
               </p>
             )}
@@ -475,11 +475,11 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           {/* Flagged Words with Friendly Tap-to-Practice Buttons */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                 <span>Flagged Words for British Coaching</span>
               </span>
-              <span className="text-[11px] font-semibold text-slate-500">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                 {flaggedPronunciationWords.length} target word{flaggedPronunciationWords.length === 1 ? '' : 's'}
               </span>
             </div>
@@ -495,12 +495,12 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                   return (
                     <div
                       key={cardId}
-                      className="rounded-2xl border border-rose-100 bg-white p-3.5 shadow-sm space-y-2 transition-all hover:border-brand-200"
+                      className="rounded-2xl border border-rose-100 dark:border-rose-950/70 bg-white dark:bg-slate-850 p-3.5 shadow-sm space-y-2 transition-all hover:border-brand-200"
                     >
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-base font-black text-slate-900">“{item.word}”</span>
-                          <span className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
+                          <span className="text-base font-black text-slate-900 dark:text-white">“{item.word}”</span>
+                          <span className="text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800">
                             {item.issue}
                           </span>
                         </div>
@@ -514,7 +514,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                                 personaName: plan.persona.name,
                               })
                             }
-                            className="p-1.5 rounded-xl bg-slate-50 hover:bg-brand-50 text-brand-700 border border-slate-200 active:scale-95 transition"
+                            className="p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-slate-700 text-brand-700 dark:text-brand-300 border border-slate-200 dark:border-slate-700 active:scale-95 transition"
                             title="Listen to authentic British pronunciation"
                             aria-label={`Listen to ${item.word}`}
                           >
@@ -523,7 +523,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
 
                           <button
                             onClick={() => setRadarWord(item.word)}
-                            className="p-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 active:scale-95 transition"
+                            className="p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 active:scale-95 transition"
                             title="View Syllable Stress & Pitch Radar"
                             aria-label={`View Syllable Stress & Pitch Radar for ${item.word}`}
                           >
@@ -536,7 +536,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                               isPracticing
                                 ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white border-rose-600 ring-2 ring-rose-200 animate-pulse'
                                 : practiceScore !== undefined
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
                                 : 'bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white border-brand-600'
                             }`}
                             title="Tap to speak this word out loud and practice pronunciation"
@@ -554,16 +554,16 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                       </div>
 
                       {/* Coaching Tip */}
-                      <p className="text-xs text-slate-600 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70 leading-relaxed font-medium">
-                        💡 <strong className="text-amber-900">Coaching Tip: </strong>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 bg-amber-50/70 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/60 leading-relaxed font-medium">
+                        💡 <strong className="text-amber-900 dark:text-amber-200">Coaching Tip: </strong>
                         {item.tip}
                       </p>
 
                       {/* Instant live practice feedback */}
                       {practiceScore !== undefined && (
-                        <div className="text-xs text-emerald-800 bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200 flex items-center justify-between animate-fade-in font-semibold">
+                        <div className="text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/60 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between animate-fade-in font-semibold">
                           <span>Heard: <strong>"{practiceHeard}"</strong></span>
-                          <span className="font-extrabold text-emerald-700">
+                          <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
                             {practiceScore >= 80 ? '✓ Brilliant British Clarity!' : '✓ Good attempt! Keep practicing.'}
                           </span>
                         </div>
@@ -573,11 +573,11 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                 })}
               </div>
             ) : (
-              <div className="p-3.5 rounded-2xl bg-white border border-emerald-200 text-center space-y-1">
-                <p className="text-xs font-bold text-emerald-800">
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-850 border border-emerald-200 dark:border-emerald-800/60 text-center space-y-1">
+                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
                   🎉 Fantastic acoustic clarity! No ambiguous pronunciation flagged.
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Your vowel length and syllable stress closely matched native British English speech.
                 </p>
               </div>
@@ -590,12 +590,12 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           <section className="space-y-3">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-extrabold text-slate-900">Acoustic Phonetic Notes</h3>
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold border border-slate-200">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Acoustic Phonetic Notes</h3>
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
                   Browser Speech Engine
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Detailed acoustic variants and phonetic alternatives captured during your conversation.
               </p>
             </div>
@@ -604,19 +604,19 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
               {result.pronunciationCoachingPoints.map((point, idx) => {
                 const cardId = `coach-${idx}`;
                 return (
-                  <div key={cardId} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm space-y-2">
+                  <div key={cardId} className="rounded-2xl border border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-850 p-3.5 shadow-sm space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-sm text-slate-900">“{point.wordOrPhrase}”</span>
+                        <span className="font-extrabold text-sm text-slate-900 dark:text-white">“{point.wordOrPhrase}”</span>
                         {point.ipa && <span className="font-mono text-xs text-slate-400">/{point.ipa}/</span>}
-                        <span className="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                        <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">
                           {point.confidence}% confidence
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => speakEnglish(point.wordOrPhrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
-                          className="p-1.5 rounded-lg bg-slate-50 hover:bg-brand-50 text-brand-700 border border-slate-200 active:scale-95 transition"
+                          className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-slate-700 text-brand-700 dark:text-brand-300 border border-slate-200 dark:border-slate-750 active:scale-95 transition"
                           title="Listen with native British accent"
                         >
                           <Volume2 className="w-3.5 h-3.5" />
@@ -627,8 +627,8 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                             practicingId === cardId
                               ? 'bg-rose-500 text-white border-rose-600 ring-2 ring-rose-200 animate-pulse'
                               : practicedScores[cardId] !== undefined
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                              : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                              : 'bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-750 border border-rose-200 dark:border-slate-700'
                           }`}
                         >
                           <Mic className="w-3 h-3" />
@@ -644,22 +644,22 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                     </div>
 
                     {point.alternatives.length > 0 && (
-                      <div className="text-[11px] text-slate-500">
-                        <span className="font-semibold text-slate-600">Phonetic alternatives heard: </span>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="font-semibold text-slate-600 dark:text-slate-300">Phonetic alternatives heard: </span>
                         <span className="italic">{point.alternatives.slice(0, 3).join(', ')}</span>
                       </div>
                     )}
 
                     {point.feedback && (
-                      <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-100 dark:border-slate-700">
                         💡 {point.feedback}
                       </p>
                     )}
 
                     {practicedScores[cardId] !== undefined && (
-                      <div className="text-xs text-emerald-800 bg-white p-2 rounded-xl border border-emerald-200 flex items-center justify-between animate-fade-in">
+                      <div className="text-xs text-emerald-800 dark:text-emerald-300 bg-white dark:bg-slate-850 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between animate-fade-in">
                         <span>Heard: <strong>"{practicedHeard[cardId]}"</strong></span>
-                        <span className="font-extrabold text-emerald-700">{practicedScores[cardId]}% Match ✓</span>
+                        <span className="font-extrabold text-emerald-700 dark:text-emerald-400">{practicedScores[cardId]}% Match ✓</span>
                       </div>
                     )}
                   </div>
@@ -672,27 +672,27 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
         {/* Grammar & Phrasing Upgrades */}
         <section className="space-y-3">
           <div>
-            <h3 className="text-base font-extrabold text-slate-900">British English Phrasing Upgrades</h3>
-            <p className="text-xs text-slate-500">Small changes that make you sound more natural. You were understood — these are bonus points!</p>
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">British English Phrasing Upgrades</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Small changes that make you sound more natural. You were understood — these are bonus points!</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {upgrades.map((u) => (
-            <div key={u.id} className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm flex flex-col justify-between">
-              <div className="px-4 py-3 bg-amber-50 border-b border-amber-200">
-                <div className="text-[10px] font-black text-amber-700 uppercase tracking-wider">What you said</div>
-                <p className="text-sm text-amber-900 mt-0.5">“{u.whatYouSaid}”</p>
+            <div key={u.id} className="rounded-3xl border border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-850 overflow-hidden shadow-sm flex flex-col justify-between">
+              <div className="px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800">
+                <div className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-wider">What you said</div>
+                <p className="text-sm text-amber-900 dark:text-amber-200 mt-0.5">“{u.whatYouSaid}”</p>
               </div>
-              <div className="px-4 py-3 bg-emerald-50 flex-1 flex flex-col justify-between">
+              <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-950/30 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">
+                    <div className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
                       More natural {plan.persona.accent === 'UK' ? 'British' : 'American'} English
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => speakEnglish(u.moreNatural, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
-                        className="p-1.5 rounded-lg bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-200 active:scale-95 transition"
+                        className="p-1.5 rounded-lg bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-slate-700 border border-emerald-200 dark:border-emerald-700 active:scale-95 transition"
                         aria-label={`Listen: ${u.moreNatural}`}
                         title="Listen with native British pronunciation"
                       >
@@ -704,8 +704,8 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                           practicingId === u.id
                             ? 'bg-rose-500 text-white border-rose-600 ring-2 ring-rose-200 animate-pulse'
                             : practicedScores[u.id] !== undefined
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                            : 'bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                            : 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-slate-700 border border-emerald-200 dark:border-emerald-700'
                         }`}
                         title="Practice speaking this upgraded phrase out loud"
                       >
@@ -720,16 +720,16 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
                       </button>
                     </div>
                   </div>
-                  <p className="text-sm font-bold text-emerald-900 mt-0.5">“{u.moreNatural}”</p>
+                  <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200 mt-0.5">“{u.moreNatural}”</p>
                   {practicedScores[u.id] !== undefined && (
-                    <div className="mt-1.5 text-xs text-emerald-800 bg-white/90 p-2 rounded-xl border border-emerald-200 flex items-center justify-between animate-fade-in">
+                    <div className="mt-1.5 text-xs text-emerald-800 dark:text-emerald-300 bg-white/90 dark:bg-slate-850 p-2 rounded-xl border border-emerald-200 dark:border-emerald-700 flex items-center justify-between animate-fade-in">
                       <span>Heard: <strong>"{practicedHeard[u.id]}"</strong></span>
-                      <span className="font-extrabold text-emerald-700">{practicedScores[u.id]}% Match ✓</span>
+                      <span className="font-extrabold text-emerald-700 dark:text-emerald-400">{practicedScores[u.id]}% Match ✓</span>
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-slate-600 mt-2 pt-1 border-t border-emerald-100">
-                  <span className="font-bold text-slate-700">{u.category}: </span>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 pt-1 border-t border-emerald-100 dark:border-emerald-900/40">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">{u.category}: </span>
                   {u.explanation}
                 </p>
               </div>
@@ -742,21 +742,21 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
         {result.phrasesToReview && result.phrasesToReview.length > 0 && (
           <section className="space-y-3">
             <div>
-              <h3 className="text-base font-extrabold text-slate-900">Recommended Phrases to Review</h3>
-              <p className="text-xs text-slate-500">Essential British expressions to practice before your next session.</p>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Recommended Phrases to Review</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Essential British expressions to practice before your next session.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
               {result.phrasesToReview.map((phrase, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                <div key={idx} className="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-750 shadow-sm">
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-xs font-black flex items-center justify-center flex-shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-xs font-black flex items-center justify-center flex-shrink-0">
                       {idx + 1}
                     </span>
-                    <span className="text-xs font-bold text-slate-800 truncate">“{phrase}”</span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">“{phrase}”</span>
                   </div>
                   <button
                     onClick={() => speakEnglish(phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
-                    className="p-2 rounded-xl bg-slate-50 hover:bg-brand-50 text-brand-600 border border-slate-200 transition active:scale-95 flex-shrink-0"
+                    className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-slate-700 text-brand-600 dark:text-brand-300 border border-slate-200 dark:border-slate-700 transition active:scale-95 flex-shrink-0"
                     aria-label={`Listen to ${phrase}`}
                     title="Listen with native British pronunciation"
                   >
@@ -771,21 +771,21 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
       </div>
 
       {/* Docked and sticky action footer */}
-      <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 py-3 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-lg">
+      <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg">
         <div className="max-w-4xl mx-auto w-full flex flex-col sm:flex-row gap-2">
           <button
             onClick={handleShareScorecard}
-            className="px-4 py-3 sm:py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm flex items-center justify-center gap-2 border border-slate-300 transition active:scale-95 shrink-0"
+            className="px-4 py-3 sm:py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-sm flex items-center justify-center gap-2 border border-slate-300 dark:border-slate-700 transition active:scale-95 shrink-0"
             title="Share Scorecard"
           >
             {shareCopied ? (
               <>
-                <Check className="w-4 h-4 text-emerald-600" />
-                <span className="text-emerald-700 font-bold">Copied!</span>
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-emerald-700 dark:text-emerald-300 font-bold">Copied!</span>
               </>
             ) : (
               <>
-                <Share2 className="w-4 h-4 text-brand-600" />
+                <Share2 className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                 <span>Share</span>
               </>
             )}
@@ -793,10 +793,12 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
           <button
             onClick={handleSaveToTomorrow}
             className={`flex-1 py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition active:scale-95 ${
-              saved ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 shadow-soft'
+              saved
+                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                : 'bg-amber-400 hover:bg-amber-500 text-amber-950 shadow-soft'
             }`}
           >
-            {saved ? <BookmarkCheck className="w-4 h-4 text-emerald-600" /> : <BookmarkPlus className="w-4 h-4" />}
+            {saved ? <BookmarkCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <BookmarkPlus className="w-4 h-4" />}
             {saved ? '✓ Saved to Tomorrow’s Warm-up!' : 'Save Mistakes to Tomorrow’s Review'}
           </button>
           <button

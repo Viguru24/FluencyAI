@@ -199,30 +199,30 @@ export const ScaffoldingStage: React.FC<Props> = ({
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 scrollbar-none no-scrollbar">
         <div className="max-w-4xl mx-auto w-full space-y-4">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold border border-brand-200">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-[11px] font-bold border border-brand-200 dark:border-brand-800">
               Stage 1 of 3 · 3-Phrase Vocabulary Warm-up &amp; Mic Test
             </span>
-            <h2 className="text-xl font-extrabold text-slate-900">Warm up your key phrases</h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Warm up your key phrases</h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               Listen, then say each phrase out loud. You will use them naturally with {plan.persona.name}.
             </p>
           </div>
 
           {/* Due SRS Mistake Integration Badge */}
           {dueSRSCard && (
-            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/50 to-orange-50 border border-amber-300 flex items-center justify-between gap-3 shadow-2xs animate-fade-in">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/50 to-orange-50 dark:from-amber-950/40 dark:via-amber-900/30 dark:to-orange-950/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-between gap-3 shadow-2xs animate-fade-in">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-xs">
+                <span className="w-8 h-8 rounded-xl bg-amber-400 dark:bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-xs">
                   ⚡
                 </span>
                 <div className="min-w-0">
-                  <div className="text-xs font-black text-amber-950 flex items-center gap-1.5 truncate">
+                  <div className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1.5 truncate">
                     <span>⚡ 1 Due SRS Phrase Added for Bonus XP</span>
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.2 rounded-md">
+                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.2 rounded-md">
                       Box {dueSRSCard.box} Review
                     </span>
                   </div>
-                  <div className="text-[11px] text-amber-900 truncate">
+                  <div className="text-[11px] text-amber-900 dark:text-amber-300 truncate">
                     From past mistake: <em>"{dueSRSCard.phrase}"</em> · Use it in Stage 2 roleplay for bonus points!
                   </div>
                 </div>
@@ -231,7 +231,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => speakEnglish(dueSRSCard.phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
-                className="px-2.5 py-1.5 rounded-xl bg-white text-amber-900 text-xs font-bold border border-amber-300 hover:bg-amber-100 active:scale-95 transition flex items-center gap-1 flex-shrink-0 shadow-2xs"
+                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-amber-900 dark:text-amber-300 text-xs font-bold border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-slate-700 active:scale-95 transition flex items-center gap-1 flex-shrink-0 shadow-2xs"
                 title="Listen to this review phrase"
               >
                 <Volume2 className="w-3.5 h-3.5" />
@@ -243,29 +243,29 @@ export const ScaffoldingStage: React.FC<Props> = ({
           {/* Responsive 2-column grid for Mic Check and Fast-Track Skip banner on desktop */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Microphone Check Widget */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-brand-50/40 to-emerald-50 border border-brand-200/80 flex items-center justify-between gap-3 shadow-xs">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-brand-50/40 to-emerald-50 dark:from-slate-850 dark:via-slate-800 dark:to-slate-850 border border-brand-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                     micTestStatus === 'passed'
-                      ? 'bg-emerald-100 text-emerald-700'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
                       : isTestingMic
-                      ? 'bg-rose-100 text-rose-600 animate-pulse'
-                      : 'bg-brand-100 text-brand-700'
+                      ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 animate-pulse'
+                      : 'bg-brand-100 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
                   }`}
                 >
                   <Mic className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-black text-slate-800 flex items-center gap-1.5 truncate">
+                  <div className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5 truncate">
                     <span>Microphone Test</span>
                     {micTestStatus === 'passed' && (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md">
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded-md">
                         Ready ✓
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-500 truncate">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                     {isTestingMic
                       ? 'Say anything to test input...'
                       : micTestStatus === 'passed'
@@ -293,8 +293,8 @@ export const ScaffoldingStage: React.FC<Props> = ({
                     isTestingMic
                       ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-xs'
                       : micTestStatus === 'passed'
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                      : 'bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 shadow-xs'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100'
+                      : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-slate-700 shadow-xs'
                   }`}
                 >
                   {isTestingMic ? 'Stop Test' : micTestStatus === 'passed' ? 'Test Again' : 'Test Mic'}
@@ -303,12 +303,12 @@ export const ScaffoldingStage: React.FC<Props> = ({
             </div>
 
             {/* Fast-Track Direct Jump to Roleplay banner */}
-            <div className="rounded-2xl bg-gradient-to-r from-emerald-500/10 via-brand-500/10 to-sky-500/10 border border-emerald-300/60 p-3 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="rounded-2xl bg-gradient-to-r from-emerald-500/10 via-brand-500/10 to-sky-500/10 dark:from-emerald-950/30 dark:via-brand-950/20 dark:to-sky-950/30 border border-emerald-300/60 dark:border-emerald-800/60 p-3 flex items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="text-xl">⚡</span>
                 <div className="min-w-0">
-                  <div className="text-xs font-black text-slate-900 truncate">Talk with {plan.persona.name} directly</div>
-                  <div className="text-[11px] text-slate-600 truncate">Skip phrase drills straight to Stage 2.</div>
+                  <div className="text-xs font-black text-slate-900 dark:text-white truncate">Talk with {plan.persona.name} directly</div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate">Skip phrase drills straight to Stage 2.</div>
                 </div>
               </div>
               <button
@@ -337,7 +337,9 @@ export const ScaffoldingStage: React.FC<Props> = ({
             <div
               key={p.id}
               className={`rounded-3xl border p-4 flex flex-col justify-between space-y-3 transition-all ${
-                done ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200 shadow-soft'
+                done
+                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60'
+                  : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-750 shadow-soft'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -347,25 +349,25 @@ export const ScaffoldingStage: React.FC<Props> = ({
                       Phrase {idx + 1}
                     </span>
                     {p.isSpacedRepetition && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold border border-amber-300">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-extrabold border border-amber-300 dark:border-amber-700">
                         🔁 Spaced Repetition Review
                       </span>
                     )}
                   </div>
-                  <p className="text-lg font-extrabold text-slate-900 leading-snug">
+                  <p className="text-lg font-extrabold text-slate-900 dark:text-white leading-snug">
                     {p.phrase}
                   </p>
                   {p.originalMistake && (
-                    <div className="text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                    <div className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-xl border border-amber-200 dark:border-amber-800">
                       From yesterday: replaces <em>"{p.originalMistake}"</em>
                     </div>
                   )}
-                  {p.ipa && <p className="text-xs font-mono text-slate-500">{p.ipa}</p>}
+                  {p.ipa && <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{p.ipa}</p>}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
                     onClick={() => setRadarPhrase(p.phrase)}
-                    className="p-2.5 sm:p-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 active:scale-95 transition"
+                    className="p-2.5 sm:p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 active:scale-95 transition"
                     title="Analyze Syllable Stress & Pitch Radar"
                     aria-label={`Analyze Syllable Stress & Pitch: ${p.phrase}`}
                   >
@@ -373,7 +375,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
                   </button>
                   <button
                     onClick={() => speakEnglish(p.phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
-                    className="p-2.5 sm:p-3 rounded-2xl bg-brand-100 hover:bg-brand-200 text-brand-700 active:scale-95 transition"
+                    className="p-2.5 sm:p-3 rounded-2xl bg-brand-100 dark:bg-brand-950/60 hover:bg-brand-200 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 active:scale-95 transition"
                     aria-label={`Listen to: ${p.phrase}`}
                   >
                     <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -381,19 +383,19 @@ export const ScaffoldingStage: React.FC<Props> = ({
                 </div>
               </div>
 
-              <p className="text-xs text-slate-600">{p.usageContext}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300">{p.usageContext}</p>
 
               {/* Native-language hint toggle */}
               <button
                 onClick={() => setHintsOpen((h) => ({ ...h, [p.id]: !h[p.id] }))}
-                className="flex items-center gap-1.5 text-xs font-semibold text-lavender-600 hover:text-lavender-700"
+                className="flex items-center gap-1.5 text-xs font-semibold text-lavender-600 dark:text-indigo-400 hover:text-lavender-700 dark:hover:text-indigo-300"
                 aria-expanded={!!hintsOpen[p.id]}
               >
                 {hintsOpen[p.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 {hintsOpen[p.id] ? 'Hide' : 'Show'} {nativeLanguage} hint
               </button>
               {hintsOpen[p.id] && (
-                <div className="flex items-start gap-2 p-2.5 rounded-xl bg-lavender-50 border border-lavender-200 text-sm text-lavender-700 animate-fade-in">
+                <div className="flex items-start gap-2 p-2.5 rounded-xl bg-lavender-50 dark:bg-indigo-950/40 border border-lavender-200 dark:border-indigo-800/60 text-sm text-lavender-700 dark:text-indigo-300 animate-fade-in">
                   <Languages className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span>{hint ?? 'Hint coming soon for this language.'}</span>
                 </div>
@@ -401,15 +403,15 @@ export const ScaffoldingStage: React.FC<Props> = ({
 
               {/* Live Speech Recognition Feedback Ticker */}
               {isRec && (
-                <div className="p-3 rounded-2xl bg-brand-50 border border-brand-200 text-xs text-brand-900 space-y-1.5 animate-slide-up">
+                <div className="p-3 rounded-2xl bg-brand-50 dark:bg-slate-800 border border-brand-200 dark:border-slate-700 text-xs text-brand-900 dark:text-slate-100 space-y-1.5 animate-slide-up">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold flex items-center gap-1.5 text-brand-700">
+                    <span className="font-bold flex items-center gap-1.5 text-brand-700 dark:text-brand-400">
                       <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
                       Listening to your voice...
                     </span>
-                    <span className="text-[10px] text-slate-500">Tap button when finished</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Tap button when finished</span>
                   </div>
-                  <div className="font-semibold text-slate-800 italic bg-white/80 p-2 rounded-xl border border-brand-100 min-h-[32px] flex items-center">
+                  <div className="font-semibold text-slate-800 dark:text-slate-100 italic bg-white/80 dark:bg-slate-900 p-2 rounded-xl border border-brand-100 dark:border-slate-700 min-h-[32px] flex items-center">
                     {liveTranscript ? `"${liveTranscript}"` : 'Say the phrase now...'}
                   </div>
                 </div>
@@ -424,7 +426,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
                     isRec
                       ? 'bg-rose-500 text-white ring-4 ring-rose-200'
                       : done
-                      ? 'bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+                      ? 'bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-slate-700'
                       : 'bg-brand-600 hover:bg-brand-700 text-white shadow-soft'
                   }`}
                 >
@@ -446,7 +448,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
 
                 {done && !isRec && (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-700">
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400">
                       <CheckCircle2 className="w-4 h-4" />
                       <span>{currentScore}% clear</span>
                     </div>
@@ -456,7 +458,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
                         setEditingId(p.id);
                         setEditText(heard[p.id] || p.phrase);
                       }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 text-xs flex items-center gap-1"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xs flex items-center gap-1"
                       title="Adjust what was heard"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
@@ -467,30 +469,30 @@ export const ScaffoldingStage: React.FC<Props> = ({
 
               {/* What was heard & feedback */}
               {done && heard[p.id] && !isRec && (
-                <div className="text-xs text-slate-600 bg-white/70 p-2.5 rounded-xl border border-slate-200 flex items-start gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/70 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-start gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                   <div className="leading-tight">
-                    <span className="font-semibold text-slate-700">Heard: </span>
-                    <span className="text-slate-900 font-bold">"{heard[p.id]}"</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Heard: </span>
+                    <span className="text-slate-900 dark:text-white font-bold">"{heard[p.id]}"</span>
                   </div>
                 </div>
               )}
 
               {/* Optional manual edit box */}
               {editingId === p.id && (
-                <div className="p-3 rounded-2xl bg-slate-100 border border-slate-300 space-y-2 animate-fade-in">
-                  <div className="text-[11px] font-bold text-slate-600">Edit or type what you said:</div>
+                <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 space-y-2 animate-fade-in">
+                  <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Edit or type what you said:</div>
                   <input
                     type="text"
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-800"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white"
                     placeholder="Type words here..."
                   />
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={() => setEditingId(null)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-xs font-semibold"
+                      className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold"
                     >
                       Cancel
                     </button>
@@ -511,16 +513,16 @@ export const ScaffoldingStage: React.FC<Props> = ({
       </div>
 
       {/* Unlock footer: permanently docked and sticky */}
-      <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 py-3 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-lg">
+      <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg">
         <div className="max-w-4xl mx-auto w-full space-y-2">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>{practicedCount} of {plan.phrases.length} phrases practised</span>
             <div className="flex gap-1">
               {plan.phrases.map((p) => (
                 <span
                   key={p.id}
                   className={`w-6 h-1.5 rounded-full ${
-                    scores[p.id] !== undefined ? 'bg-emerald-500' : 'bg-slate-200'
+                    scores[p.id] !== undefined ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-800'
                   }`}
                 />
               ))}
@@ -533,7 +535,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
                 onComplete(plan.phrases.map((p) => scores[p.id] ?? 0));
               }}
               disabled={!allDone}
-              className="flex-1 w-full py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition active:scale-95 bg-gradient-to-r from-brand-600 to-emerald-500 text-white shadow-soft disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:shadow-none"
+              className="flex-1 w-full py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition active:scale-95 bg-gradient-to-r from-brand-600 to-emerald-500 text-white shadow-soft disabled:from-slate-200 disabled:to-slate-200 dark:disabled:from-slate-800 dark:disabled:to-slate-800 disabled:text-slate-500 dark:disabled:text-slate-600 disabled:shadow-none"
             >
               {allDone ? (
                 <>Start Live Roleplay with {plan.persona.name} <ArrowRight className="w-4 h-4" /></>
@@ -548,7 +550,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
                   playChime('tap');
                   onComplete(plan.phrases.map((p) => scores[p.id] ?? 80));
                 }}
-                className="w-full sm:w-auto px-4 text-center text-xs font-semibold text-slate-500 hover:text-brand-600 transition py-2 whitespace-nowrap"
+                className="w-full sm:w-auto px-4 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-300 transition py-2 whitespace-nowrap"
               >
                 Skip warm-up to Live Roleplay &rarr;
               </button>

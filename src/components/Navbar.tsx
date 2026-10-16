@@ -7,6 +7,7 @@ import { getLLMConfig, testGatewayConnection, type LLMConfig } from '../services
 import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
 import { UserProfileModal } from './UserProfileModal';
 import { UserAvatar } from './UserAvatar';
+import { ThemeToggle } from './ThemeToggle';
 import { authService } from '../services/authService';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { useGamificationStore, getAvailableAudioSpeeds } from '../store/rewardSystem';
@@ -152,26 +153,26 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full glass-card border-b border-slate-200/80 shadow-sm transition-all">
+      <header className="sticky top-0 z-40 w-full glass-card border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm transition-all">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2">
           {/* Logo and Brand Name */}
           <div className="flex items-center gap-2.5">
             <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-emerald-400 text-white shadow-soft shadow-brand-500/20">
               <Sparkles className="w-5 h-5 text-amber-200 animate-pulse-subtle" />
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center">
                 <span className="text-[9px] font-bold text-white">✓</span>
               </div>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 via-brand-900 to-brand-700 bg-clip-text text-transparent">
+                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 via-brand-900 to-brand-700 dark:from-white dark:via-brand-200 dark:to-brand-400 bg-clip-text text-transparent">
                   FluencyAI
                 </span>
-                <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-brand-50 text-brand-700 border border-brand-200/60">
+                <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60">
                   Tutor
                 </span>
               </div>
-              <p className="text-[11px] font-medium text-slate-500 hidden sm:block">English Speaking Companion</p>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hidden sm:block">English Speaking Companion</p>
             </div>
           </div>
 
@@ -182,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onOpenPersonaSelector}
                 title="Switch English Coach"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold transition active:scale-95 shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition active:scale-95 shadow-2xs"
               >
                 <span className="text-sm">{activePersona?.avatar || '🧑‍💼'}</span>
                 <span className="hidden sm:inline font-bold">{activePersona?.name || 'James'}</span>
@@ -195,9 +196,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={handleSpeedToggle}
                 title="Adjust listening playback speed"
                 aria-label="Toggle speech speed"
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition active:scale-95"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition active:scale-95"
               >
-                <Volume2 className="w-3.5 h-3.5 text-brand-600" />
+                <Volume2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 <span>{progress.audioSpeed}x</span>
               </button>
 
@@ -206,14 +207,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setShowLevelMenu(!showLevelMenu);
                   setShowLangMenu(false);
                 }}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-xs font-bold transition active:scale-95"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 text-xs font-bold transition active:scale-95"
                 title="Target English Level"
               >
                 <span>{progress.level}</span>
               </button>
 
               {showLevelMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white shadow-soft-lg border border-slate-200 py-2 z-50 animate-slide-up">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-750 py-2 z-50 animate-slide-up">
                   <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Target Proficiency
                   </div>
@@ -225,24 +226,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowLevelMenu(false);
                         playChime('tap');
                       }}
-                      className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-brand-50 transition ${
-                        progress.level === lvl ? 'text-brand-600 font-bold bg-brand-50/50' : 'text-slate-700'
+                      className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-brand-50 dark:hover:bg-slate-800 transition ${
+                        progress.level === lvl ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/50 dark:bg-brand-950/40' : 'text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       <span>
                         Level {lvl} {lvl === 'A1' ? '• Beginner' : lvl === 'B1' ? '• Intermediate' : lvl === 'C1' ? '• Advanced' : ''}
                       </span>
-                      {progress.level === lvl && <Check className="w-3.5 h-3.5 text-brand-600" />}
+                      {progress.level === lvl && <Check className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />}
                     </button>
                   ))}
-                  <div className="my-1 border-t border-slate-100" />
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
                   <button
                     onClick={() => {
                       playChime('tap');
                       setShowLevelMenu(false);
                       onOpenPlacement?.();
                     }}
-                    className="w-full px-3 py-2 text-left text-xs font-bold text-brand-600 hover:bg-brand-50 transition flex items-center gap-1.5"
+                    className="w-full px-3 py-2 text-left text-xs font-bold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     <span>Take Placement Check</span>
@@ -258,15 +259,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setShowLangMenu(!showLangMenu);
                   setShowLevelMenu(false);
                 }}
-                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition active:scale-95"
+                className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition active:scale-95"
                 title={`Translations shown in ${progress.nativeLanguage}`}
                 aria-label="Select native language for translations"
               >
-                <Globe className="w-4 h-4 text-slate-700" />
+                <Globe className="w-4 h-4 text-slate-700 dark:text-slate-300" />
               </button>
 
               {showLangMenu && (
-                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white shadow-soft-lg border border-slate-200 py-2 z-50 animate-slide-up">
+                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-750 py-2 z-50 animate-slide-up">
                   <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Translation Helper
                   </div>
@@ -278,17 +279,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowLangMenu(false);
                         playChime('tap');
                       }}
-                      className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-brand-50 transition ${
-                        progress.nativeLanguage === lang ? 'text-brand-600 font-bold bg-brand-50/50' : 'text-slate-700'
+                      className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-brand-50 dark:hover:bg-slate-800 transition ${
+                        progress.nativeLanguage === lang ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/50 dark:bg-brand-950/40' : 'text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       <span>{lang}</span>
-                      {progress.nativeLanguage === lang && <Check className="w-3.5 h-3.5 text-brand-600" />}
+                      {progress.nativeLanguage === lang && <Check className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />}
                     </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Dedicated Dark & Light Mode Button */}
+            <ThemeToggle variant="icon-only" />
 
             {/* Interactive Fluency Tier Pill */}
             <button
@@ -330,8 +334,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                   className={`relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs ${
                     authSession
-                      ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 text-brand-900 border-brand-200 hover:bg-brand-100'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                      ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 dark:from-brand-950/60 dark:to-emerald-950/60 text-brand-900 dark:text-brand-200 border-brand-200 dark:border-brand-800 hover:bg-brand-100'
+                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
                   }`}
                   title={
                     isGatewayConnected
@@ -346,7 +350,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     showOnlineDot={Boolean(authSession)}
                     hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
                   />
-                  <span className="max-w-[90px] sm:max-w-[130px] truncate font-extrabold text-slate-900">
+                  <span className="max-w-[90px] sm:max-w-[130px] truncate font-extrabold text-slate-900 dark:text-slate-100">
                     {buttonLabel}
                   </span>
                   <span

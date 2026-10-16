@@ -31,6 +31,7 @@ import { playChime } from '../services/speech';
 import { toast } from '../services/toast';
 import { UserAvatar } from './UserAvatar';
 import { formatDisplayName, normalizeUserAvatar } from '../utils/nameFormatter';
+import { ThemeToggle } from './ThemeToggle';
 
 interface Props {
   isOpen: boolean;
@@ -351,7 +352,7 @@ export const UserProfileModal: React.FC<Props> = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden animate-slide-up"
+        className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 dark:border-slate-800 text-slate-900 dark:text-slate-100 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -409,14 +410,14 @@ export const UserProfileModal: React.FC<Props> = ({
           {session ? (
             <div className="space-y-4">
               {/* Profile Card & Avatar */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-brand-50/40 border border-slate-200/80 shadow-2xs space-y-3">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-brand-50/40 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Profile Details
                   </span>
                   <button
                     onClick={() => setIsEditingProfile(!isEditingProfile)}
-                    className="flex items-center gap-1 text-xs font-bold text-brand-600 hover:text-brand-800 transition"
+                    className="flex items-center gap-1 text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 transition"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                     <span>{isEditingProfile ? 'Cancel' : 'Edit Profile'}</span>
@@ -426,22 +427,22 @@ export const UserProfileModal: React.FC<Props> = ({
                 {isEditingProfile ? (
                   <div className="space-y-3 pt-1">
                     {/* Live Preview */}
-                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 shadow-2xs">
                       <UserAvatar
                         picture={editAvatar}
                         name={editName}
                         size="md"
                       />
                       <div>
-                        <div className="text-xs font-black text-slate-800">
+                        <div className="text-xs font-black text-slate-800 dark:text-white">
                           {formatDisplayName(editName) || 'Your Name'}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-medium">Live Avatar & Name Preview</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Live Avatar & Name Preview</div>
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">
                         Display Name
                       </label>
                       <input
@@ -449,12 +450,12 @@ export const UserProfileModal: React.FC<Props> = ({
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         placeholder="Your Name (e.g. Louis de Souza)"
-                        className="w-full mt-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        className="w-full mt-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">
                         Pick Avatar Emoji or Icon
                       </label>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -466,7 +467,7 @@ export const UserProfileModal: React.FC<Props> = ({
                             className={`w-8 h-8 rounded-xl text-lg flex items-center justify-center transition ${
                               editAvatar === emoji
                                 ? 'bg-brand-600 text-white shadow-xs scale-105'
-                                : 'bg-white hover:bg-slate-100 border border-slate-200'
+                                : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'
                             }`}
                           >
                             {emoji}
@@ -496,10 +497,10 @@ export const UserProfileModal: React.FC<Props> = ({
                       size="lg"
                     />
                     <div>
-                      <div className="text-sm font-black text-slate-900">{formatDisplayName(currentUser?.name || progress.name)}</div>
-                      <div className="text-xs text-slate-500 font-medium">{currentUser?.email}</div>
-                      <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                      <div className="text-sm font-black text-slate-900 dark:text-white">{formatDisplayName(currentUser?.name || progress.name)}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">{currentUser?.email}</div>
+                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
                         <span>Connected to VPS database</span>
                       </div>
                     </div>
@@ -509,34 +510,34 @@ export const UserProfileModal: React.FC<Props> = ({
 
               {/* Real-time Synced Stats Grid */}
               <div className="grid grid-cols-3 gap-2">
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-center">
                   <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
                     <Zap className="w-3 h-3 text-amber-500" />
                     <span>XP</span>
                   </div>
-                  <div className="text-base font-black text-brand-600 mt-0.5">
+                  <div className="text-base font-black text-brand-600 dark:text-brand-400 mt-0.5">
                     {progress.completedXP}
                   </div>
                   <div className="text-[9px] text-slate-400 font-medium">Daily {progress.dailyGoalXP}</div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-center">
                   <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
                     <Flame className="w-3 h-3 text-amber-500" />
                     <span>Streak</span>
                   </div>
-                  <div className="text-base font-black text-amber-600 mt-0.5">
+                  <div className="text-base font-black text-amber-600 dark:text-amber-400 mt-0.5">
                     {progress.streakDays} Days
                   </div>
-                  <div className="text-[9px] text-emerald-600 font-medium">Active</div>
+                  <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">Active</div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-center">
                   <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
                     <Award className="w-3 h-3 text-emerald-500" />
                     <span>CEFR</span>
                   </div>
-                  <div className="text-base font-black text-emerald-600 mt-0.5">
+                  <div className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                     Level {progress.level}
                   </div>
                   <div className="text-[9px] text-slate-400 font-medium">Fluency Target</div>
@@ -595,14 +596,14 @@ export const UserProfileModal: React.FC<Props> = ({
             /* VIEW 2: SIGN IN / SIGN UP TABS */
             <div className="space-y-4">
               {/* Tab Selector */}
-              <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
+              <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
                 <button
                   onClick={() => {
                     setActiveTab('signin');
                     setErrorMessage(null);
                   }}
                   className={`py-1.5 rounded-xl transition ${
-                    activeTab === 'signin' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                    activeTab === 'signin' ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-xs' : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   Password
@@ -613,7 +614,7 @@ export const UserProfileModal: React.FC<Props> = ({
                     setErrorMessage(null);
                   }}
                   className={`py-1.5 rounded-xl transition ${
-                    activeTab === 'otp' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                    activeTab === 'otp' ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-xs' : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   Magic OTP
@@ -624,7 +625,7 @@ export const UserProfileModal: React.FC<Props> = ({
                     setErrorMessage(null);
                   }}
                   className={`py-1.5 rounded-xl transition ${
-                    activeTab === 'signup' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                    activeTab === 'signup' ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-xs' : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   Sign Up
@@ -635,7 +636,7 @@ export const UserProfileModal: React.FC<Props> = ({
                     setErrorMessage(null);
                   }}
                   className={`py-1.5 rounded-xl transition ${
-                    activeTab === 'server' ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-600'
+                    activeTab === 'server' ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-xs' : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   VPS Endpoint
@@ -646,8 +647,8 @@ export const UserProfileModal: React.FC<Props> = ({
               {activeTab === 'signin' && (
                 <form onSubmit={handleLogin} className="space-y-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <Mail className="w-3 h-3 text-brand-600" />
+                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                       <span>Email Address</span>
                     </label>
                     <input
@@ -656,13 +657,13 @@ export const UserProfileModal: React.FC<Props> = ({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@domain.com"
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-brand-600" />
+                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                       <span>Password</span>
                     </label>
                     <input
@@ -671,7 +672,7 @@ export const UserProfileModal: React.FC<Props> = ({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                     />
                   </div>
 
@@ -696,8 +697,8 @@ export const UserProfileModal: React.FC<Props> = ({
                   {!otpSent ? (
                     <form onSubmit={handleSendOtp} className="space-y-3.5">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-brand-600" />
+                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                           <span>Email Address</span>
                         </label>
                         <input
@@ -706,9 +707,9 @@ export const UserProfileModal: React.FC<Props> = ({
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="you@domain.com"
-                          className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                          className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                         />
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
                           We will send a 6-digit magic security code to your email.
                         </p>
                       </div>
@@ -729,7 +730,7 @@ export const UserProfileModal: React.FC<Props> = ({
                   ) : (
                     <form onSubmit={handleVerifyOtp} className="space-y-3.5">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">
                           Enter 6-Digit Code sent to {email}
                         </label>
                         <input
@@ -738,7 +739,7 @@ export const UserProfileModal: React.FC<Props> = ({
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value)}
                           placeholder="123456"
-                          className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-center font-mono text-lg font-bold tracking-widest text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                          className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center font-mono text-lg font-bold tracking-widest text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                         />
                       </div>
 
@@ -746,7 +747,7 @@ export const UserProfileModal: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => setOtpSent(false)}
-                          className="px-3 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold"
+                          className="px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold"
                         >
                           Change Email
                         </button>
@@ -772,8 +773,8 @@ export const UserProfileModal: React.FC<Props> = ({
               {activeTab === 'signup' && (
                 <form onSubmit={handleSignUp} className="space-y-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <User className="w-3 h-3 text-brand-600" />
+                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <User className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                       <span>Your Name / Display Name</span>
                     </label>
                     <input
@@ -782,13 +783,13 @@ export const UserProfileModal: React.FC<Props> = ({
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="e.g. Louis"
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <Mail className="w-3 h-3 text-brand-600" />
+                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                       <span>Email Address</span>
                     </label>
                     <input
@@ -797,13 +798,13 @@ export const UserProfileModal: React.FC<Props> = ({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@domain.com"
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-brand-600" />
+                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                       <span>Password</span>
                     </label>
                     <input
@@ -812,7 +813,7 @@ export const UserProfileModal: React.FC<Props> = ({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                     />
                   </div>
 
@@ -835,8 +836,8 @@ export const UserProfileModal: React.FC<Props> = ({
               {activeTab === 'server' && (
                 <div className="space-y-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <Server className="w-3 h-3 text-brand-600" />
+                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <Server className="w-3 h-3 text-brand-600 dark:text-brand-400" />
                       <span>Auth Provider URL (VITE_AUTH_PROVIDER_URL)</span>
                     </label>
                     <input
@@ -844,21 +845,21 @@ export const UserProfileModal: React.FC<Props> = ({
                       value={serverUrl}
                       onChange={(e) => setServerUrl(e.target.value)}
                       placeholder="https://api.cosmowhisper.com"
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                     />
-                    <p className="text-[11px] text-slate-500">
-                      Default: <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">https://api.cosmowhisper.com</code> or local LAN <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">http://192.168.1.28:5000</code>.
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Default: <code className="text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">https://api.cosmowhisper.com</code> or local LAN <code className="text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">http://192.168.1.28:5000</code>.
                     </p>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">
                       Backend Backend Type
                     </label>
                     <select
                       value={providerType}
                       onChange={(e) => setProviderState(e.target.value as AuthProviderType)}
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none"
                     >
                       <option value="node-jwt">Node JWT Backend (Ra VPS / Express)</option>
                       <option value="pocketbase">PocketBase (Self-Hosted)</option>
@@ -918,9 +919,22 @@ export const UserProfileModal: React.FC<Props> = ({
             </div>
           )}
 
+          {/* Appearance & Theme Section */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <span>Theme &amp; Appearance</span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Light, Dark, or System mode (Alt+T)
+              </div>
+            </div>
+            <ThemeToggle variant="switch" />
+          </div>
+
           {/* AI Gateway & Model Settings Row */}
           {onOpenGatewaySettings && (
-            <div className="pt-3 border-t border-slate-200/80">
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => {
@@ -930,8 +944,8 @@ export const UserProfileModal: React.FC<Props> = ({
                 }}
                 className={`w-full p-3 rounded-2xl border text-xs flex items-center justify-between transition active:scale-[0.99] ${
                   isGatewayConnected
-                    ? 'bg-emerald-50/70 hover:bg-emerald-100/80 border-emerald-200 text-emerald-950'
-                    : 'bg-rose-50/80 hover:bg-rose-100/80 border-rose-200 text-rose-950'
+                    ? 'bg-emerald-50/70 dark:bg-emerald-950/30 hover:bg-emerald-100/80 dark:hover:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800/60 text-emerald-950 dark:text-emerald-200'
+                    : 'bg-rose-50/80 dark:bg-rose-950/30 hover:bg-rose-100/80 dark:hover:bg-rose-950/50 border-rose-200 dark:border-rose-800/60 text-rose-950 dark:text-rose-200'
                 }`}
               >
                 <div className="flex items-center gap-2.5 text-left">
@@ -944,7 +958,7 @@ export const UserProfileModal: React.FC<Props> = ({
                     <div className="font-bold flex items-center gap-1.5">
                       <span>AI Voice &amp; LLM Gateway</span>
                       {llmModelLabel && (
-                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/80 text-slate-600">
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                           {llmModelLabel}
                         </span>
                       )}
@@ -956,7 +970,7 @@ export const UserProfileModal: React.FC<Props> = ({
                     </div>
                   </div>
                 </div>
-                <span className="flex items-center gap-1 font-bold text-brand-700 flex-shrink-0">
+                <span className="flex items-center gap-1 font-bold text-brand-700 dark:text-brand-400 flex-shrink-0">
                   <Server className="w-3.5 h-3.5" />
                   <span>Configure</span>
                 </span>
