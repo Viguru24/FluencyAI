@@ -257,7 +257,7 @@ export const CustomScenarioModal: React.FC<CustomScenarioModalProps> = ({
                     setPrompt(idea);
                     handleGenerate(idea);
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800/70 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/80 text-[11px] font-medium transition active:scale-95 text-left disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-[11px] font-medium transition active:scale-95 text-left disabled:opacity-50"
                 >
                   {idea}
                 </button>

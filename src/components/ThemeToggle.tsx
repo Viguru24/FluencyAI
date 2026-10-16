@@ -95,7 +95,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         aria-label={tooltipTitle}
         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 border ${
           isDark
-            ? 'bg-slate-850 hover:bg-slate-800 text-sky-300 border-slate-700/80 shadow-2xs'
+            ? 'bg-slate-800 hover:bg-slate-700 text-sky-300 border-slate-700/80 shadow-2xs'
             : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shadow-2xs'
         } ${className}`}
       >
@@ -118,7 +118,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       aria-label={tooltipTitle}
       className={`relative p-2 rounded-xl text-xs font-medium transition-all active:scale-90 border group flex items-center justify-center ${
         isDark
-          ? 'bg-slate-850 hover:bg-slate-800 text-amber-300 border-slate-700 hover:border-amber-400/40 shadow-xs shadow-amber-500/10'
+          ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700 hover:border-amber-400/40 shadow-xs shadow-amber-500/10'
           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:border-slate-300 shadow-2xs'
       } ${className}`}
     >

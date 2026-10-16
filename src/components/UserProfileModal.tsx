@@ -427,7 +427,7 @@ export const UserProfileModal: React.FC<Props> = ({
                 {isEditingProfile ? (
                   <div className="space-y-3 pt-1">
                     {/* Live Preview */}
-                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                       <UserAvatar
                         picture={editAvatar}
                         name={editName}

@@ -174,17 +174,17 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
             <div className="relative group">
               <button
                 type="button"
-                className="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
+                className="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
                 title="Export Deck"
               >
                 <Download className="w-3.5 h-3.5 text-amber-400" />
                 <span className="hidden sm:inline">Export</span>
               </button>
-              <div className="absolute right-0 top-full mt-1.5 w-48 py-1.5 bg-slate-850 border border-slate-700 rounded-2xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-30">
+              <div className="absolute right-0 top-full mt-1.5 w-48 py-1.5 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-30">
                 <button
                   type="button"
                   onClick={() => handleExport('anki')}
-                  className="w-full px-3 py-2 text-left text-xs font-bold text-slate-200 hover:bg-slate-750 hover:text-amber-300 flex items-center gap-2 transition"
+                  className="w-full px-3 py-2 text-left text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-amber-300 flex items-center gap-2 transition"
                 >
                   <Layers className="w-3.5 h-3.5 text-amber-400" />
                   <span>Anki Deck (.tsv)</span>
@@ -192,7 +192,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleExport('csv')}
-                  className="w-full px-3 py-2 text-left text-xs font-bold text-slate-200 hover:bg-slate-750 hover:text-emerald-300 flex items-center gap-2 transition"
+                  className="w-full px-3 py-2 text-left text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-emerald-300 flex items-center gap-2 transition"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Spreadsheet (.csv)</span>
@@ -246,7 +246,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
               {/* 3D Flip Card Container */}
               <div
                 onClick={handleFlip}
-                className="cursor-pointer min-h-[220px] rounded-3xl p-6 border transition-all duration-300 relative flex flex-col justify-between group select-none shadow-xl bg-gradient-to-br from-slate-800/90 via-slate-850 to-slate-900 border-slate-700/80 hover:border-amber-500/50"
+                className="cursor-pointer min-h-[220px] rounded-3xl p-6 border transition-all duration-300 relative flex flex-col justify-between group select-none shadow-xl bg-gradient-to-br from-slate-800/90 via-slate-800 to-slate-900 border-slate-700/80 hover:border-amber-500/50"
               >
                 {!isFlipped ? (
                   /* Card Front: Recall challenge */
@@ -339,7 +339,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   onClick={() => handleReviewResult(false)}
-                  className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-750 text-rose-300 hover:text-rose-200 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition"
+                  className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-rose-300 hover:text-rose-200 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition"
                 >
                   <Repeat className="w-4 h-4" />
                   Still Practicing (Keep in Box 1)
@@ -392,7 +392,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleExport('anki')}
-                    className="py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-750 text-slate-200 hover:text-amber-300 border border-slate-750 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+                    className="py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-amber-300 border border-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
                   >
                     <Layers className="w-3.5 h-3.5 text-amber-400" />
                     <span>Anki (.tsv)</span>
@@ -400,7 +400,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleExport('csv')}
-                    className="py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-750 text-slate-200 hover:text-emerald-300 border border-slate-750 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+                    className="py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-emerald-300 border border-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Spreadsheet (.csv)</span>

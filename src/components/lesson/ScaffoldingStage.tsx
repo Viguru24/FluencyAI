@@ -243,7 +243,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
           {/* Responsive 2-column grid for Mic Check and Fast-Track Skip banner on desktop */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Microphone Check Widget */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-brand-50/40 to-emerald-50 dark:from-slate-850 dark:via-slate-800 dark:to-slate-850 border border-brand-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-xs">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-brand-50/40 to-emerald-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 border border-brand-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
@@ -339,7 +339,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
               className={`rounded-3xl border p-4 flex flex-col justify-between space-y-3 transition-all ${
                 done
                   ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60'
-                  : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-750 shadow-soft'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-soft'
               }`}
             >
               <div className="flex items-start justify-between gap-3">

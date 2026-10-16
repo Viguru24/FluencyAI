@@ -78,7 +78,7 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
             className={`flex-shrink-0 px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition-all active:scale-95 ${
               selectedCategory === cat
                 ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/20'
-                : 'bg-white dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-750'
+                : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800'
             }`}
           >
             {cat}
@@ -137,7 +137,7 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                 playChime('tap');
                 onSelectScenario(scenario);
               }}
-              className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-850 border border-slate-200/80 dark:border-slate-750 shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer hover:border-brand-300 dark:hover:border-brand-500 ${
+              className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer hover:border-brand-300 dark:hover:border-brand-500 ${
                 isCompleted ? 'border-emerald-200/90 dark:border-emerald-800/80' : ''
               }`}
             >
@@ -278,7 +278,7 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                 {/* Action Row */}
                 <div className="flex items-center justify-between pt-1">
                   <div className="text-[11px] font-medium text-slate-400">
-                    Focus: <span className="text-slate-600">{scenario.learningGoals[0]}</span>
+                    Focus: <span className="text-slate-600 dark:text-slate-300">{scenario.learningGoals[0]}</span>
                   </div>
 
                   <button

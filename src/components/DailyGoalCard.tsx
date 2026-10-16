@@ -151,7 +151,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
       </div>
 
       {/* Main Daily Goal & Hero Session Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-brand-50/30 to-emerald-50/40 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 p-5 shadow-soft border border-slate-200/80 dark:border-slate-800">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-brand-50/30 to-emerald-50/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 p-5 shadow-soft border border-slate-200/80 dark:border-slate-800">
         <div className="pointer-events-none absolute -top-12 -right-12 w-36 h-36 rounded-full bg-brand-200/40 dark:bg-brand-500/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 -left-12 w-36 h-36 rounded-full bg-emerald-200/40 dark:bg-emerald-500/10 blur-2xl" />
 
@@ -386,7 +386,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
           <div className="pt-0.5">
             <button
               onClick={() => setShowHeatmap((prev) => !prev)}
-              className="w-full py-2 px-3 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-98"
+              className="w-full py-2 px-3 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-98"
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>{showHeatmap ? 'Hide Immersion Heatmap' : 'View 365-Day Speaking Heatmap'}</span>

@@ -19,7 +19,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({ onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
         {/* Top Header */}
         <div className="px-5 py-4 bg-gradient-to-r from-brand-600 to-sky-600 text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -40,10 +40,10 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({ onCl
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 text-white flex items-center justify-center mx-auto shadow-soft">
               <Sparkles className="w-7 h-7 text-amber-200 animate-pulse-subtle" />
             </div>
-            <h4 className="font-extrabold text-base text-slate-900 pt-2">
+            <h4 className="font-extrabold text-base text-slate-900 dark:text-white pt-2">
               Practice English Anytime, Offline & Fullscreen
             </h4>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Add FluencyAI to your home screen for instant zero-lag access, offline lessons, and audio roleplays.
             </p>
           </div>
@@ -60,33 +60,33 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({ onCl
           {/* Instructions by Platform */}
           <div className="space-y-3 pt-1 text-xs">
             {/* iOS Safari */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
-              <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-slate-200 text-[10px] flex items-center justify-center">🍎</span>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+              <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] flex items-center justify-center">🍎</span>
                 <span>iPhone & iPad (Safari)</span>
               </div>
-              <ol className="list-decimal list-inside space-y-1 text-slate-600 text-[11px] pl-1">
-                <li>Tap the <strong className="text-slate-800">Share</strong> icon at the bottom of Safari (<Share className="w-3 h-3 inline text-brand-600" />)</li>
-                <li>Scroll down and tap <strong className="text-slate-800">Add to Home Screen</strong> (<PlusSquare className="w-3 h-3 inline text-brand-600" />)</li>
-                <li>Tap <strong className="text-slate-800">Add</strong> in the top right corner</li>
+              <ol className="list-decimal list-inside space-y-1 text-slate-600 dark:text-slate-300 text-[11px] pl-1">
+                <li>Tap the <strong className="text-slate-800 dark:text-white">Share</strong> icon at the bottom of Safari (<Share className="w-3 h-3 inline text-brand-600 dark:text-brand-400" />)</li>
+                <li>Scroll down and tap <strong className="text-slate-800 dark:text-white">Add to Home Screen</strong> (<PlusSquare className="w-3 h-3 inline text-brand-600 dark:text-brand-400" />)</li>
+                <li>Tap <strong className="text-slate-800 dark:text-white">Add</strong> in the top right corner</li>
               </ol>
             </div>
 
             {/* Android */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
-              <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-emerald-100 text-[10px] flex items-center justify-center">🤖</span>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+              <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-[10px] flex items-center justify-center">🤖</span>
                 <span>Android (Chrome & Edge)</span>
               </div>
-              <p className="text-[11px] text-slate-600">
-                Tap the three dots (<strong>⋮</strong>) menu and select <strong className="text-slate-800">Install app</strong> or <strong className="text-slate-800">Add to Home screen</strong>.
+              <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                Tap the three dots (<strong>⋮</strong>) menu and select <strong className="text-slate-800 dark:text-white">Install app</strong> or <strong className="text-slate-800 dark:text-white">Add to Home screen</strong>.
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
+            className="w-full py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition"
           >
             Got it, thanks!
           </button>

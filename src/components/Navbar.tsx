@@ -214,7 +214,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {showLevelMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-750 py-2 z-50 animate-slide-up">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-800 py-2 z-50 animate-slide-up">
                   <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Target Proficiency
                   </div>
@@ -267,7 +267,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {showLangMenu && (
-                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-750 py-2 z-50 animate-slide-up">
+                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-800 py-2 z-50 animate-slide-up">
                   <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Translation Helper
                   </div>

@@ -178,7 +178,7 @@ export const LessonFlow: React.FC<Props> = ({
         {/* Exit confirmation */}
         {confirmExit && (
           <div className="absolute inset-0 z-40 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-6 animate-fade-in">
-            <div className="w-full max-w-xs bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-750 rounded-3xl p-5 space-y-3 text-center shadow-2xl">
+            <div className="w-full max-w-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-3 text-center shadow-2xl">
               <h3 className="font-extrabold text-slate-900 dark:text-white">Leave this lesson?</h3>
               <p className="text-sm text-slate-600 dark:text-slate-300">Your progress in this lesson won’t be saved. You can start again any time.</p>
               <div className="flex gap-2 pt-1">
@@ -190,7 +190,7 @@ export const LessonFlow: React.FC<Props> = ({
                     stopSpeaking();
                     onExit();
                   }}
-                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold active:scale-95 transition"
+                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold active:scale-95 transition border border-transparent dark:border-slate-700"
                 >
                   Leave
                 </button>

@@ -67,7 +67,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white border border-slate-200 text-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[90vh]">
+      <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[90vh]">
         {/* Modal Header */}
         <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between border-b border-slate-800 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -105,24 +105,24 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
           {/* Top Summary & Multipliers Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Total Cumulative XP & Next Rank Progress */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50/50 border border-brand-200/80 shadow-2xs space-y-2">
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-brand-50 to-indigo-50/50 dark:from-slate-800 dark:to-slate-800/60 border border-brand-200/80 dark:border-slate-700 shadow-2xs space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-brand-800">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-brand-800 dark:text-brand-300">
                   Total Lifetime XP
                 </span>
-                <span className="text-xs font-black text-brand-900">{totalXP.toLocaleString()} XP</span>
+                <span className="text-xs font-black text-brand-900 dark:text-brand-200">{totalXP.toLocaleString()} XP</span>
               </div>
-              <div className="text-lg font-black text-slate-900 leading-none">
+              <div className="text-lg font-black text-slate-900 dark:text-white leading-none">
                 {currentTierConfig.shortName}
               </div>
               <div className="space-y-1 pt-1">
-                <div className="w-full h-2 rounded-full bg-brand-100 overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-brand-100 dark:bg-slate-700 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-brand-500 to-indigo-600 transition-all duration-500"
                     style={{ width: `${progressToNextTier}%` }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                   <span>{progressToNextTier}% to next rank</span>
                   {nextTierConfig ? (
                     <span>{xpRemainingToNextTier.toLocaleString()} XP needed</span>
@@ -134,20 +134,20 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
             </div>
 
             {/* Streak & Streak Multiplier Booster */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50/50 border border-amber-200/80 shadow-2xs space-y-2">
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-slate-800 dark:to-slate-800/60 border border-amber-200/80 dark:border-slate-700 shadow-2xs space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-300">
                   Active Multiplier
                 </span>
                 <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
               </div>
-              <div className="text-lg font-black text-amber-950 leading-none">
+              <div className="text-lg font-black text-amber-950 dark:text-amber-200 leading-none">
                 {multiplierInfo.multiplier}x Boost
               </div>
-              <div className="text-[11px] text-amber-900 font-medium">
+              <div className="text-[11px] text-amber-900 dark:text-amber-300/90 font-medium">
                 {streakDays}-day streak active.
                 {multiplierInfo.nextThreshold && (
-                  <span className="block text-[10px] text-amber-700 mt-0.5 font-bold">
+                  <span className="block text-[10px] text-amber-700 dark:text-amber-400 mt-0.5 font-bold">
                     Reach {multiplierInfo.nextThreshold.days} days for {multiplierInfo.nextThreshold.multiplier}x boost!
                   </span>
                 )}
@@ -155,21 +155,21 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
             </div>
 
             {/* Pronunciation Accuracy & Streak Freezes */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50/50 border border-emerald-200/80 shadow-2xs space-y-2">
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-slate-800 dark:to-slate-800/60 border border-emerald-200/80 dark:border-slate-700 shadow-2xs space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
                   Vault &amp; Accuracy
                 </span>
                 <Shield className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-black text-emerald-950">{pronunciationAvg}%</span>
-                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md">
+                <span className="text-lg font-black text-emerald-950 dark:text-emerald-200">{pronunciationAvg}%</span>
+                <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border border-transparent dark:border-emerald-800 px-1.5 py-0.5 rounded-md">
                   {pronunciationBonusInfo.percent > 0 ? `+${Math.round(pronunciationBonusInfo.percent * 100)}% Bonus` : 'Base Bonus'}
                 </span>
               </div>
-              <div className="text-[11px] text-slate-600 font-medium flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 font-bold text-slate-800 bg-white/80 border border-slate-200 px-2 py-0.5 rounded-lg text-[10px]">
+              <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200 bg-white/80 dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded-lg text-[10px]">
                   🛡️ {streakFreezes}/2 Freezes Stored
                 </span>
               </div>
@@ -180,10 +180,10 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
           <div
             className={`rounded-3xl p-4 sm:p-5 border transition-all ${
               dailyChestClaimed
-                ? 'bg-slate-50 border-slate-200 text-slate-600'
+                ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                 : isDailyGoalMet
-                ? 'bg-gradient-to-r from-amber-400/20 via-yellow-400/15 to-emerald-400/20 border-amber-400 shadow-md animate-pulse-subtle'
-                : 'bg-white border-slate-200 shadow-2xs'
+                ? 'bg-gradient-to-r from-amber-400/20 via-yellow-400/15 to-emerald-400/20 border-amber-400 dark:border-amber-500 shadow-md animate-pulse-subtle'
+                : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 shadow-2xs'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -194,14 +194,14 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                       ? 'bg-emerald-100 text-emerald-700'
                       : isDailyGoalMet
                       ? 'bg-amber-400 text-slate-950 animate-bounce'
-                      : 'bg-slate-100 text-slate-400'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300'
                   }`}
                 >
                   <Gift className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-extrabold text-slate-900">
+                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                       Daily Milestone Chest
                     </h3>
                     <span
@@ -210,7 +210,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                           ? 'bg-emerald-100 text-emerald-800'
                           : isDailyGoalMet
                           ? 'bg-amber-400 text-amber-950 animate-pulse'
-                          : 'bg-slate-100 text-slate-600'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       {dailyChestClaimed
@@ -220,7 +220,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                         : 'In Progress'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Requires 100 Daily XP ({dailyXP}/100) AND 15 speaking minutes ({speakingMinutesToday}/15 mins).
                   </p>
                 </div>
@@ -235,12 +235,12 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                   <span>Claim Daily Chest (+50 XP)</span>
                 </button>
               ) : dailyChestClaimed ? (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1">
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl flex items-center gap-1">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Claimed · Resets Midnight</span>
                 </span>
               ) : (
-                <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl">
+                <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-xl">
                   {Math.max(0, dailyXPTarget - dailyXP)} XP &amp; {Math.max(0, speakingMinutesTarget - speakingMinutesToday)} mins left
                 </span>
               )}
@@ -253,7 +253,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
                 5-Tier Fluency Progression Ladder
               </h3>
-              <span className="text-xs font-bold text-brand-600">
+              <span className="text-xs font-bold text-brand-600 dark:text-brand-400">
                 Current: {currentTierConfig.name}
               </span>
             </div>
@@ -274,10 +274,10 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                     key={tierKey}
                     className={`relative overflow-hidden rounded-3xl border transition-all duration-300 ${
                       isCurrent
-                        ? `bg-white border-brand-400 shadow-md ring-2 ${tier.badgeAccent.ringColor}`
+                        ? `bg-white dark:bg-slate-800/90 border-brand-400 shadow-md ring-2 ${tier.badgeAccent.ringColor}`
                         : isUnlocked
-                        ? 'bg-slate-50/80 border-slate-200/80'
-                        : 'bg-slate-50/50 border-slate-200/60 opacity-80'
+                        ? 'bg-slate-50/80 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/80'
+                        : 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-200/60 dark:border-slate-800/60 opacity-80'
                     }`}
                   >
                     {/* Top Tier Strip */}
@@ -287,18 +287,18 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                           <div
                             className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 shadow-sm border ${
                               isUnlocked
-                                ? `bg-white ${tier.badgeAccent.border}`
-                                : 'bg-slate-200 border-slate-300 grayscale'
+                                ? `bg-white dark:bg-slate-700 ${tier.badgeAccent.border}`
+                                : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 grayscale'
                             }`}
                           >
                             {tier.badgeAccent.icon}
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-sm sm:text-base font-black text-slate-900">
+                              <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
                                 {tier.name}
                               </h4>
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                                 ({tier.cefrEquivalent})
                               </span>
                               {isCurrent && (
@@ -307,12 +307,12 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                                 </span>
                               )}
                               {isNext && (
-                                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black uppercase tracking-wider">
+                                <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-black uppercase tracking-wider">
                                   Next Target 🎯
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-slate-500 mt-0.5">
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                               {tier.minXP.toLocaleString()} –{' '}
                               {tier.maxXP === Infinity ? '15,000+' : tier.maxXP.toLocaleString()} XP
                             </div>
@@ -322,12 +322,12 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                         {/* Status Icon */}
                         <div className="flex-shrink-0">
                           {isUnlocked ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-xl">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                               <span>Unlocked</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-xl">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-xl">
                               <Lock className="w-3.5 h-3.5 text-slate-400" />
                               <span>Locked</span>
                             </span>
@@ -340,8 +340,8 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-semibold ${
                             meetsXP
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                           }`}
                         >
                           {meetsXP ? '✓' : '○'} {tier.minXP.toLocaleString()} XP
@@ -351,8 +351,8 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-semibold ${
                               meetsStreak
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                             }`}
                           >
                             {meetsStreak ? '✓' : '○'} {tier.reqStreak}-Day Streak ({streakDays}/{tier.reqStreak})
@@ -363,8 +363,8 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-semibold ${
                               meetsPron
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                             }`}
                           >
                             {meetsPron ? '✓' : '○'} &gt;={tier.reqPronunciation}% Pronunciation ({pronunciationAvg}%)
@@ -373,7 +373,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                       </div>
 
                       {/* Tier Perks Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/60">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
                         {tier.perks.map((perk) => {
                           const hasPerk = unlockedPerks.includes(perk.id);
                           return (
@@ -381,14 +381,14 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                               key={perk.id}
                               className={`flex items-start gap-2 p-2 rounded-xl text-xs transition ${
                                 hasPerk
-                                  ? 'bg-white/80 border border-slate-200/60 text-slate-800'
-                                  : 'bg-slate-100/60 border border-slate-200/40 text-slate-400'
+                                  ? 'bg-white/80 dark:bg-slate-700/80 border border-slate-200/60 dark:border-slate-600 text-slate-800 dark:text-slate-200'
+                                  : 'bg-slate-100/60 dark:bg-slate-800/50 border border-slate-200/40 dark:border-slate-700/50 text-slate-400 dark:text-slate-500'
                               }`}
                             >
                               <span className="text-sm flex-shrink-0">{perk.icon}</span>
                               <div className="min-w-0">
                                 <div className="font-bold truncate">{perk.title}</div>
-                                <div className="text-[10px] text-slate-500 leading-snug">
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
                                   {perk.description}
                                 </div>
                               </div>
@@ -484,8 +484,8 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+        <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
             <Info className="w-3.5 h-3.5 text-slate-400" />
             <span>Tier rewards &amp; unlocks persist automatically across all sessions.</span>
           </div>
@@ -504,7 +504,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
             )}
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition active:scale-95"
+              className="px-4 py-2 rounded-2xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold transition active:scale-95 border border-transparent dark:border-slate-700"
             >
               Close
             </button>

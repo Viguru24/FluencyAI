@@ -181,7 +181,7 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-white border border-slate-200 text-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto animate-scale-up">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto animate-scale-up">
         {/* Top Header Banner with Dynamic Accent */}
         <div
           className={`relative px-6 py-6 text-white text-center overflow-hidden bg-gradient-to-br ${
@@ -260,10 +260,10 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
           {isTierUp && tierConfig && tierConfig.perks.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   New Perks &amp; Capabilities Unlocked:
                 </h4>
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
                   +{tierConfig.perks.length} Unlocked
                 </span>
               </div>
@@ -272,17 +272,17 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
                 {tierConfig.perks.map((perk) => (
                   <div
                     key={perk.id}
-                    className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-2xs"
+                    className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shadow-2xs"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-base flex-shrink-0 shadow-2xs">
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-base flex-shrink-0 shadow-2xs">
                       {perk.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         <span>{perk.title}</span>
                         <Check className="w-3.5 h-3.5 text-emerald-600" />
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                         {perk.description}
                       </div>
                     </div>
@@ -290,7 +290,7 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
                 ))}
 
                 {/* Extra Streak Freeze bonus note */}
-                <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs">
+                <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
                   <ShieldCheck className="w-4 h-4 text-amber-600 flex-shrink-0" />
                   <span className="font-semibold text-[11px]">
                     +1 Streak Freeze added to your vault to protect your daily habit.
@@ -321,7 +321,7 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
                   handleClose();
                   onOpenRoadmap();
                 }}
-                className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
+                className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-transparent dark:border-slate-700 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
               >
                 <Trophy className="w-3.5 h-3.5 text-amber-600" />
                 <span>View Full Rewards Roadmap</span>

@@ -65,7 +65,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Daily Life',
     cefrLevel: 'A2',
     durationMinutes: 4,
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    badgeColor: 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/80',
     gradient: 'from-amber-500/10 via-orange-500/5 to-transparent',
     aiPersona: {
       name: 'Emma',
@@ -177,7 +177,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Career & Tech',
     cefrLevel: 'B2',
     durationMinutes: 7,
-    badgeColor: 'bg-brand-100 text-brand-800 border-brand-200',
+    badgeColor: 'bg-brand-100 dark:bg-brand-950/70 text-brand-800 dark:text-brand-300 border-brand-200 dark:border-brand-800/80',
     gradient: 'from-brand-500/10 via-cyan-500/5 to-transparent',
     aiPersona: {
       name: 'David',
@@ -261,7 +261,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Travel',
     cefrLevel: 'B1',
     durationMinutes: 5,
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    badgeColor: 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80',
     gradient: 'from-emerald-500/10 via-teal-500/5 to-transparent',
     aiPersona: {
       name: 'Carlos',
@@ -316,7 +316,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Social',
     cefrLevel: 'B1',
     durationMinutes: 5,
-    badgeColor: 'bg-lavender-100 text-lavender-700 border-lavender-200',
+    badgeColor: 'bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/80',
     gradient: 'from-lavender-500/10 via-purple-500/5 to-transparent',
     aiPersona: {
       name: 'Maya',
@@ -372,7 +372,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Healthcare',
     cefrLevel: 'A2',
     durationMinutes: 4,
-    badgeColor: 'bg-rose-100 text-rose-800 border-rose-200',
+    badgeColor: 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800/80',
     gradient: 'from-rose-500/10 via-pink-500/5 to-transparent',
     aiPersona: {
       name: 'Dr. Sarah',
@@ -428,7 +428,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Healthcare',
     cefrLevel: 'B2',
     durationMinutes: 5,
-    badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    badgeColor: 'bg-cyan-100 dark:bg-cyan-950/70 text-cyan-800 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/80',
     gradient: 'from-cyan-500/10 via-blue-500/5 to-transparent',
     aiPersona: {
       name: 'Dr. Patel',
@@ -551,7 +551,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Daily Life',
     cefrLevel: 'B1',
     durationMinutes: 4,
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    badgeColor: 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/80',
     gradient: 'from-amber-500/10 via-orange-500/5 to-transparent',
     aiPersona: {
       name: 'Sarah',
@@ -674,7 +674,7 @@ export const roleplayScenarios: RoleplayScenario[] = [
     category: 'Career & Tech',
     cefrLevel: 'B2',
     durationMinutes: 5,
-    badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    badgeColor: 'bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/80',
     gradient: 'from-indigo-500/10 via-purple-500/5 to-transparent',
     aiPersona: {
       name: 'Emma',

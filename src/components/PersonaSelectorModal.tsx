@@ -89,7 +89,7 @@ export const PersonaSelectorModal: React.FC<PersonaSelectorModalProps> = ({
                 className={`p-4 rounded-3xl border transition-all flex flex-col justify-between space-y-3 ${
                   isCurrent
                     ? 'bg-gradient-to-b from-indigo-950/60 to-slate-900 border-indigo-500/80 ring-2 ring-indigo-500/30 shadow-lg shadow-indigo-500/10'
-                    : 'bg-slate-850/80 border-slate-800 hover:border-slate-700'
+                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="space-y-2">
@@ -134,7 +134,7 @@ export const PersonaSelectorModal: React.FC<PersonaSelectorModalProps> = ({
                     className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 border ${
                       isAuditioning
                         ? 'bg-indigo-600 text-white border-indigo-500 animate-pulse'
-                        : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                     }`}
                   >
                     <Volume2 className={`w-3.5 h-3.5 ${isAuditioning ? 'animate-bounce' : ''}`} />

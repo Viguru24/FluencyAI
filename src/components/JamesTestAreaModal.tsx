@@ -452,7 +452,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
   return (
     <>
       <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-        <div className="relative w-full sm:max-w-2xl h-[85vh] max-h-[85vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+        <div className="relative w-full sm:max-w-2xl h-[85vh] max-h-[85vh] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
           {/* Header */}
           <header className="px-4 py-3 bg-gradient-to-r from-brand-700 via-indigo-700 to-sky-700 text-white flex-shrink-0 shadow-md">
             <div className="flex items-center justify-between gap-3">
@@ -573,10 +573,10 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           </header>
 
           {/* Compact Action Sub-bar */}
-          <div className="px-4 py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-[11px] text-slate-600 font-medium">
+          <div className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300 font-medium">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="font-semibold text-slate-700">{selectedScenario.badge}</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedScenario.badge}</span>
               {lastLatency !== null && (
                 <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                   ⚡ {lastLatency}ms
@@ -680,8 +680,8 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           )}
 
           {/* Conversation Starters Banner */}
-          <div className="px-4 py-2 bg-gradient-to-r from-brand-50 to-sky-50 border-b border-brand-100/60 overflow-x-auto no-scrollbar flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 flex items-center gap-1 flex-shrink-0">
+          <div className="px-4 py-2 bg-gradient-to-r from-brand-50 to-sky-50 dark:from-slate-800 dark:to-slate-800/80 border-b border-brand-100/60 dark:border-slate-700 overflow-x-auto no-scrollbar flex items-center gap-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-400 flex items-center gap-1 flex-shrink-0">
               <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> Starters:
             </span>
             {selectedScenario.quickPrompts.map((prompt, idx) => (
@@ -689,7 +689,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                 key={idx}
                 onClick={() => handleUserMessage(prompt)}
                 disabled={isProcessing}
-                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-white hover:bg-brand-100/70 text-slate-700 hover:text-brand-900 border border-slate-200/90 text-xs font-medium transition shadow-2xs active:scale-95 disabled:opacity-50"
+                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-brand-100/70 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 hover:text-brand-900 dark:hover:text-white border border-slate-200/90 dark:border-slate-600 text-xs font-medium transition shadow-2xs active:scale-95 disabled:opacity-50"
               >
                 {prompt}
               </button>
@@ -699,7 +699,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           {/* Chat Feed */}
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 bg-gradient-to-b from-slate-50/50 to-white"
+            className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 bg-gradient-to-b from-slate-50/50 to-white dark:from-slate-900 dark:to-slate-950"
           >
             {turns.map((turn) => {
               const isAi = turn.speaker === 'ai';
@@ -725,7 +725,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                     <div
                       className={`relative p-3.5 rounded-2xl text-sm leading-relaxed shadow-xs ${
                         isAi
-                          ? 'bg-white border border-slate-200/80 text-slate-900 rounded-tl-sm'
+                          ? 'bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-tl-sm'
                           : 'bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-tr-sm'
                       }`}
                     >
@@ -734,7 +734,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                           <textarea
                             value={editTextValue}
                             onChange={(e) => setEditTextValue(e.target.value)}
-                            className="w-full p-2 rounded-xl text-slate-900 bg-white border border-brand-300 text-xs focus:ring-2 focus:ring-brand-500 outline-none"
+                            className="w-full p-2 rounded-xl text-slate-900 dark:text-white bg-white dark:bg-slate-800 border border-brand-300 dark:border-brand-700 text-xs focus:ring-2 focus:ring-brand-500 outline-none"
                             rows={2}
                           />
                           <div className="flex justify-end gap-1.5">
@@ -824,12 +824,12 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           </div>
 
           {/* Interactive Speaking Visualizer & Push-To-Talk Bar */}
-          <div className="px-4 py-3 bg-white border-t border-slate-200 flex-shrink-0 space-y-3 shadow-lg">
+          <div className="px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex-shrink-0 space-y-3 shadow-lg">
             <div className="flex flex-col items-center justify-center">
               <div className="scale-75 -my-6">
                 <WaveformVisualizer mode={visualizerMode} bands={bands} />
               </div>
-              <div className="text-[11px] font-semibold text-slate-500 mt-1 text-center">
+              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 text-center">
                 {isRecording
                   ? isHolding
                     ? `Speaking (Hold-to-Talk) • Release to send to ${coach.name}`
@@ -866,7 +866,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   onChange={(e) => setTypedInput(e.target.value)}
                   placeholder={`Type a message or question for ${coach.name}…`}
                   disabled={isRecording || isProcessing}
-                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-brand-500 rounded-2xl text-xs sm:text-sm text-slate-800 outline-none transition shadow-inner placeholder:text-slate-400"
+                  className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 outline-none transition shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
                 <button
                   type="submit"
@@ -887,7 +887,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                     onClose();
                     onOpenLessonRoleplay();
                   }}
-                  className="text-xs font-bold text-brand-600 hover:text-brand-700 transition underline underline-offset-2"
+                  className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition underline underline-offset-2"
                 >
                   Prefer structured practice? Start Today&apos;s Guided Roleplay &rarr;
                 </button>
@@ -900,17 +900,17 @@ export const JamesTestAreaModal: React.FC<Props> = ({
       {/* Scorecard Feedback Modal Drawer */}
       {showScorecardModal && (
         <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto border border-slate-200">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-500" />
-                <h3 className="font-extrabold text-slate-900 text-base">
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
                   {coach.name}&apos;s Conversation Feedback
                 </h3>
               </div>
               <button
                 onClick={() => setShowScorecardModal(false)}
-                className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+                className="p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -919,46 +919,46 @@ export const JamesTestAreaModal: React.FC<Props> = ({
             {isAnalyzingScorecard ? (
               <div className="py-8 text-center space-y-3">
                 <div className="w-10 h-10 border-3 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-xs font-bold text-slate-600">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
                   {coach.name} is analyzing your phrasing and pronunciation…
                 </p>
               </div>
             ) : scorecardResult ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2.5 rounded-2xl bg-brand-50 border border-brand-200/80">
-                    <div className="text-[10px] font-bold text-brand-600 uppercase">Fluency</div>
-                    <div className="text-lg font-black text-brand-900">{scorecardResult.fluency}%</div>
+                  <div className="p-2.5 rounded-2xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200/80 dark:border-brand-800">
+                    <div className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase">Fluency</div>
+                    <div className="text-lg font-black text-brand-900 dark:text-brand-200">{scorecardResult.fluency}%</div>
                   </div>
-                  <div className="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200/80">
-                    <div className="text-[10px] font-bold text-emerald-600 uppercase">Pronunciation</div>
-                    <div className="text-lg font-black text-emerald-900">{scorecardResult.pronunciation}%</div>
+                  <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800">
+                    <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Pronunciation</div>
+                    <div className="text-lg font-black text-emerald-900 dark:text-emerald-200">{scorecardResult.pronunciation}%</div>
                   </div>
-                  <div className="p-2.5 rounded-2xl bg-sky-50 border border-sky-200/80">
-                    <div className="text-[10px] font-bold text-sky-600 uppercase">Listening</div>
-                    <div className="text-lg font-black text-sky-900">{scorecardResult.listening}%</div>
+                  <div className="p-2.5 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200/80 dark:border-sky-800">
+                    <div className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase">Listening</div>
+                    <div className="text-lg font-black text-sky-900 dark:text-sky-200">{scorecardResult.listening}%</div>
                   </div>
                 </div>
 
                 {scorecardResult.acousticFeedback && (
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                    <strong className="text-slate-900">Accent &amp; Rhythm Note:</strong>{' '}
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <strong className="text-slate-900 dark:text-white">Accent &amp; Rhythm Note:</strong>{' '}
                     {scorecardResult.acousticFeedback}
                   </div>
                 )}
 
                 {scorecardResult.upgrades && scorecardResult.upgrades.length > 0 && (
                   <div className="space-y-2">
-                    <div className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                    <div className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                       Phrasing Upgrades
                     </div>
                     {scorecardResult.upgrades.map((u, i) => (
-                      <div key={i} className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs space-y-1">
-                        <div className="text-rose-700 line-through font-medium">&ldquo;{u.whatYouSaid}&rdquo;</div>
-                        <div className="text-emerald-800 font-extrabold flex items-center gap-1">
+                      <div key={i} className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs space-y-1">
+                        <div className="text-rose-700 dark:text-rose-400 line-through font-medium">&ldquo;{u.whatYouSaid}&rdquo;</div>
+                        <div className="text-emerald-800 dark:text-emerald-300 font-extrabold flex items-center gap-1">
                           <span>&rarr;</span> <span>&ldquo;{u.moreNatural}&rdquo;</span>
                         </div>
-                        <p className="text-[11px] text-slate-600 leading-tight pt-0.5">{u.explanation}</p>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight pt-0.5">{u.explanation}</p>
                       </div>
                     ))}
                   </div>

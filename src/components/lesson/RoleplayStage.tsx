@@ -776,7 +776,7 @@ export const RoleplayStage: React.FC<Props> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
               revealAll
                 ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-750'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700'
             }`}
             aria-pressed={revealAll}
             title="Toggle blurred transcript for auditory ear training"
@@ -837,7 +837,7 @@ export const RoleplayStage: React.FC<Props> = ({
                     className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 ${
                       isUsed
                         ? 'bg-emerald-500 text-white shadow-xs font-bold ring-2 ring-emerald-300 dark:ring-emerald-600'
-                        : 'bg-white/95 dark:bg-slate-850 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-750 shadow-2xs hover:border-brand-300'
+                        : 'bg-white/95 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-brand-300'
                     } ${isJustMatched ? 'scale-105 ring-4 ring-emerald-400 animate-pulse' : ''}`}
                   >
                     {isUsed ? (
@@ -933,7 +933,7 @@ export const RoleplayStage: React.FC<Props> = ({
                 className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   t.speaker === 'user'
                     ? 'bg-brand-600 text-white rounded-br-md'
-                    : 'bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-750 text-slate-800 dark:text-slate-100 rounded-bl-md shadow-sm'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-md shadow-sm'
                 }`}
               >
                 {t.speaker === 'ai' ? (
@@ -1229,8 +1229,8 @@ export const RoleplayStage: React.FC<Props> = ({
           <div className="w-16 h-16 rounded-3xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-600 dark:text-brand-400 mb-4 shadow-soft">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-          <h3 className="text-lg font-black text-slate-900">Grading Your Spoken Roleplay</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
+          <h3 className="text-lg font-black text-slate-900 dark:text-white">Grading Your Spoken Roleplay</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs leading-relaxed">
             {analyzingSeconds < 2
               ? 'Analyzing speech rhythm and phonetics with Gemini AI…'
               : 'Polishing your British phrasing upgrades and acoustic scores…'}
@@ -1239,7 +1239,7 @@ export const RoleplayStage: React.FC<Props> = ({
           {analyzingSeconds >= 2 && (
             <button
               onClick={handleSkipWaitAndProceed}
-              className="mt-5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2 active:scale-95 animate-fade-in"
+              className="mt-5 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-brand-600 dark:hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2 active:scale-95 animate-fade-in border border-transparent dark:border-slate-700"
             >
               <Zap className="w-3.5 h-3.5 text-amber-300" />
               <span>View Scorecard Instantly</span>
