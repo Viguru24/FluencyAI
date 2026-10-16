@@ -242,3 +242,63 @@ export function getWarmupReviewPhrases(maxCount: number = 2): ScaffoldingTargetP
     },
   }));
 }
+
+/**
+ * Exports deck cards to Anki-compatible TSV format.
+ * Format: Front \t Back \t Context \t Box \t Tags
+ */
+export function exportDeckToAnkiTSV(cards: SRSFlashcard[]): string {
+  const header = "#separator:tab\n#html:true\n#tags column:5\nFront\tBack\tContext\tBox\tTags\n";
+  const rows = cards.map((c) => {
+    const front = `<div style="font-size:14px;color:#64748b;margin-bottom:4px;">Challenge / Meaning:</div><div style="font-size:18px;font-weight:bold;">${c.meaning.replace(/[\t\n\r]/g, ' ')}</div>${c.scenarioTitle ? `<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Scenario: ${c.scenarioTitle.replace(/[\t\n\r]/g, ' ')}</div>` : ''}${c.whatYouSaid ? `<div style="font-size:12px;color:#dc2626;margin-top:4px;">Original: &ldquo;${c.whatYouSaid.replace(/[\t\n\r]/g, ' ')}&rdquo;</div>` : ''}`;
+    const back = `<div style="font-size:20px;font-weight:bold;color:#059669;">&ldquo;${c.phrase.replace(/[\t\n\r]/g, ' ')}&rdquo;</div>${c.ipa ? `<div style="font-family:monospace;color:#64748b;margin-top:4px;">${c.ipa.replace(/[\t\n\r]/g, ' ')}</div>` : ''}`;
+    const context = (c.context || 'General British English').replace(/[\t\n\r]/g, ' ');
+    const box = `Box_${c.box}`;
+    const tags = `FluencyAI British_English Box_${c.box}`;
+    return `${front}\t${back}\t${context}\t${box}\t${tags}`;
+  });
+  return header + rows.join('\n');
+}
+
+/**
+ * Exports deck cards to standard CSV.
+ */
+export function exportDeckToCSV(cards: SRSFlashcard[]): string {
+  const header = "Phrase,IPA,Context,Scenario,Meaning,WhatYouSaid,Box,NextReviewDate\n";
+  const escapeCsv = (str: string = '') => `"${str.replace(/"/g, '""').replace(/[\n\r]+/g, ' ')}"`;
+  const rows = cards.map((c) =>
+    [
+      escapeCsv(c.phrase),
+      escapeCsv(c.ipa || ''),
+      escapeCsv(c.context || ''),
+      escapeCsv(c.scenarioTitle || ''),
+      escapeCsv(c.meaning || ''),
+      escapeCsv(c.whatYouSaid || ''),
+      c.box,
+      escapeCsv(c.nextReviewDate || ''),
+    ].join(',')
+  );
+  return header + rows.join('\n');
+}
+
+/**
+ * Triggers a client-side file download of the deck.
+ */
+export function triggerDeckDownload(cards: SRSFlashcard[], format: 'anki' | 'csv'): void {
+  const isAnki = format === 'anki';
+  const content = isAnki ? exportDeckToAnkiTSV(cards) : exportDeckToCSV(cards);
+  const ext = isAnki ? 'tsv' : 'csv';
+  const mime = isAnki ? 'text/tab-separated-values;charset=utf-8;' : 'text/csv;charset=utf-8;';
+  const dateStr = new Date().toISOString().split('T')[0];
+  const filename = `fluencyai-${format}-deck-${dateStr}.${ext}`;
+
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

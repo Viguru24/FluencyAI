@@ -35,6 +35,7 @@ import {
   awardGamificationXP,
 } from '../store/rewardSystem';
 import { useVoiceCapture } from '../hooks/useVoiceCapture';
+import { InteractiveTranscriptText, WordLookupModal } from './WordLookupPopover';
 
 interface Turn {
   id: string;
@@ -205,6 +206,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
   const [editingTurnId, setEditingTurnId] = useState<string | null>(null);
   const [editTextValue, setEditTextValue] = useState('');
+  const [lookupWord, setLookupWord] = useState<{ word: string; sentence: string } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevOpenRef = useRef(false);
@@ -751,7 +753,12 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                           </div>
                         </div>
                       ) : (
-                        <div className="whitespace-pre-wrap">{turn.text}</div>
+                        <div className="whitespace-pre-wrap">
+                          <InteractiveTranscriptText
+                            text={turn.text}
+                            onSelectWord={(w, s) => setLookupWord({ word: w, sentence: s })}
+                          />
+                        </div>
                       )}
 
                       {isAi && (
@@ -976,6 +983,18 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           isOpen={showGatewayModal}
           onClose={() => setShowGatewayModal(false)}
           onConnectionStatusChange={() => setLlmConfig(getLLMConfig())}
+        />
+      )}
+
+      {/* Instant British Dictionary & Audio Lookup Popover */}
+      {lookupWord && (
+        <WordLookupModal
+          word={lookupWord.word}
+          contextSentence={lookupWord.sentence}
+          scenarioTitle={selectedScenario.title}
+          persona={coach}
+          audioSpeed={currentSpeed}
+          onClose={() => setLookupWord(null)}
         />
       )}
     </>

@@ -14,6 +14,8 @@ import {
   Headphones,
   Target,
   Trophy,
+  Share2,
+  Check,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { LessonPlan, LessonSessionResult, PhrasingUpgrade, PronunciationFeedbackWord } from '../../types';
@@ -217,12 +219,41 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
     }
   };
 
+  const [shareCopied, setShareCopied] = useState(false);
+
   const handleSaveToTomorrow = () => {
     if (saved) return;
     onSaveMistakes(upgrades);
     setSaved(true);
     playChime('success');
     confetti({ particleCount: 40, spread: 60 });
+  };
+
+  const handleShareScorecard = async () => {
+    playChime('tap');
+    const topUpgrade = upgrades[0]?.moreNatural ? `\nTop British Upgrade: "${upgrades[0].moreNatural}"` : '';
+    const shareText = `🇬🇧 FluencyAI British English Lesson Complete!\n\nScenario: ${plan.title}\nCoach: ${plan.persona.name}\nOverall Score: ${scores.overall}%\n• Fluency: ${scores.fluency}%\n• Pronunciation: ${scores.pronunciation}%\n• Listening: ${scores.listening}%${topUpgrade}\n\nPracticed authentic British RP with FluencyAI.`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `FluencyAI Scorecard: ${plan.title}`,
+          text: shareText,
+          url: window.location.href,
+        });
+        return;
+      } catch {
+        // User cancelled or share dismissed
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 3000);
+    } catch (err) {
+      console.warn('Clipboard write failed:', err);
+    }
   };
 
   const subScores = [
@@ -240,7 +271,26 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
               Stage 3 of 3 · Pronunciation &amp; British Phrasing Scorecard
             </span>
             <h2 className="text-xl font-extrabold text-slate-900">Well done — you spoke English for real!</h2>
-            <p className="text-xs sm:text-sm text-slate-600">{plan.title}</p>
+            <div className="flex items-center justify-center gap-2 pt-0.5">
+              <p className="text-xs sm:text-sm text-slate-600">{plan.title}</p>
+              <button
+                onClick={handleShareScorecard}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-300 text-xs font-semibold transition active:scale-95"
+                title="Share Scorecard"
+              >
+                {shareCopied ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span className="text-emerald-700">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-3 h-3 text-brand-600" />
+                    <span>Share</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Balanced top score overview card */}
@@ -723,6 +773,23 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
       {/* Docked and sticky action footer */}
       <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 py-3 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-lg">
         <div className="max-w-4xl mx-auto w-full flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={handleShareScorecard}
+            className="px-4 py-3 sm:py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm flex items-center justify-center gap-2 border border-slate-300 transition active:scale-95 shrink-0"
+            title="Share Scorecard"
+          >
+            {shareCopied ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span className="text-emerald-700 font-bold">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4 text-brand-600" />
+                <span>Share</span>
+              </>
+            )}
+          </button>
           <button
             onClick={handleSaveToTomorrow}
             className={`flex-1 py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition active:scale-95 ${

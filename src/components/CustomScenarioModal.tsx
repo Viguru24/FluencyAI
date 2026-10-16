@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Sparkles, Wand2, Compass, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Sparkles, Wand2, Compass, Loader2, FileText, Upload, Trash2, Paperclip, ChevronDown, ChevronUp } from 'lucide-react';
 import { generateCustomScenario } from '../services/geminiService';
 import { playChime } from '../services/speech';
 import type { CEFRLevel, AIPersona, NativeLanguage, LessonPlan, RoleplayScenario } from '../types';
@@ -33,8 +33,35 @@ export const CustomScenarioModal: React.FC<CustomScenarioModalProps> = ({
   const [prompt, setPrompt] = useState('');
   const [level, setLevel] = useState<CEFRLevel>(userLevel);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [docName, setDocName] = useState<string>('');
+  const [docContent, setDocContent] = useState<string>('');
+  const [isDocExpanded, setIsDocExpanded] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDocName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = (event.target?.result as string) || '';
+      setDocContent(text.slice(0, 4500));
+      setIsDocExpanded(true);
+      playChime('tap');
+    };
+    reader.readAsText(file);
+  };
+
+  const handleClearDoc = () => {
+    setDocName('');
+    setDocContent('');
+    setIsDocExpanded(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    playChime('tap');
+  };
 
   const handleGenerate = async (selectedPrompt?: string) => {
     const finalPrompt = (selectedPrompt || prompt).trim();
@@ -48,7 +75,8 @@ export const CustomScenarioModal: React.FC<CustomScenarioModalProps> = ({
         finalPrompt,
         level,
         activePersona,
-        nativeLanguage
+        nativeLanguage,
+        docContent.trim() || undefined
       );
       playChime('success');
       onLaunchScenario(scenario, plan);
@@ -106,6 +134,88 @@ export const CustomScenarioModal: React.FC<CustomScenarioModalProps> = ({
               disabled={isGenerating}
               className="w-full p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition disabled:opacity-60 resize-none"
             />
+          </div>
+
+          {/* Document / Job Spec / Resume Grounding Section */}
+          <div className="space-y-2 p-3 rounded-2xl bg-slate-800/40 border border-slate-800">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.md,.json,.csv,.rtf,.log"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-300">
+                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Ground with Document</span>
+                <span className="text-[10px] text-slate-500 font-normal lowercase">(optional)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isGenerating}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-semibold flex items-center gap-1 transition"
+                >
+                  <Upload className="w-3 h-3 text-emerald-400" />
+                  <span>Upload File</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDocExpanded(!isDocExpanded)}
+                  disabled={isGenerating}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-semibold flex items-center gap-1 transition"
+                >
+                  <Paperclip className="w-3 h-3 text-indigo-400" />
+                  <span>{docContent ? (isDocExpanded ? 'Hide' : 'Inspect') : (isDocExpanded ? 'Close' : 'Paste Text')}</span>
+                  {isDocExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Document Active Chip */}
+            {docContent ? (
+              <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <span className="font-semibold truncate">{docName || 'Pasted Document Context'}</span>
+                  <span className="text-[10px] text-emerald-400/70 shrink-0">
+                    ({docContent.length} chars ~{Math.round(docContent.trim().split(/\s+/).length)} words)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearDoc}
+                  title="Remove document"
+                  className="p-1 rounded-lg hover:bg-emerald-900/50 text-slate-400 hover:text-rose-400 transition shrink-0 ml-2"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Attach a Job Spec, CV/Resume, or meeting notes to generate custom roleplay with your exact role vocabulary.
+              </p>
+            )}
+
+            {/* Expanded Paste/Edit Box */}
+            {isDocExpanded && (
+              <div className="mt-2 space-y-1">
+                <textarea
+                  value={docContent}
+                  onChange={(e) => setDocContent(e.target.value.slice(0, 4500))}
+                  placeholder="Paste job description, resume summary, or meeting context here..."
+                  rows={4}
+                  disabled={isGenerating}
+                  className="w-full p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition resize-none font-mono"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 px-1">
+                  <span>Grounding document context</span>
+                  <span>{docContent.length}/4500 max chars</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* CEFR Level Select */}

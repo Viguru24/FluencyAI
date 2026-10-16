@@ -170,7 +170,8 @@ export async function generateCustomScenario(
   topicPrompt: string,
   level: CEFRLevel = 'B1',
   persona: AIPersona,
-  nativeLang: NativeLanguage = 'Spanish'
+  nativeLang: NativeLanguage = 'Spanish',
+  documentContext?: string
 ): Promise<{ scenario: RoleplayScenario; plan: LessonPlan }> {
   const config = getLLMConfig();
   const apiKey = config.apiKey;
@@ -299,11 +300,16 @@ export async function generateCustomScenario(
     return createFallback();
   }
 
+  const safeDoc = documentContext?.trim() ? documentContext.trim().slice(0, 3500) : '';
+  const docInstruction = safeDoc
+    ? `\n\nGROUNDING DOCUMENT (e.g. User Resume, Job Spec, Meeting Notes, Project Brief):\n"""\n${safeDoc}\n"""\nIMPORTANT: Deeply personalize this scenario, roleplay AI turns, target phrases, and context to directly reflect the requirements, terminology, background, and specific topics mentioned in the document above.\n`
+    : '';
+
   const prompt = `You are a premier British English curriculum designer.
 Generate a structured, authentic CEFR ${level} roleplay scenario and 3-phrase lesson plan for this situation:
 "${safeTopic}"
 Persona: ${persona.name} (${persona.role}, Tone: ${persona.tone}).
-Learner Native Language: ${nativeLang}.
+Learner Native Language: ${nativeLang}.${docInstruction}
 
 Output STRICTLY valid JSON only (no markdown, no backticks, no thinking):
 {

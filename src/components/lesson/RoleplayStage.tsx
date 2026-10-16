@@ -42,6 +42,7 @@ import {
 } from '../../services/geminiService';
 import { getDueSRSFlashcards } from '../../services/srsService';
 import { getAvailableAudioSpeeds, useGamificationStore } from '../../store/rewardSystem';
+import { InteractiveTranscriptText, WordLookupModal } from '../WordLookupPopover';
 
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'is', 'are', 'was', 'were', 'to', 'in', 'on', 'at', 'for', 'of', 'with', 'it', 'that', 'this', 'and', 'or', 'so'
@@ -177,6 +178,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const [revealAll, setRevealAll] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [revealsUsed, setRevealsUsed] = useState(0);
+  const [lookupWord, setLookupWord] = useState<{ word: string; sentence: string } | null>(null);
   const [helpRequests, setHelpRequests] = useState(0);
   const [analyzingSeconds, setAnalyzingSeconds] = useState(0);
   const scorecardCancelledRef = useRef(false);
@@ -935,20 +937,29 @@ export const RoleplayStage: React.FC<Props> = ({
                 }`}
               >
                 {t.speaker === 'ai' ? (
-                  <button
-                    onClick={() => revealTurn(t.id)}
-                    className="text-left w-full"
-                    aria-label={hidden ? 'Hidden text. Tap to reveal.' : t.text}
-                  >
-                    <span className={`block py-0.5 transition-all duration-300 ${hidden ? 'blur-[5px] select-none' : ''}`}>
-                      {t.text}
-                    </span>
-                    {hidden && (
-                      <span className="block mt-1 text-[11px] font-bold text-brand-600">
-                        Listen first · tap to reveal
-                      </span>
+                  <div>
+                    {hidden ? (
+                      <button
+                        onClick={() => revealTurn(t.id)}
+                        className="text-left w-full"
+                        aria-label="Hidden text. Tap to reveal."
+                      >
+                        <span className="block py-0.5 blur-[5px] select-none transition-all duration-300">
+                          {t.text}
+                        </span>
+                        <span className="block mt-1 text-[11px] font-bold text-brand-600">
+                          Listen first · tap to reveal
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="py-0.5">
+                        <InteractiveTranscriptText
+                          text={t.text}
+                          onSelectWord={(w, s) => setLookupWord({ word: w, sentence: s })}
+                        />
+                      </div>
                     )}
-                  </button>
+                  </div>
                 ) : (
                   <>
                     {(() => {
@@ -1236,6 +1247,18 @@ export const RoleplayStage: React.FC<Props> = ({
             </button>
           )}
         </div>
+      )}
+
+      {/* Instant British Dictionary & Audio Lookup Popover */}
+      {lookupWord && (
+        <WordLookupModal
+          word={lookupWord.word}
+          contextSentence={lookupWord.sentence}
+          scenarioTitle={plan.title}
+          persona={plan.persona}
+          audioSpeed={audioSpeed}
+          onClose={() => setLookupWord(null)}
+        />
       )}
     </div>
   );

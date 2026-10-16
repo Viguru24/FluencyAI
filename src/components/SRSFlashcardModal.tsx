@@ -7,10 +7,13 @@ import {
   Sparkles, 
   Award, 
   Repeat, 
-  Layers
+  Layers,
+  Download,
+  FileSpreadsheet,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { getDueSRSFlashcards, reviewSRSFlashcard, getSRSFlashcards } from '../services/srsService';
+import { getDueSRSFlashcards, reviewSRSFlashcard, getSRSFlashcards, triggerDeckDownload } from '../services/srsService';
 import { speakEnglish, playChime } from '../services/speech';
 import { startRecognition, type RecognitionHandle } from '../services/speechRecognition';
 import { calculateEarnedXP, awardGamificationXP } from '../store/rewardSystem';
@@ -37,8 +40,18 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
   const [voiceMatchScore, setVoiceMatchScore] = useState<number | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [allCardsStats, setAllCardsStats] = useState<SRSFlashcard[]>([]);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
   const recRef = React.useRef<RecognitionHandle | null>(null);
+
+  const handleExport = (format: 'anki' | 'csv') => {
+    const all = getSRSFlashcards();
+    if (all.length === 0) return;
+    playChime('success');
+    triggerDeckDownload(all, format);
+    setExportSuccess(format === 'anki' ? 'Anki .tsv' : 'CSV');
+    setTimeout(() => setExportSuccess(null), 3500);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -51,6 +64,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
         setIsFlipped(false);
         setReviewedCount(0);
         setVoiceMatchScore(null);
+        setExportSuccess(null);
       });
     }
   }, [isOpen]);
@@ -156,13 +170,51 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <div className="relative group">
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
+                title="Export Deck"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+              <div className="absolute right-0 top-full mt-1.5 w-48 py-1.5 bg-slate-850 border border-slate-700 rounded-2xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-30">
+                <button
+                  type="button"
+                  onClick={() => handleExport('anki')}
+                  className="w-full px-3 py-2 text-left text-xs font-bold text-slate-200 hover:bg-slate-750 hover:text-amber-300 flex items-center gap-2 transition"
+                >
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Anki Deck (.tsv)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport('csv')}
+                  className="w-full px-3 py-2 text-left text-xs font-bold text-slate-200 hover:bg-slate-750 hover:text-emerald-300 flex items-center gap-2 transition"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Spreadsheet (.csv)</span>
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Export Notification Toast */}
+        {exportSuccess && (
+          <div className="px-5 py-2 bg-emerald-950/80 border-b border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Exported {exportSuccess} successfully! You can import this directly into your Anki deck.</span>
+          </div>
+        )}
 
         {/* Body */}
         <div className="p-5 space-y-4">
@@ -324,6 +376,35 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                 <div>
                   <div className="text-lg font-black text-emerald-400">{allCardsStats.length}</div>
                   <div className="text-[10px] text-slate-400 uppercase font-bold">Total In Deck</div>
+                </div>
+              </div>
+
+              {/* 1-Click Anki / CSV Export Card */}
+              <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/80 max-w-sm mx-auto text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    Export Flashcards
+                  </span>
+                  <span className="text-[10px] text-slate-400">{allCardsStats.length} Total Cards</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleExport('anki')}
+                    className="py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-750 text-slate-200 hover:text-amber-300 border border-slate-750 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Anki (.tsv)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExport('csv')}
+                    className="py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-750 text-slate-200 hover:text-emerald-300 border border-slate-750 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Spreadsheet (.csv)</span>
+                  </button>
                 </div>
               </div>
 
