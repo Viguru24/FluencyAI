@@ -16,14 +16,13 @@ import {
   Trophy,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import type { LessonPlan, LessonSessionResult, PhrasingUpgrade, SavedReviewPhrase, PronunciationFeedbackWord } from '../../types';
+import type { LessonPlan, LessonSessionResult, PhrasingUpgrade, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, playChime } from '../../services/speech';
 import { buildUpgrades, computeScores } from '../../services/lessonAnalysis';
 import { startRecognition, scorePronunciation, type RecognitionHandle } from '../../services/speechRecognition';
 import { PronunciationRadarModal } from './PronunciationRadarModal';
 import { calculateEarnedXP, type XPCalculationResult, type ActivityType } from '../../store/rewardSystem';
-
-const SAVED_REVIEW_KEY = 'savedReviewPhrases';
+import { areUpgradesSavedInSRS } from '../../services/srsService';
 
 interface Props {
   plan: LessonPlan;
@@ -155,20 +154,9 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
     }));
   }, [result.pronunciationFeedback, result.lowConfidenceWords, result.pronunciationCoachingPoints, plan.phrases]);
 
-  const [saved, setSaved] = useState(() => {
-    try {
-      const stored = localStorage.getItem(SAVED_REVIEW_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && upgrades.every((u) => parsed.some((p: any) => p.phrase === u.moreNatural || p.id === u.id))) {
-          return true;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return upgrades.every((u) => alreadySavedIds.includes(u.id));
-  });
+  const [saved, setSaved] = useState(() =>
+    areUpgradesSavedInSRS(upgrades) || upgrades.every((u) => alreadySavedIds.includes(u.id))
+  );
 
   const [practicingId, setPracticingId] = useState<string | null>(null);
   const [practicedScores, setPracticedScores] = useState<Record<string, number>>({});
@@ -231,29 +219,6 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
 
   const handleSaveToTomorrow = () => {
     if (saved) return;
-    try {
-      const existingRaw = localStorage.getItem(SAVED_REVIEW_KEY);
-      const existing: SavedReviewPhrase[] = existingRaw ? JSON.parse(existingRaw) : [];
-      const existingPhrases = new Set(existing.map((e) => e.phrase.toLowerCase()));
-
-      const fresh: SavedReviewPhrase[] = upgrades
-        .filter((u) => !existingPhrases.has(u.moreNatural.toLowerCase()))
-        .map((u) => ({
-          id: u.id || `sr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          phrase: u.moreNatural,
-          whatYouSaid: u.whatYouSaid,
-          explanation: u.explanation,
-          dateSaved: new Date().toISOString(),
-          scenarioTitle: plan.title,
-        }));
-
-      const merged = [...existing, ...fresh];
-      localStorage.setItem(SAVED_REVIEW_KEY, JSON.stringify(merged));
-      window.dispatchEvent(new Event('savedReviewPhrasesUpdated'));
-    } catch (e) {
-      console.warn('Could not save to localStorage', e);
-    }
-
     onSaveMistakes(upgrades);
     setSaved(true);
     playChime('success');

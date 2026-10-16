@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { DailyGoalCard } from './components/DailyGoalCard';
 import { RoleplayList } from './components/RoleplayList';
-import { StartDailyLessonFAB } from './components/StartDailyLessonFAB';
 import { PWAInstallGuideModal } from './components/PWAInstallGuideModal';
 import { LessonFlow } from './components/lesson/LessonFlow';
 import { JamesTestAreaModal } from './components/JamesTestAreaModal';
@@ -11,165 +10,61 @@ import { PersonaSelectorModal } from './components/PersonaSelectorModal';
 import { SRSFlashcardModal } from './components/SRSFlashcardModal';
 import { CustomScenarioModal } from './components/CustomScenarioModal';
 import { RapidWarmupModal } from './components/RapidWarmupModal';
-import { roleplayScenarios, initialUserProgress } from './data/mockData';
+import { roleplayScenarios } from './data/mockData';
 import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans';
-import { getActivePersona } from './data/personas';
-import { addPhrasesToSRS } from './services/srsService';
 import { XPToastContainer } from './components/XPToast';
 import { TierUpCelebrationModal } from './components/TierUpCelebrationModal';
 import { TierRoadmapModal } from './components/TierRoadmapModal';
-import {
-  calculateEarnedXP,
-  awardGamificationXP,
-  subscribeGamification,
-  type ActivityType,
-  type XPCalculationResult,
-} from './store/rewardSystem';
-import { recordActivity } from './services/activityService';
-import type { 
-  UserProgress, 
-  LessonPlan, 
-  PhrasingUpgrade, 
-  LessonStage, 
-  CEFRLevel, 
-  PlacementAssessmentResult, 
-  AIPersona, 
-  RoleplayScenario 
+import type { XPCalculationResult } from './store/rewardSystem';
+import { useUserStore } from './store/userStore';
+import type {
+  LessonPlan,
+  LessonStage,
+  CEFRLevel,
+  PlacementAssessmentResult,
+  RoleplayScenario,
 } from './types';
 import { registerServiceWorker } from './pwa';
 import { RefreshCw, Sparkles, BookmarkCheck } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
 import { playChime } from './services/speech';
-import { authService, mergeUserProgressWithRemote } from './services/authService';
-import { toast } from './services/toast';
-import { formatDisplayName, normalizeUserAvatar } from './utils/nameFormatter';
-
-const STORAGE_KEY = 'fluencyai_user_progress_v1';
-const PLACEMENT_ASSESSED_KEY = 'fluency_placement_assessed_v1';
-const DAILY_ID = 'daily-lesson-today';
 
 export function App() {
-  // Load saved progress or fallback to initial, merging with remote authenticated profile if present
-  const [progress, setProgress] = useState<UserProgress>(() => {
-    let local = initialUserProgress;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) local = { ...initialUserProgress, ...JSON.parse(saved) };
-    } catch (e) {
-      console.warn('Could not read user progress from localStorage', e);
-    }
-    const currentUser = authService.getUser();
-    if (currentUser) {
-      local = mergeUserProgressWithRemote(local, currentUser);
-    }
-    if (local.name) {
-      local.name = formatDisplayName(local.name);
-    }
-    if (local.avatar) {
-      local.avatar = normalizeUserAvatar(local.avatar) || local.avatar;
-    }
-    return local;
-  });
+  const {
+    progress,
+    setProgress,
+    activePersona,
+    selectPersona,
+    savedCardsCount,
+    isPlacementCompleted,
+    completePlacement,
+    completeLesson,
+    saveMistakes,
+    rewardXP,
+  } = useUserStore();
 
   const [activePlan, setActivePlan] = useState<LessonPlan | null>(null);
   const [lessonInitialStage, setLessonInitialStage] = useState<LessonStage>('scaffolding');
-  const [activePersona, setActivePersonaState] = useState<AIPersona>(getActivePersona);
   const [isPersonaSelectorOpen, setIsPersonaSelectorOpen] = useState(false);
   const [isSRSOpen, setIsSRSOpen] = useState(false);
   const [isCustomScenarioOpen, setIsCustomScenarioOpen] = useState(false);
   const [isRapidWarmupOpen, setIsRapidWarmupOpen] = useState(false);
   const [customScenarios, setCustomScenarios] = useState<RoleplayScenario[]>([]);
-  const [isJamesTestOpen, setIsJamesTestOpen] = useState(false);
+  const [isFreeTalkOpen, setIsFreeTalkOpen] = useState(false);
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const [isPlacementOpen, setIsPlacementOpen] = useState(false);
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
   const [pendingLessonCallback, setPendingLessonCallback] = useState<(() => void) | null>(null);
   const [hasUpdate, setHasUpdate] = useState(false);
 
-  // Sync gamification store state with progress
-  useEffect(() => {
-    const unsub = subscribeGamification((gamState) => {
-      setProgress((prev) => ({
-        ...prev,
-        completedXP: gamState.dailyXP,
-        completedMinutes: Math.max(prev.completedMinutes, gamState.speakingMinutesToday),
-        streakDays: gamState.streakDays,
-      }));
-    });
-    return unsub;
-  }, []);
-
-  // Listen for persona changes
-  useEffect(() => {
-    const handlePersonaChange = (e: Event) => {
-      const customEvt = e as CustomEvent<AIPersona>;
-      if (customEvt.detail) {
-        setActivePersonaState(customEvt.detail);
-      }
-    };
-    window.addEventListener('fluency_persona_changed', handlePersonaChange);
-    return () => window.removeEventListener('fluency_persona_changed', handlePersonaChange);
-  }, []);
-
-  // Listen for auth state changes (login, logout, profile update)
-  useEffect(() => {
-    const unsub = authService.onAuthStateChange((session) => {
-      if (session?.user) {
-        setProgress((prev) => mergeUserProgressWithRemote(prev, session.user));
-      }
-    });
-    return unsub;
-  }, []);
-
-  // Sync progress to localStorage & VPS Cloud database
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-    } catch (e) {
-      console.warn('Could not save user progress to localStorage', e);
-    }
-
-    if (authService.isAuthenticated()) {
-      const timer = setTimeout(() => {
-        authService
-          .syncProgress({
-            xp: progress.completedXP,
-            streak: progress.streakDays,
-            level: progress.level,
-            name: progress.name,
-            picture: progress.avatar,
-            progress_data: {
-              completedScenarioIds: progress.completedScenarioIds,
-              completedMinutes: progress.completedMinutes,
-              dailyGoalMinutes: progress.dailyGoalMinutes,
-              dailyGoalXP: progress.dailyGoalXP,
-              nativeLanguage: progress.nativeLanguage,
-              hasCompletedPlacement: progress.hasCompletedPlacement,
-              placementDetails: progress.placementDetails,
-            },
-          })
-          .catch((err) => console.warn('[App] Cloud sync error:', err));
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [progress]);
-
-  // Register service worker on mount
   useEffect(() => {
     registerServiceWorker(() => {
       setHasUpdate(true);
     });
   }, []);
 
-  /**
-   * For new users who haven't completed placement, intercept before starting a full lesson
-   */
   const checkPlacementBeforeLesson = (callback: () => void) => {
-    const hasAssessed =
-      localStorage.getItem(PLACEMENT_ASSESSED_KEY) === 'true' ||
-      Boolean(progress.hasCompletedPlacement);
-
-    if (!hasAssessed) {
+    if (!isPlacementCompleted) {
       setPendingLessonCallback(() => callback);
       setIsPlacementOpen(true);
       return;
@@ -192,41 +87,7 @@ export function App() {
   };
 
   const handleCompletePlacement = (assessedLevel: CEFRLevel, details: PlacementAssessmentResult) => {
-    try {
-      localStorage.setItem(PLACEMENT_ASSESSED_KEY, 'true');
-    } catch {
-      /* ignore */
-    }
-
-    setProgress((prev) => ({
-      ...prev,
-      level: assessedLevel,
-      hasCompletedPlacement: true,
-      placementDetails: details,
-    }));
-
-    // Immediate sync to VPS database
-    if (authService.isAuthenticated()) {
-      authService
-        .syncProgress({
-          level: assessedLevel,
-          progress_data: {
-            hasCompletedPlacement: true,
-            placementDetails: details,
-          },
-        })
-        .then(() => {
-          console.info('[App] CEFR Level synced to VPS database:', assessedLevel);
-        })
-        .catch((err) => console.warn('[App] VPS level sync warning:', err));
-    }
-
-    toast.success(
-      `Your level is calibrated to Level ${assessedLevel} (${details.title})! James has adapted vocabulary complexity.`,
-      'Placement Complete'
-    );
-
-    // If user clicked to start a lesson, transition directly into that lesson
+    completePlacement(assessedLevel, details);
     if (pendingLessonCallback) {
       const cb = pendingLessonCallback;
       setPendingLessonCallback(null);
@@ -235,52 +96,8 @@ export function App() {
   };
 
   const handleLessonComplete = (plan: LessonPlan, customXPCalc?: XPCalculationResult) => {
-    const isDaily = plan.id === DAILY_ID;
-    const activityType: ActivityType = isDaily ? 'daily-lesson' : 'full-lesson';
-    const xpCalc = customXPCalc || calculateEarnedXP(activityType, plan.xpReward);
-    awardGamificationXP(xpCalc, plan.minutes);
-    recordActivity(plan.minutes, xpCalc.totalEarnedXP);
-
-    setProgress((prev) => ({
-      ...prev,
-      hasCompletedDailyLessonToday: prev.hasCompletedDailyLessonToday || isDaily,
-      completedScenarioIds:
-        isDaily || prev.completedScenarioIds.includes(plan.id)
-          ? prev.completedScenarioIds
-          : [...prev.completedScenarioIds, plan.id],
-      completedXP: Math.min(prev.dailyGoalXP, prev.completedXP + xpCalc.totalEarnedXP),
-      completedMinutes: Math.min(prev.dailyGoalMinutes, prev.completedMinutes + plan.minutes),
-    }));
+    completeLesson(plan, customXPCalc);
     setActivePlan(null);
-  };
-
-  const handleSaveMistakes = (plan: LessonPlan, upgrades: PhrasingUpgrade[]) => {
-    addPhrasesToSRS(upgrades);
-    setProgress((prev) => {
-      const existing = prev.savedMistakes ?? [];
-      const existingIds = new Set(existing.map((m) => m.id));
-      const fresh = upgrades
-        .filter((u) => !existingIds.has(u.id))
-        .map((u) => ({
-          id: u.id,
-          whatYouSaid: u.whatYouSaid,
-          moreNatural: u.moreNatural,
-          scenarioTitle: plan.title,
-          dateSaved: new Date().toISOString(),
-        }));
-      return { ...prev, savedMistakes: [...existing, ...fresh] };
-    });
-  };
-
-  const handleRewardXP = (amount: number, activity: ActivityType = 'custom') => {
-    const xpCalc = calculateEarnedXP(activity, amount);
-    awardGamificationXP(xpCalc, 2);
-    recordActivity(2, xpCalc.totalEarnedXP);
-
-    setProgress((prev) => ({
-      ...prev,
-      completedXP: prev.completedXP + xpCalc.totalEarnedXP,
-    }));
   };
 
   const handleLaunchCustomScenario = (scenario: RoleplayScenario, plan: LessonPlan) => {
@@ -300,47 +117,11 @@ export function App() {
     }
   };
 
-  const [savedCount, setSavedCount] = useState<number>(() => {
-    try {
-      const stored = localStorage.getItem('savedReviewPhrases');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed.length;
-      }
-    } catch {
-      /* ignore */
-    }
-    return progress.savedMistakes?.length ?? 0;
-  });
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      try {
-        const stored = localStorage.getItem('savedReviewPhrases');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) setSavedCount(parsed.length);
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    window.addEventListener('savedReviewPhrasesUpdated', handleUpdate);
-    window.addEventListener('storage', handleUpdate);
-    return () => {
-      window.removeEventListener('savedReviewPhrasesUpdated', handleUpdate);
-      window.removeEventListener('storage', handleUpdate);
-    };
-  }, []);
-
-  const reviewCount = Math.max(savedCount, progress.savedMistakes?.length ?? 0);
+  const reviewCount = Math.max(savedCardsCount, progress.savedMistakes?.length ?? 0);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Global Toast System */}
       <ToastContainer />
-
-      {/* PWA Update Banner */}
 
       {hasUpdate && (
         <div className="sticky top-0 z-50 bg-brand-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-md">
@@ -358,22 +139,21 @@ export function App() {
         </div>
       )}
 
-      {/* Navigation Header */}
+      {/* Streamlined Navigation Header */}
       <Navbar
         progress={progress}
         onUpdateProgress={setProgress}
         onOpenInstallGuide={() => setIsInstallGuideOpen(true)}
-        onOpenJamesTest={() => setIsJamesTestOpen(true)}
         onOpenPlacement={() => setIsPlacementOpen(true)}
         activePersona={activePersona}
         onOpenPersonaSelector={() => setIsPersonaSelectorOpen(true)}
         onOpenRoadmap={() => setIsRoadmapOpen(true)}
       />
 
-      {/* Main App Container with responsive max-w-5xl layout and fluid spacing */}
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 pb-32 space-y-6">
+      {/* Main App Container */}
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 pb-16 space-y-5">
         {/* Onboarding CEFR Placement Banner for new users */}
-        {(!progress.hasCompletedPlacement && typeof window !== 'undefined' && localStorage.getItem(PLACEMENT_ASSESSED_KEY) !== 'true') && (
+        {!isPlacementCompleted && (
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 text-white p-4 sm:p-5 shadow-soft border border-white/20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -388,7 +168,7 @@ export function App() {
                     </span>
                   </div>
                   <p className="text-xs text-brand-100/90 leading-relaxed">
-                    Take a friendly 3-turn interactive check with James so he adjusts vocabulary complexity and speaking speed to your exact level.
+                    Take a friendly 3-turn interactive check with {activePersona.name} so vocabulary complexity and speaking speed match your exact level.
                   </p>
                 </div>
               </div>
@@ -406,85 +186,44 @@ export function App() {
           </div>
         )}
 
-        {/* Daily Goal & Welcoming Section */}
+        {/* Daily Goal, Primary Hero Session & Quick Practice Modes */}
         <DailyGoalCard
           progress={progress}
+          activePersona={activePersona}
           onUpdateProgress={setProgress}
           onStartLesson={() => openDailyLesson('scaffolding')}
+          onStartDirectRoleplay={() => openDailyLesson('roleplay')}
+          onOpenFreeTalk={() => setIsFreeTalkOpen(true)}
           onOpenSRS={() => setIsSRSOpen(true)}
           onOpenWarmup={() => setIsRapidWarmupOpen(true)}
           onOpenRoadmap={() => setIsRoadmapOpen(true)}
         />
 
-        {/* James AI Test Area & Direct Voice Sandbox Card */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-brand-950 to-indigo-950 text-white p-5 shadow-soft border border-brand-500/30">
-          <div className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 rounded-full bg-brand-500/25 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-12 -left-12 w-44 h-44 rounded-full bg-emerald-500/20 blur-3xl" />
-
-          <div className="relative z-10 space-y-3.5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-2xl shadow-inner flex-shrink-0 backdrop-blur-xs">
-                  🧑‍💼
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-black tracking-tight text-white">James AI Test Lab</h2>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-400/25 border border-emerald-400/40 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider">
-                      Direct Mode
-                    </span>
-                  </div>
-                  <p className="text-xs text-brand-100/80 mt-0.5">
-                    Talk directly with James • Zero phrase preparation • Test speech & pronunciation
-                  </p>
-                </div>
+        {/* Review Queue Indicator */}
+        {reviewCount > 0 && (
+          <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                <BookmarkCheck className="w-5 h-5" />
+              </div>
+              <div className="text-xs text-amber-900">
+                <div className="font-bold">{reviewCount} saved phrases in your review deck</div>
+                <div className="text-amber-700">Automatically included in Stage 1 Prep &amp; SRS Flashcards.</div>
               </div>
             </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Test how James responds in real-time, drill difficult words with syllable breakdowns, test grammar slips, or chat freely with your London colleague.
-            </p>
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  setIsJamesTestOpen(true);
-                }}
-                className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-brand-500 hover:from-amber-300 hover:to-brand-400 text-slate-950 font-black text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-2"
-              >
-                <span>🎙️ Enter James Test Area</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  openDailyLesson('roleplay');
-                }}
-                className="py-2.5 px-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
-                title="Open Daily Lesson skipping straight to Stage 2 Live Roleplay"
-              >
-                <span>⚡ Stage 2 Roleplay</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Tomorrow's review queue */}
-        {reviewCount > 0 && (
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
-              <BookmarkCheck className="w-5 h-5" />
-            </div>
-            <div className="text-xs text-amber-900">
-              <div className="font-bold">{reviewCount} phrases queued for your next lesson warm-up</div>
-              <div className="text-amber-700">Saved from your scorecards — automatically injected into Stage 1 Prep.</div>
-            </div>
+            <button
+              onClick={() => {
+                playChime('tap');
+                setIsSRSOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 text-amber-950 text-xs font-bold transition flex-shrink-0"
+            >
+              Review Deck
+            </button>
           </div>
         )}
 
-        {/* Upcoming Roleplay Scenarios Section */}
+        {/* Conversational Roleplay Scenarios */}
         <RoleplayList
           scenarios={[...customScenarios, ...roleplayScenarios]}
           progress={progress}
@@ -492,11 +231,6 @@ export function App() {
           onOpenCustomBuilder={() => setIsCustomScenarioOpen(true)}
         />
       </main>
-
-      {/* Floating Action Button: Start Daily Lesson */}
-      {!activePlan && (
-        <StartDailyLessonFAB onStartLesson={() => openDailyLesson('scaffolding')} isCompletedToday={progress.hasCompletedDailyLessonToday} />
-      )}
 
       {/* 3-stage lesson flow: Prep → Live Roleplay → Scorecard */}
       {activePlan && (
@@ -508,7 +242,7 @@ export function App() {
           audioSpeed={progress.audioSpeed}
           savedMistakeIds={(progress.savedMistakes ?? []).map((m) => m.id)}
           initialStage={lessonInitialStage}
-          onSaveMistakes={handleSaveMistakes}
+          onSaveMistakes={saveMistakes}
           onComplete={handleLessonComplete}
           onExit={() => setActivePlan(null)}
         />
@@ -520,10 +254,7 @@ export function App() {
           isOpen={isPersonaSelectorOpen}
           onClose={() => setIsPersonaSelectorOpen(false)}
           activePersona={activePersona}
-          onSelectPersona={(p) => {
-            setActivePersonaState(p);
-            setProgress((prev) => ({ ...prev, activePersonaId: p.id }));
-          }}
+          onSelectPersona={selectPersona}
         />
       )}
 
@@ -532,7 +263,7 @@ export function App() {
         <SRSFlashcardModal
           isOpen={isSRSOpen}
           onClose={() => setIsSRSOpen(false)}
-          onRewardXP={handleRewardXP}
+          onRewardXP={rewardXP}
           persona={activePersona}
         />
       )}
@@ -554,7 +285,7 @@ export function App() {
         <RapidWarmupModal
           isOpen={isRapidWarmupOpen}
           onClose={() => setIsRapidWarmupOpen(false)}
-          onRewardXP={handleRewardXP}
+          onRewardXP={rewardXP}
           persona={activePersona}
         />
       )}
@@ -573,12 +304,14 @@ export function App() {
         />
       )}
 
-      {/* James Test Area Modal */}
-      {isJamesTestOpen && (
+      {/* Free Talk with Active Coach Modal */}
+      {isFreeTalkOpen && (
         <JamesTestAreaModal
-          isOpen={isJamesTestOpen}
-          onClose={() => setIsJamesTestOpen(false)}
+          isOpen={isFreeTalkOpen}
+          onClose={() => setIsFreeTalkOpen(false)}
           audioSpeed={progress.audioSpeed}
+          persona={activePersona}
+          userLevel={progress.level}
           onOpenLessonRoleplay={() => openDailyLesson('roleplay')}
         />
       )}

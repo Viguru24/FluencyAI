@@ -1,5 +1,6 @@
 import type { LessonPlan, HelpPhrase, RoleplayScenario } from '../types';
 import { roleplayScenarios } from './mockData';
+import { getWarmupReviewPhrases } from '../services/srsService';
 
 // Shared "How do I say...?" phrasebook. Keywords cover several native languages
 // so a learner can type their request in their own language.
@@ -555,35 +556,11 @@ function buildPlanFromScenario(s: RoleplayScenario): LessonPlan {
   };
 }
 
-const SAVED_REVIEW_KEY = 'savedReviewPhrases';
-
 export function injectSavedReviewPhrases(plan: LessonPlan): LessonPlan {
   if (typeof window === 'undefined') return plan;
   try {
-    const raw = localStorage.getItem(SAVED_REVIEW_KEY);
-    if (!raw) return plan;
-    const saved = JSON.parse(raw);
-    if (!Array.isArray(saved) || saved.length === 0) return plan;
-
-    // Take up to 2 saved review phrases from yesterday and inject into Stage 1 phrases
-    const reviewPhrases = saved.slice(0, 2).map((item, idx) => ({
-      id: `review-${item.id || idx}`,
-      phrase: item.phrase,
-      ipa: item.ipa || '',
-      usageContext: item.explanation || `From yesterday's review: replaces "${item.whatYouSaid || ''}"`,
-      originalMistake: item.whatYouSaid,
-      isSpacedRepetition: true,
-      translations: item.translations || {
-        Spanish: 'Frase de repaso guardada de ayer',
-        French: 'Phrase de révision enregistrée',
-        German: 'Gespeicherte Wiederholungsphrase',
-        Mandarin: '昨日保存的复习短语',
-        Portuguese: 'Frase de revisão salva de ontem',
-        Japanese: '昨日保存した復習フレーズ',
-        Arabic: 'عبارة مراجعة محفوظة من الأمس',
-        Vietnamese: 'Cụm từ ôn tập đã lưu hôm qua',
-      },
-    }));
+    const reviewPhrases = getWarmupReviewPhrases(2);
+    if (reviewPhrases.length === 0) return plan;
 
     // Keep 3 phrases total in Stage 1: review phrases first, then the plan's key phrases
     const remainingCount = Math.max(1, 3 - reviewPhrases.length);

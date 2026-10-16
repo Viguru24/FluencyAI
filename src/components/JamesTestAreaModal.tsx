@@ -13,34 +13,28 @@ import {
   Award,
   Pencil,
   Check,
-  Bot
+  Bot,
 } from 'lucide-react';
 import { WaveformVisualizer, type VisualizerMode } from './lesson/WaveformVisualizer';
 import { speakEnglish, stopSpeaking, playChime } from '../services/speech';
-import {
-  startRecognition,
-  isRecognitionSupported,
-  type RecognitionHandle,
-  type SpokenSegmentAnalysis
-} from '../services/speechRecognition';
-import { AudioRecorderController, type RecordedAudioClip } from '../services/audioRecorder';
-import { AudioVisualizerController } from '../services/audioVisualizer';
+import type { RecordedAudioClip } from '../services/audioRecorder';
 import {
   generateJamesReply,
   generateGeminiScorecard,
   type AudioAttachment,
   type ChatMessage,
-  type DynamicScorecardResult
+  type DynamicScorecardResult,
 } from '../services/geminiService';
 import { getLLMConfig, type LLMConfig } from '../services/llmConfig';
 import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
-import type { AIPersona, LessonPlan } from '../types';
+import type { AIPersona, CEFRLevel, LessonPlan } from '../types';
 import {
   useGamificationStore,
   getAvailableAudioSpeeds,
   calculateEarnedXP,
   awardGamificationXP,
 } from '../store/rewardSystem';
+import { useVoiceCapture } from '../hooks/useVoiceCapture';
 
 interface Turn {
   id: string;
@@ -51,134 +45,147 @@ interface Turn {
   timestamp: string;
 }
 
-interface TestScenarioPreset {
+interface TopicPreset {
   id: string;
   name: string;
   icon: string;
   badge: string;
   title: string;
-  greeting: string;
+  greeting: (coachName: string) => string;
   description: string;
   quickPrompts: string[];
 }
 
-const TEST_SCENARIOS: TestScenarioPreset[] = [
+const FREE_TALK_TOPICS: TopicPreset[] = [
+  {
+    id: 'casual-banter',
+    name: 'Daily Catch-Up & Banter',
+    icon: '☕',
+    badge: 'Everyday Fluency',
+    title: 'Casual British Small Talk & Coffee Catch-Up',
+    greeting: () => "Proper British weather out there today, isn't it? Fancy a quick catch-up over a brew?",
+    description: 'Practice natural small talk, idioms, weekend plans, and spontaneous everyday conversation.',
+    quickPrompts: [
+      "Absolute downpour out there! A hot tea sounds wonderful.",
+      "How has your week been going so far?",
+      "Any recommendations for a great spot to unwind after work?",
+      "I'm trying to sound more natural in casual British chats.",
+    ],
+  },
   {
     id: 'office-welcome',
-    name: 'London Office First Day',
+    name: 'Workplace & Team Chat',
     icon: '🏢',
-    badge: 'Flagship Roleplay',
+    badge: 'Workplace English',
     title: 'Your First Day at a UK Office',
-    greeting: "Welcome aboard! Great to meet you in person. How was your journey in on the tube this morning?",
-    description: 'James as your friendly London Team Lead welcoming you to the office, showing you around, and chatting about team priorities.',
+    greeting: () => "Welcome aboard! Great to catch up in person. How was your journey in this morning?",
+    description: 'Chat about team priorities, project updates, and polite workplace diplomacy.',
     quickPrompts: [
-      "Good morning James, really excited to be here!",
-      "The Central line was packed, but I made it on time!",
-      "Could you walk me through our team's main priorities?",
-      "Where can I grab the best coffee around here?"
-    ]
+      "Good morning! Really excited to be working with the team.",
+      "The commute was busy, but I made it right on time!",
+      "Could you walk me through our main priorities for this week?",
+      "Where can I grab the best coffee around here?",
+    ],
   },
   {
     id: 'pronunciation-drill',
-    name: 'Pronunciation Doctor',
+    name: 'Pronunciation Coach',
     icon: '🔤',
-    badge: 'Acoustic & Syllable Drill',
-    title: 'Interactive Pronunciation Coaching',
-    greeting: "Right then! Need a hand with tricky British pronunciation? Ask me how to pronounce any word, and I'll break down the syllables and stress for you.",
-    description: 'Test James’s real-time syllable breakdown and interactive drill mode ("Now tap your mic and say it back to me!").',
+    badge: 'Syllables & Stress',
+    title: 'Interactive Pronunciation & Accent Coaching',
+    greeting: () =>
+      "Right then! Need a hand with tricky British pronunciation? Ask me how to pronounce any word, and I'll break down the syllables and stress for you.",
+    description: 'Ask how to pronounce tricky words and practice saying them back with real-time syllable stress tips.',
     quickPrompts: [
       "How do I pronounce Worcestershire?",
       "Could you teach me how to pronounce Gloucestershire?",
       "How is comfortable pronounced in British English?",
-      "Can you break down the word queueing?"
-    ]
+      "Can you break down the word schedule for me?",
+    ],
   },
   {
-    id: 'casual-banter',
-    name: 'Pub & Small Talk',
-    icon: '☕',
-    badge: 'Social & Cultural',
-    title: 'Casual British Small Talk & Banter',
-    greeting: "Proper British weather out there today, isn't it? Fancy heading round the corner for a quick brew?",
-    description: 'Test natural British humor, weather complaints, tea etiquette, and conversational idioms.',
+    id: 'politeness-coach',
+    name: 'Polite Phrasing Practice',
+    icon: '✨',
+    badge: 'Natural Upgrades',
+    title: 'British Politeness & Diplomatic Phrasing',
+    greeting: () =>
+      "I'm all ears! Try out any requests, emails, or tricky situations with me and we'll make them sound effortlessly natural.",
+    description: 'Practice softening direct requests, disagreeing politely, and using natural British modals.',
     quickPrompts: [
-      "Absolute downpour out there! A hot tea sounds wonderful.",
-      "What is the golden rule of making tea in a British office?",
-      "Are you watching the football this weekend?",
-      "Any recommendations for a good pub near the office?"
-    ]
-  },
-  {
-    id: 'grammar-stress',
-    name: 'Grammar & Politeness Test',
-    icon: '🧐',
-    badge: 'Error Handling',
-    title: 'Politeness & Grammar Stress Testing',
-    greeting: "I'm all ears! Go ahead and test me with tricky sentences, unusual phrasing, or common English slips.",
-    description: 'Feed James non-standard grammar or blunt phrasing to test how gracefully he responds without breaking character.',
-    quickPrompts: [
-      "I want a flat white right now.",
-      "Yesterday I go to the supermarket with car.",
-      "I am agree with your proposal completely.",
-      "Can you explain the difference between keen on and fond of?"
-    ]
+      "How can I politely ask a colleague to send a late report?",
+      "I need to reschedule a meeting with my manager.",
+      "Can you explain the difference between keen on and fond of?",
+      "How do I politely say no to extra work when I'm busy?",
+    ],
   },
   {
     id: 'job-interview',
-    name: 'UK Job Interview',
+    name: 'Mock Interview',
     icon: '💼',
-    badge: 'Professional',
-    title: 'UK Senior Role Interview',
-    greeting: "Thanks for joining us today. To start off, could you tell me a little about yourself and what drew you to this role?",
-    description: 'Rigorous professional interview practice with challenging follow-up questions in British business English.',
+    badge: 'Career Prep',
+    title: 'UK Professional Role Interview',
+    greeting: () =>
+      "Thanks for joining today. To start off, could you tell me a little about yourself and what excites you most about your work?",
+    description: 'Practice confident, structured answers to professional interview questions.',
     quickPrompts: [
-      "I have over five years of experience leading cross-functional engineering teams.",
-      "I'm keen to work in a collaborative London tech environment.",
-      "Could you tell me more about how your team approaches quarterly sprints?",
-      "I thrive in environments where autonomy and clear ownership are valued."
-    ]
-  }
+      "I have over five years of experience leading cross-functional projects.",
+      "I'm keen to work in a collaborative international environment.",
+      "Could you tell me more about how your team approaches new projects?",
+      "I thrive in environments where clear communication and ownership are valued.",
+    ],
+  },
 ];
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   audioSpeed?: number;
+  persona?: AIPersona;
+  userLevel?: CEFRLevel;
   onOpenLessonRoleplay?: () => void;
 }
-
-const HOLD_THRESHOLD_MS = 350;
 
 export const JamesTestAreaModal: React.FC<Props> = ({
   isOpen,
   onClose,
   audioSpeed = 0.9,
-  onOpenLessonRoleplay
+  persona: activePersonaProp,
+  userLevel = 'B1',
+  onOpenLessonRoleplay,
 }) => {
-  const [selectedScenario, setSelectedScenario] = useState<TestScenarioPreset>(TEST_SCENARIOS[0]);
+  const coach: AIPersona = React.useMemo(
+    () =>
+      activePersonaProp || {
+        name: 'James',
+        role: 'Team Lead, London',
+        avatar: '🧑‍💼',
+        accent: 'UK',
+        greeting: FREE_TALK_TOPICS[0].greeting('James'),
+        tone: 'Warm, sharp, polite British manager',
+      },
+    [activePersonaProp]
+  );
+
+  const [selectedScenario, setSelectedScenario] = useState<TopicPreset>(FREE_TALK_TOPICS[0]);
   const [turns, setTurns] = useState<Turn[]>(() => [
     {
       id: 'ai-init',
       speaker: 'ai',
-      text: TEST_SCENARIOS[0].greeting,
+      text: FREE_TALK_TOPICS[0].greeting(coach.name),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isHolding, setIsHolding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bands, setBands] = useState<number[]>([]);
-  const [livePreview, setLivePreview] = useState('');
   const [typedInput, setTypedInput] = useState('');
   const [currentSpeed, setCurrentSpeed] = useState<number>(audioSpeed);
   const [isMuted, setIsMuted] = useState(false);
   const [showGatewayModal, setShowGatewayModal] = useState(false);
   const [llmConfig, setLlmConfig] = useState<LLMConfig>(getLLMConfig);
   const [lastLatency, setLastLatency] = useState<number | null>(null);
-  const [showDevToggle, setShowDevToggle] = useState(true);
+  const [showDevToggle, setShowDevToggle] = useState(false);
 
-  // Gamification Store for real-time tier context & dev testing
   const {
     currentTier,
     currentTierConfig,
@@ -192,41 +199,136 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
   const availableSpeeds = getAvailableAudioSpeeds(currentTier);
 
-  // Scorecard modal/drawer state
   const [isAnalyzingScorecard, setIsAnalyzingScorecard] = useState(false);
   const [scorecardResult, setScorecardResult] = useState<DynamicScorecardResult | null>(null);
   const [showScorecardModal, setShowScorecardModal] = useState(false);
 
-  // Editable user bubble
   const [editingTurnId, setEditingTurnId] = useState<string | null>(null);
   const [editTextValue, setEditTextValue] = useState('');
 
-  // Audio controllers
-  const vizRef = useRef(new AudioVisualizerController());
-  const recorderRef = useRef(new AudioRecorderController());
-  const recRef = useRef<RecognitionHandle | null>(null);
-  const recordedClipsRef = useRef<AudioAttachment[]>([]);
-  const pronunciationMetadataRef = useRef<SpokenSegmentAnalysis[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Push-To-Talk tracking refs
-  const pressStartTimeRef = useRef(0);
-  const isPressingRef = useRef(false);
-  const isHoldingRef = useRef(false);
-  const holdTimerRef = useRef<number | null>(null);
-  const pendingStopRef = useRef(false);
   const prevOpenRef = useRef(false);
 
-  const persona: AIPersona = {
-    name: 'James',
-    role: 'Team Lead, London',
-    avatar: '🧑‍💼',
-    accent: 'UK',
-    greeting: selectedScenario.greeting,
-    tone: 'Warm, sharp, polite British manager',
-  };
+  const speakText = useCallback(
+    (text: string) => {
+      if (isMuted) return;
+      stopSpeaking();
+      speakEnglish(text, {
+        rate: currentSpeed,
+        accent: coach.accent || 'UK',
+        personaName: coach.name,
+        onStart: () => setIsAiSpeaking(true),
+        onEnd: () => setIsAiSpeaking(false),
+      });
+    },
+    [coach.accent, coach.name, currentSpeed, isMuted]
+  );
 
-  // Sync LLM config changes
+  const handleUserMessage = useCallback(
+    async (rawMessage: string, audioClip?: RecordedAudioClip | null) => {
+      const text = rawMessage.trim();
+      if (!text) return;
+
+      stopSpeaking();
+      setIsAiSpeaking(false);
+      setIsProcessing(true);
+
+      let audioAttachment: AudioAttachment | null = null;
+      if (audioClip && audioClip.base64) {
+        audioAttachment = {
+          base64: audioClip.base64,
+          mimeType: audioClip.mimeType,
+        };
+      }
+
+      const userTurn: Turn = {
+        id: `u-${Date.now()}`,
+        speaker: 'user',
+        text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      const newTurns = [...turns, userTurn];
+      setTurns(newTurns);
+      playChime('tap');
+
+      const startTime = performance.now();
+      try {
+        const historyForGemini: ChatMessage[] = newTurns.map((t) => ({
+          speaker: t.speaker,
+          text: t.text,
+        }));
+
+        const reply = await generateJamesReply(
+          historyForGemini,
+          selectedScenario.title,
+          [
+            "Brilliant! Lovely chatting with you — tell me a bit more about what's on your mind.",
+            "Spot on. That sounds really natural.",
+            "Splendid! What else would you like to talk about today?",
+          ],
+          coach,
+          audioAttachment,
+          userLevel
+        );
+
+        const latency = Math.round(performance.now() - startTime);
+        setLastLatency(latency);
+
+        const aiTurn: Turn = {
+          id: `ai-${Date.now()}`,
+          speaker: 'ai',
+          text: reply,
+          latencyMs: latency,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        setTurns((prev) => [...prev, aiTurn]);
+        speakText(reply);
+
+        const xpResult = calculateEarnedXP('james-test-lab', 10, pronunciationAvg, streakDays);
+        awardGamificationXP(xpResult, 1);
+      } catch (err) {
+        console.warn('[FreeTalk] Reply error:', err);
+        const fallback = "Lovely speaking with you! Keep going — what else would you like to practice?";
+        const latency = Math.round(performance.now() - startTime);
+        setLastLatency(latency);
+
+        setTurns((prev) => [
+          ...prev,
+          {
+            id: `ai-err-${Date.now()}`,
+            speaker: 'ai',
+            text: fallback,
+            latencyMs: latency,
+            isMock: true,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        speakText(fallback);
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [coach, pronunciationAvg, selectedScenario.title, speakText, streakDays, turns, userLevel]
+  );
+
+  const {
+    isRecording,
+    isHolding,
+    bands,
+    livePreview,
+    recordedClipsRef,
+    pronunciationMetadataRef,
+    cleanupAudio,
+    onPointerDown,
+    onPointerUp,
+  } = useVoiceCapture({
+    lang: coach.accent === 'US' ? 'en-US' : 'en-GB',
+    onBeforeStart: () => setIsAiSpeaking(false),
+    onCompleteCapture: handleUserMessage,
+  });
+
   useEffect(() => {
     const handleConfigChange = () => {
       setLlmConfig(getLLMConfig());
@@ -235,302 +337,52 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     return () => window.removeEventListener('fluency_llm_config_changed', handleConfigChange);
   }, []);
 
-  // Initialize or reset scenario
-  const resetScenario = useCallback((scenario: TestScenarioPreset) => {
-    stopSpeaking();
-    vizRef.current.stopMicrophone();
-    recorderRef.current.stop().catch(() => {});
-    recRef.current?.stop();
-    setIsRecording(false);
-    setIsProcessing(false);
-    setIsAiSpeaking(false);
-    setLivePreview('');
-    setScorecardResult(null);
-    setShowScorecardModal(false);
-    setLastLatency(null);
+  const resetScenario = useCallback(
+    (scenario: TopicPreset) => {
+      cleanupAudio();
+      setIsProcessing(false);
+      setIsAiSpeaking(false);
+      setScorecardResult(null);
+      setShowScorecardModal(false);
+      setLastLatency(null);
 
-    const initialTurn: Turn = {
-      id: `ai-init-${Date.now()}`,
-      speaker: 'ai',
-      text: scenario.greeting,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    setTurns([initialTurn]);
+      const greetingText = scenario.greeting(coach.name);
+      const initialTurn: Turn = {
+        id: `ai-init-${Date.now()}`,
+        speaker: 'ai',
+        text: greetingText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setTurns([initialTurn]);
 
-    // Speak James's opening line if unmuted
-    if (!isMuted) {
-      window.setTimeout(() => {
-        speakEnglish(scenario.greeting, {
-          rate: currentSpeed,
-          accent: 'UK',
-          personaName: 'James',
-          onStart: () => setIsAiSpeaking(true),
-          onEnd: () => setIsAiSpeaking(false),
-        });
-      }, 350);
-    }
-  }, [currentSpeed, isMuted]);
-
-  // Handle open / close audio lifecycle
-  useEffect(() => {
-    if (isOpen && !prevOpenRef.current) {
       if (!isMuted) {
         window.setTimeout(() => {
-          speakEnglish(selectedScenario.greeting, {
-            rate: currentSpeed,
-            accent: 'UK',
-            personaName: 'James',
-            onStart: () => setIsAiSpeaking(true),
-            onEnd: () => setIsAiSpeaking(false),
-          });
+          speakText(greetingText);
+        }, 350);
+      }
+    },
+    [cleanupAudio, coach.name, isMuted, speakText]
+  );
+
+  useEffect(() => {
+    if (isOpen && !prevOpenRef.current) {
+      const greetingText = selectedScenario.greeting(coach.name);
+      if (!isMuted) {
+        window.setTimeout(() => {
+          speakText(greetingText);
         }, 350);
       }
     } else if (!isOpen) {
-      stopSpeaking();
-      vizRef.current.stopMicrophone();
-      recorderRef.current.stop().catch(() => {});
-      recRef.current?.stop();
+      cleanupAudio();
     }
     prevOpenRef.current = isOpen;
-  }, [isOpen, isMuted, currentSpeed, selectedScenario.greeting]);
+  }, [cleanupAudio, coach.name, isMuted, isOpen, selectedScenario, speakText]);
 
-  // Auto-scroll chat
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [turns, livePreview, isProcessing]);
-
-  // Speak AI reply
-  const speakText = (text: string) => {
-    if (isMuted) return;
-    stopSpeaking();
-    speakEnglish(text, {
-      rate: currentSpeed,
-      accent: 'UK',
-      personaName: 'James',
-      onStart: () => setIsAiSpeaking(true),
-      onEnd: () => setIsAiSpeaking(false)
-    });
-  };
-
-  // Submit a turn from the user (via voice or text)
-  const handleUserMessage = async (rawMessage: string, audioClip?: RecordedAudioClip | null) => {
-    const text = rawMessage.trim();
-    if (!text) return;
-
-    stopSpeaking();
-    setIsAiSpeaking(false);
-    setIsProcessing(true);
-
-    let audioAttachment: AudioAttachment | null = null;
-    if (audioClip && audioClip.base64) {
-      audioAttachment = {
-        base64: audioClip.base64,
-        mimeType: audioClip.mimeType
-      };
-      recordedClipsRef.current.push(audioAttachment);
-    }
-
-    const userTurn: Turn = {
-      id: `u-${Date.now()}`,
-      speaker: 'user',
-      text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    const newTurns = [...turns, userTurn];
-    setTurns(newTurns);
-    playChime('tap');
-
-    const startTime = performance.now();
-    try {
-      const historyForGemini: ChatMessage[] = newTurns.map((t) => ({
-        speaker: t.speaker,
-        text: t.text
-      }));
-
-      const reply = await generateJamesReply(
-        historyForGemini,
-        selectedScenario.title,
-        [
-          "Brilliant! Lovely chatting with you — tell me a bit more about what you'd like to test next.",
-          "Spot on. That makes total sense in a London workplace context.",
-          "Splendid! Anything else you'd like to drill or test with me today?"
-        ],
-        persona,
-        audioAttachment
-      );
-
-      const latency = Math.round(performance.now() - startTime);
-      setLastLatency(latency);
-
-      const aiTurn: Turn = {
-        id: `ai-${Date.now()}`,
-        speaker: 'ai',
-        text: reply,
-        latencyMs: latency,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      setTurns((prev) => [...prev, aiTurn]);
-      speakText(reply);
-
-      // Reward live speaking practice with James (+10 Base XP with active multipliers)
-      const xpResult = calculateEarnedXP('james-test-lab', 10, pronunciationAvg, streakDays);
-      awardGamificationXP(xpResult, 1);
-    } catch (err) {
-      console.warn('[JamesTestArea] Reply error:', err);
-      const fallback = "I caught that! Testing James offline: Splendid job speaking out loud. What would you like to test next?";
-      const latency = Math.round(performance.now() - startTime);
-      setLastLatency(latency);
-
-      setTurns((prev) => [
-        ...prev,
-        {
-          id: `ai-err-${Date.now()}`,
-          speaker: 'ai',
-          text: fallback,
-          latencyMs: latency,
-          isMock: true,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-      speakText(fallback);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Start Voice Recording
-  const startRecording = async () => {
-    if (isRecording || isProcessing) return;
-    pendingStopRef.current = false;
-    stopSpeaking();
-    setIsAiSpeaking(false);
-
-    const ok = await vizRef.current.startMicrophone(setBands);
-    if (!ok) {
-      alert("Microphone permission was not granted. Please allow microphone access in your browser to talk to James.");
-      return;
-    }
-
-    const stream = vizRef.current.getStream();
-    await recorderRef.current.start(stream);
-
-    playChime('tap');
-    setIsRecording(true);
-    setLivePreview('');
-
-    recRef.current = isRecognitionSupported()
-      ? startRecognition({
-          lang: 'en-GB',
-          silenceTimeoutMs: 0,
-          onInterim: (text) => setLivePreview(text)
-        })
-      : null;
-
-    if (pendingStopRef.current) {
-      pendingStopRef.current = false;
-      stopRecording();
-    }
-  };
-
-  // Stop Voice Recording
-  const stopRecording = async () => {
-    if (!isRecording) {
-      pendingStopRef.current = true;
-      return;
-    }
-
-    setIsRecording(false);
-    setIsHolding(false);
-    isHoldingRef.current = false;
-    isPressingRef.current = false;
-
-    let audioClip: RecordedAudioClip | null = null;
-    try {
-      audioClip = await recorderRef.current.stop();
-    } catch (e) {
-      console.warn('[JamesTestArea] Recorder stop error:', e);
-    }
-
-    vizRef.current.stopMicrophone();
-
-    let heard = '';
-    if (recRef.current) {
-      const details = await recRef.current.stopWithDetails();
-      recRef.current = null;
-      if (details) {
-        heard = details.transcript;
-        if (details.segments.length > 0) {
-          pronunciationMetadataRef.current.push(...details.segments);
-        }
-      }
-    }
-
-    const finalSpoken = livePreview.trim() || heard.trim();
-    setLivePreview('');
-
-    if (finalSpoken) {
-      handleUserMessage(finalSpoken, audioClip);
-    }
-  };
-
-  // Pointer event handlers for Push-To-Talk
-  const onPointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (isProcessing) return;
-
-    if (isRecording) {
-      stopRecording();
-      return;
-    }
-
-    pressStartTimeRef.current = Date.now();
-    isPressingRef.current = true;
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-
-    startRecording();
-
-    if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
-    holdTimerRef.current = window.setTimeout(() => {
-      if (isPressingRef.current) {
-        setIsHolding(true);
-        isHoldingRef.current = true;
-      }
-    }, HOLD_THRESHOLD_MS);
-  };
-
-  const onPointerUp = (e?: React.PointerEvent) => {
-    if (holdTimerRef.current) {
-      window.clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-
-    if (!isPressingRef.current) return;
-    const duration = Date.now() - pressStartTimeRef.current;
-    isPressingRef.current = false;
-    const wasHolding = isHoldingRef.current || duration >= HOLD_THRESHOLD_MS;
-    setIsHolding(false);
-    isHoldingRef.current = false;
-
-    if (e) {
-      try {
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    if (wasHolding) {
-      stopRecording();
-    }
-  };
 
   const handleSendTyped = (e: React.FormEvent) => {
     e.preventDefault();
@@ -540,7 +392,6 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     handleUserMessage(text);
   };
 
-  // Re-run turn after editing user bubble
   const handleSaveTurnEdit = (turnId: string) => {
     if (!editTextValue.trim()) {
       setEditingTurnId(null);
@@ -552,11 +403,10 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     setEditTextValue('');
   };
 
-  // Test Scorecard Generator
   const handleRunScorecardTest = async () => {
     const userTurnsList = turns.filter((t) => t.speaker === 'user').map((t) => t.text);
     if (userTurnsList.length === 0) {
-      alert("Speak or type at least one turn to James before running the CEFR scorecard evaluation.");
+      alert(`Speak or type at least one turn to ${coach.name} before requesting feedback.`);
       return;
     }
 
@@ -564,17 +414,17 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     setShowScorecardModal(true);
 
     const dummyPlan: LessonPlan = {
-      id: 'james-test-plan',
+      id: 'free-talk-plan',
       title: selectedScenario.title,
       contextLabel: selectedScenario.name,
-      persona,
+      persona: coach,
       xpReward: 35,
       minutes: 5,
       phrases: [],
-      aiTurns: [selectedScenario.greeting],
+      aiTurns: [selectedScenario.greeting(coach.name)],
       mockUserReplies: userTurnsList,
       upgrades: [],
-      helpPhrases: []
+      helpPhrases: [],
     };
 
     try {
@@ -587,7 +437,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
       });
       setScorecardResult(result);
     } catch (err) {
-      console.warn('[JamesTestArea] Scorecard analysis error:', err);
+      console.warn('[FreeTalk] Scorecard analysis error:', err);
     } finally {
       setIsAnalyzingScorecard(false);
     }
@@ -601,30 +451,30 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     <>
       <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
         <div className="relative w-full sm:max-w-2xl h-[85vh] max-h-[85vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
-          
           {/* Header */}
           <header className="px-4 py-3 bg-gradient-to-r from-brand-700 via-indigo-700 to-sky-700 text-white flex-shrink-0 shadow-md">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-xl shadow-inner flex-shrink-0">
-                  🧑‍💼
+                  {coach.avatar || '🧑‍💼'}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h1 className="text-sm font-black tracking-tight truncate">James AI Test Lab</h1>
+                    <h1 className="text-sm font-black tracking-tight truncate">
+                      Free Talk with {coach.name}
+                    </h1>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-400/25 border border-emerald-300/40 text-emerald-200 text-[10px] font-extrabold tracking-wider uppercase">
-                      🇬🇧 Direct Mode
+                      Live Voice
                     </span>
                   </div>
                   <p className="text-[11px] text-brand-100/90 truncate">
-                    Talk freely with James • Zero phrase preparation • Real-time British speech
+                    {coach.role} • Spontaneous conversation &amp; instant coaching
                   </p>
                 </div>
               </div>
 
               {/* Action buttons in header */}
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                {/* Audio Speed Pill with Tier Lock Awareness */}
                 <button
                   onClick={() => {
                     playChime('tap');
@@ -635,13 +485,12 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                     setCurrentSpeed(next);
                   }}
                   className="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-[11px] font-bold text-white transition flex items-center gap-1.5"
-                  title={`Speed: ${currentSpeed}x · Click to toggle tier speeds`}
+                  title={`Speed: ${currentSpeed}x · Click to toggle speech speed`}
                 >
                   <Sparkles className="w-3 h-3 text-amber-300" />
                   <span>{currentSpeed}x</span>
                 </button>
 
-                {/* Mute Toggle */}
                 <button
                   onClick={() => {
                     playChime('tap');
@@ -656,7 +505,6 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
 
-                {/* Gateway config shortcut */}
                 <button
                   onClick={() => {
                     playChime('tap');
@@ -668,40 +516,37 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   <Server className="w-4 h-4 text-emerald-300" />
                 </button>
 
-                {/* Dev Controls Toggle */}
                 <button
                   onClick={() => {
                     playChime('tap');
                     setShowDevToggle((prev) => !prev);
                   }}
-                  className={`px-2 py-1 rounded-xl transition active:scale-95 text-[11px] font-bold flex items-center gap-1 ${
+                  className={`p-1.5 rounded-xl transition active:scale-95 text-[11px] font-bold ${
                     showDevToggle
                       ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
                       : 'bg-white/15 text-white hover:bg-white/25'
                   }`}
-                  title="Toggle Dev Gamification Simulator Bar"
+                  title="Toggle Gamification Simulator"
                 >
                   <span>🛠️</span>
-                  <span className="hidden sm:inline">Dev Mode</span>
                 </button>
 
-                {/* Close Button */}
                 <button
                   onClick={() => {
                     stopSpeaking();
                     onClose();
                   }}
                   className="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-white transition"
-                  aria-label="Close James Test Area"
+                  aria-label="Close Free Talk"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Scenario Selector Carousel */}
+            {/* Topic Selector Carousel */}
             <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-              {TEST_SCENARIOS.map((sc) => {
+              {FREE_TALK_TOPICS.map((sc) => {
                 const isActive = sc.id === selectedScenario.id;
                 return (
                   <button
@@ -725,17 +570,11 @@ export const JamesTestAreaModal: React.FC<Props> = ({
             </div>
           </header>
 
-          {/* Diagnostic & Status Sub-bar */}
+          {/* Compact Action Sub-bar */}
           <div className="px-4 py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-[11px] text-slate-600 font-medium">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-bold text-slate-800">
-                {llmConfig.provider === 'freellmapi'
-                  ? 'FreeLLMAPI (Unified Local)'
-                  : llmConfig.apiKey
-                  ? 'Gemini 2.5 Flash'
-                  : 'Offline Scripted Mock'}
-              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="font-semibold text-slate-700">{selectedScenario.badge}</span>
               {lastLatency !== null && (
                 <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                   ⚡ {lastLatency}ms
@@ -747,32 +586,32 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               <button
                 onClick={() => resetScenario(selectedScenario)}
                 className="hover:text-brand-600 flex items-center gap-1 transition"
-                title="Restart conversation from turn 0"
+                title="Restart conversation"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Reset Chat</span>
+                <span>Restart</span>
               </button>
 
               {turns.filter((t) => t.speaker === 'user').length > 0 && (
                 <button
                   onClick={handleRunScorecardTest}
                   className="text-brand-600 hover:text-brand-700 font-bold flex items-center gap-1 transition"
-                  title="Run CEFR grading on this conversation"
+                  title="Get instant phrasing & pronunciation feedback"
                 >
                   <Award className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Test Scorecard</span>
+                  <span>Get Feedback</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Dev Test Toggle & Gamification Controls Bar */}
+          {/* Optional Dev Gamification Controls Bar (collapsed by default) */}
           {showDevToggle && (
             <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 text-white flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-400" />
-                  Dev Gamification Simulator:
+                  Simulator ({llmConfig.provider}):
                 </span>
                 <span className="text-[10px] font-bold text-slate-300 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700">
                   {currentTierConfig.badgeAccent.icon} {currentTierConfig.name} ({totalXP.toLocaleString()} XP)
@@ -786,62 +625,51 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                     devAddXP(100);
                   }}
                   className="px-2 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] transition active:scale-95 shadow-sm"
-                  title="Simulate earning +100 XP (Triggers floating XP toast)"
                 >
                   +100 XP
                 </button>
-
                 <button
                   onClick={() => {
                     playChime('tap');
                     devSetTier('silver');
                   }}
                   className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-[11px] transition active:scale-95"
-                  title="Trigger Silver promotion"
                 >
                   🥈 Silver
                 </button>
-
                 <button
                   onClick={() => {
                     playChime('tap');
                     devSetTier('gold');
                   }}
                   className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition active:scale-95"
-                  title="Trigger Gold promotion"
                 >
                   🥇 Gold
                 </button>
-
                 <button
                   onClick={() => {
                     playChime('tap');
                     devSetTier('platinum');
                   }}
                   className="px-2 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-[11px] transition active:scale-95"
-                  title="Trigger Platinum promotion"
                 >
                   💠 Platinum
                 </button>
-
                 <button
                   onClick={() => {
                     playChime('tap');
                     devSetTier('diamond');
                   }}
                   className="px-2 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-[11px] transition active:scale-95"
-                  title="Trigger Diamond promotion"
                 >
                   💎 Diamond
                 </button>
-
                 <button
                   onClick={() => {
                     playChime('tap');
                     devReset();
                   }}
                   className="px-1.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-[10px] font-bold transition active:scale-95"
-                  title="Reset Demo Gamification State"
                 >
                   Reset
                 </button>
@@ -849,10 +677,10 @@ export const JamesTestAreaModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Quick-Prompt Suggestions Banner */}
+          {/* Conversation Starters Banner */}
           <div className="px-4 py-2 bg-gradient-to-r from-brand-50 to-sky-50 border-b border-brand-100/60 overflow-x-auto no-scrollbar flex items-center gap-2">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 flex items-center gap-1 flex-shrink-0">
-              <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> Quick Tests:
+              <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> Starters:
             </span>
             {selectedScenario.quickPrompts.map((prompt, idx) => (
               <button
@@ -880,21 +708,16 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                 >
                   {isAi && (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-600 to-sky-500 text-white flex items-center justify-center text-sm shadow-xs flex-shrink-0 mt-0.5">
-                      🧑‍💼
+                      {coach.avatar || '🧑‍💼'}
                     </div>
                   )}
 
                   <div className={`max-w-[85%] group ${isAi ? '' : 'items-end'}`}>
                     <div className="flex items-center gap-2 mb-1 px-1">
                       <span className="text-[10px] font-bold text-slate-400">
-                        {isAi ? 'James' : 'You (Learner)'}
+                        {isAi ? coach.name : 'You'}
                       </span>
                       <span className="text-[9px] text-slate-400">{turn.timestamp}</span>
-                      {turn.latencyMs && (
-                        <span className="text-[9px] font-mono text-emerald-600 font-bold">
-                          {turn.latencyMs}ms
-                        </span>
-                      )}
                     </div>
 
                     <div
@@ -931,7 +754,6 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                         <div className="whitespace-pre-wrap">{turn.text}</div>
                       )}
 
-                      {/* AI bubble action bar (Replay audio) */}
                       {isAi && (
                         <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                           <button
@@ -940,10 +762,9 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                               speakText(turn.text);
                             }}
                             className="flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-800 transition"
-                            title="Replay James speaking this"
                           >
                             <Volume2 className="w-3.5 h-3.5" />
-                            <span>Hear James speak</span>
+                            <span>Listen again</span>
                           </button>
 
                           <button
@@ -952,14 +773,12 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                               playChime('tap');
                             }}
                             className="text-[10px] text-slate-400 hover:text-slate-600 transition"
-                            title="Copy text to clipboard"
                           >
                             Copy
                           </button>
                         </div>
                       )}
 
-                      {/* User bubble edit pencil */}
                       {!isAi && editingTurnId !== turn.id && (
                         <button
                           onClick={() => {
@@ -978,7 +797,6 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               );
             })}
 
-            {/* Live speech preview */}
             {isRecording && livePreview && (
               <div className="flex justify-end animate-pulse">
                 <div className="max-w-[85%] p-3 rounded-2xl bg-brand-500/80 text-white text-sm border border-brand-400/40 rounded-tr-sm shadow-md">
@@ -988,21 +806,18 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Processing indicator */}
             {isProcessing && (
               <div className="flex items-center gap-2 text-slate-500 text-xs font-medium py-2">
                 <div className="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center animate-spin">
                   <Bot className="w-4 h-4" />
                 </div>
-                <span>James is thinking and crafting British response…</span>
+                <span>{coach.name} is replying…</span>
               </div>
             )}
           </div>
 
           {/* Interactive Speaking Visualizer & Push-To-Talk Bar */}
           <div className="px-4 py-3 bg-white border-t border-slate-200 flex-shrink-0 space-y-3 shadow-lg">
-            
-            {/* Visualizer center stage */}
             <div className="flex flex-col items-center justify-center">
               <div className="scale-75 -my-6">
                 <WaveformVisualizer mode={visualizerMode} bands={bands} />
@@ -1010,22 +825,20 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               <div className="text-[11px] font-semibold text-slate-500 mt-1 text-center">
                 {isRecording
                   ? isHolding
-                    ? 'Speaking (Hold-to-Talk) • Release to send to James'
-                    : 'Speaking (Tap-to-Talk) • Mic wide open • Tap mic button again to send'
+                    ? `Speaking (Hold-to-Talk) • Release to send to ${coach.name}`
+                    : 'Speaking (Tap-to-Talk) • Tap mic button again when done'
                   : isAiSpeaking
-                  ? 'James is speaking — listen carefully'
+                  ? `${coach.name} is speaking — listen carefully`
                   : isProcessing
-                  ? 'Generating British response…'
-                  : 'Tap or Hold microphone to speak to James'}
+                  ? 'Crafting response…'
+                  : `Tap or Hold microphone to speak to ${coach.name}`}
               </div>
             </div>
 
-            {/* Mic Button & Typed Input row */}
             <div className="flex items-center gap-2">
-              {/* Push-To-Talk Button */}
               <button
                 type="button"
-                onPointerDown={onPointerDown}
+                onPointerDown={(e) => onPointerDown(e, isProcessing)}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
                 disabled={isProcessing}
@@ -1039,13 +852,12 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                 {isRecording ? <Square className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
               </button>
 
-              {/* Typed Message Input */}
               <form onSubmit={handleSendTyped} className="flex-1 flex items-center gap-1.5">
                 <input
                   type="text"
                   value={typedInput}
                   onChange={(e) => setTypedInput(e.target.value)}
-                  placeholder="Type a test phrase or question for James…"
+                  placeholder={`Type a message or question for ${coach.name}…`}
                   disabled={isRecording || isProcessing}
                   className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-brand-500 rounded-2xl text-xs sm:text-sm text-slate-800 outline-none transition shadow-inner placeholder:text-slate-400"
                 />
@@ -1053,14 +865,13 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   type="submit"
                   disabled={!typedInput.trim() || isProcessing || isRecording}
                   className="p-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-600 shadow-sm"
-                  title="Send message to James"
+                  title={`Send message to ${coach.name}`}
                 >
                   <Send className="w-4 h-4" />
                 </button>
               </form>
             </div>
 
-            {/* Fast Jump Link to full lesson */}
             {onOpenLessonRoleplay && (
               <div className="pt-1 text-center">
                 <button
@@ -1071,7 +882,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   }}
                   className="text-xs font-bold text-brand-600 hover:text-brand-700 transition underline underline-offset-2"
                 >
-                  Prefer the full 3-Stage Daily Lesson? Jump directly to Stage 2 Live Roleplay &rarr;
+                  Prefer structured practice? Start Today&apos;s Guided Roleplay &rarr;
                 </button>
               </div>
             )}
@@ -1079,14 +890,16 @@ export const JamesTestAreaModal: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Scorecard Analysis Modal Drawer */}
+      {/* Scorecard Feedback Modal Drawer */}
       {showScorecardModal && (
         <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-500" />
-                <h3 className="font-extrabold text-slate-900 text-base">James's CEFR Feedback</h3>
+                <h3 className="font-extrabold text-slate-900 text-base">
+                  {coach.name}&apos;s Conversation Feedback
+                </h3>
               </div>
               <button
                 onClick={() => setShowScorecardModal(false)}
@@ -1100,12 +913,11 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               <div className="py-8 text-center space-y-3">
                 <div className="w-10 h-10 border-3 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-xs font-bold text-slate-600">
-                  James & Gemini are analyzing your spoken dialogue and acoustic intonation…
+                  {coach.name} is analyzing your phrasing and pronunciation…
                 </p>
               </div>
             ) : scorecardResult ? (
               <div className="space-y-4">
-                {/* Score Pills */}
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="p-2.5 rounded-2xl bg-brand-50 border border-brand-200/80">
                     <div className="text-[10px] font-bold text-brand-600 uppercase">Fluency</div>
@@ -1121,25 +933,23 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   </div>
                 </div>
 
-                {/* Acoustic feedback */}
                 {scorecardResult.acousticFeedback && (
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                    <strong className="text-slate-900">Acoustic & Accent Coaching:</strong>{' '}
+                    <strong className="text-slate-900">Accent &amp; Rhythm Note:</strong>{' '}
                     {scorecardResult.acousticFeedback}
                   </div>
                 )}
 
-                {/* Phrasing Upgrades */}
                 {scorecardResult.upgrades && scorecardResult.upgrades.length > 0 && (
                   <div className="space-y-2">
                     <div className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                      Phrasing & Politeness Upgrades
+                      Phrasing Upgrades
                     </div>
                     {scorecardResult.upgrades.map((u, i) => (
                       <div key={i} className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs space-y-1">
-                        <div className="text-rose-700 line-through font-medium">"{u.whatYouSaid}"</div>
+                        <div className="text-rose-700 line-through font-medium">&ldquo;{u.whatYouSaid}&rdquo;</div>
                         <div className="text-emerald-800 font-extrabold flex items-center gap-1">
-                          <span>&rarr;</span> <span>"{u.moreNatural}"</span>
+                          <span>&rarr;</span> <span>&ldquo;{u.moreNatural}&rdquo;</span>
                         </div>
                         <p className="text-[11px] text-slate-600 leading-tight pt-0.5">{u.explanation}</p>
                       </div>
@@ -1151,17 +961,16 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   onClick={() => setShowScorecardModal(false)}
                   className="w-full py-2.5 rounded-2xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-500 transition"
                 >
-                  Close Feedback
+                  Continue Chatting
                 </button>
               </div>
             ) : (
-              <p className="text-xs text-slate-500">No scorecard data available yet.</p>
+              <p className="text-xs text-slate-500">No feedback available yet.</p>
             )}
           </div>
         </div>
       )}
 
-      {/* AI Gateway Settings Modal */}
       {showGatewayModal && (
         <AIGatewaySettingsModal
           isOpen={showGatewayModal}

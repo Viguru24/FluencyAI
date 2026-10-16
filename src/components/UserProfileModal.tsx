@@ -38,6 +38,9 @@ interface Props {
   progress: UserProgress;
   onUpdateProgress: (updater: (prev: UserProgress) => UserProgress) => void;
   onOpenPlacement?: () => void;
+  onOpenGatewaySettings?: () => void;
+  isGatewayConnected?: boolean;
+  llmModelLabel?: string;
 }
 
 const AVATAR_PRESETS = ['🧑‍💼', '👩‍💼', '🎓', '🚀', '🌟', '🎧', '⚡', '☕', '🇬🇧', '🌍'];
@@ -48,6 +51,9 @@ export const UserProfileModal: React.FC<Props> = ({
   progress,
   onUpdateProgress,
   onOpenPlacement,
+  onOpenGatewaySettings,
+  isGatewayConnected,
+  llmModelLabel,
 }) => {
   const [session, setSession] = useState<AuthSession | null>(() => authService.getSession());
   const [activeTab, setActiveTab] = useState<'signin' | 'signup' | 'otp' | 'server'>('signin');
@@ -909,6 +915,52 @@ export const UserProfileModal: React.FC<Props> = ({
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* AI Gateway & Model Settings Row */}
+          {onOpenGatewaySettings && (
+            <div className="pt-3 border-t border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => {
+                  playChime('tap');
+                  onClose();
+                  onOpenGatewaySettings();
+                }}
+                className={`w-full p-3 rounded-2xl border text-xs flex items-center justify-between transition active:scale-[0.99] ${
+                  isGatewayConnected
+                    ? 'bg-emerald-50/70 hover:bg-emerald-100/80 border-emerald-200 text-emerald-950'
+                    : 'bg-rose-50/80 hover:bg-rose-100/80 border-rose-200 text-rose-950'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 text-left">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                      isGatewayConnected ? 'bg-emerald-500 shadow-sm shadow-emerald-400' : 'bg-rose-500'
+                    }`}
+                  />
+                  <div>
+                    <div className="font-bold flex items-center gap-1.5">
+                      <span>AI Voice &amp; LLM Gateway</span>
+                      {llmModelLabel && (
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/80 text-slate-600">
+                          {llmModelLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] opacity-80">
+                      {isGatewayConnected
+                        ? 'Connected • Click to change model or API key'
+                        : 'Offline / Mock Mode • Click to configure FreeLLMAPI or Gemini key'}
+                    </div>
+                  </div>
+                </div>
+                <span className="flex items-center gap-1 font-bold text-brand-700 flex-shrink-0">
+                  <Server className="w-3.5 h-3.5" />
+                  <span>Configure</span>
+                </span>
+              </button>
             </div>
           )}
         </div>

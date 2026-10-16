@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Mic, Sparkles, Layers, Zap, Calendar, ChevronDown, ChevronUp, Gift } from 'lucide-react';
+import {
+  Flame,
+  Mic,
+  Layers,
+  Zap,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Gift,
+  MessageCircle,
+  Play,
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
-import type { UserProgress } from '../types';
+import type { AIPersona, UserProgress } from '../types';
 import { playChime } from '../services/speech';
 import { FluencyHeatmap } from './FluencyHeatmap';
-import { getDueSRSFlashcards } from '../services/srsService';
+import { getDueSRSFlashcards, getUserSavedSRSCards } from '../services/srsService';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { useGamificationStore } from '../store/rewardSystem';
 
 interface DailyGoalCardProps {
   progress: UserProgress;
+  activePersona?: AIPersona;
   onUpdateProgress: (updater: (prev: UserProgress) => UserProgress) => void;
   onStartLesson?: () => void;
+  onStartDirectRoleplay?: () => void;
+  onOpenFreeTalk?: () => void;
   onOpenSRS?: () => void;
   onOpenWarmup?: () => void;
   onOpenRoadmap?: () => void;
@@ -19,7 +33,10 @@ interface DailyGoalCardProps {
 
 export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   progress,
+  activePersona,
   onStartLesson,
+  onStartDirectRoleplay,
+  onOpenFreeTalk,
   onOpenSRS,
   onOpenWarmup,
   onOpenRoadmap,
@@ -40,46 +57,21 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
 
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [srsDueCount, setSrsDueCount] = useState(() => getDueSRSFlashcards().length);
-  const [reviewCount, setReviewCount] = useState<number>(() => {
-    try {
-      const stored = localStorage.getItem('savedReviewPhrases');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed.length;
-      }
-    } catch {
-      /* ignore */
-    }
-    return (progress.savedMistakes?.length && progress.savedMistakes.length > 0) ? progress.savedMistakes.length : 3;
-  });
+  const [savedReviewCount, setSavedReviewCount] = useState(() => getUserSavedSRSCards().length);
 
   useEffect(() => {
     const updateCount = () => {
-      try {
-        const stored = localStorage.getItem('savedReviewPhrases');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setReviewCount(parsed.length);
-            return;
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      setReviewCount((progress.savedMistakes?.length && progress.savedMistakes.length > 0) ? progress.savedMistakes.length : 3);
       setSrsDueCount(getDueSRSFlashcards().length);
+      setSavedReviewCount(getUserSavedSRSCards().length);
     };
 
-    window.addEventListener('savedReviewPhrasesUpdated', updateCount);
     window.addEventListener('fluency_srs_updated', updateCount);
     window.addEventListener('storage', updateCount);
     return () => {
-      window.removeEventListener('savedReviewPhrasesUpdated', updateCount);
       window.removeEventListener('fluency_srs_updated', updateCount);
       window.removeEventListener('storage', updateCount);
     };
-  }, [progress.savedMistakes]);
+  }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -95,9 +87,11 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   );
 
   const isGoalReached = currentMinutes >= speakingMinutesTarget;
+  const coachName = activePersona?.name || 'James';
+  const coachAvatar = activePersona?.avatar || '🧑‍💼';
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-3.5">
       {/* Welcoming Header Banner */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -114,7 +108,6 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
 
         {/* Tier Pill & Streak Counter Pills */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Interactive Tier Pill */}
           <button
             onClick={() => {
               playChime('tap');
@@ -136,8 +129,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             </div>
           </button>
 
-          {/* Streak Counter Pill */}
-          <div 
+          <div
             onClick={() => {
               playChime('streak');
               confetti({ particleCount: 30, spread: 50, origin: { y: 0.2 } });
@@ -158,9 +150,8 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
         </div>
       </div>
 
-      {/* Main Daily Goal Progress Card */}
+      {/* Main Daily Goal & Hero Session Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-brand-50/30 to-emerald-50/40 p-5 shadow-soft border border-slate-200/80">
-        {/* Subtle decorative background blur glow */}
         <div className="pointer-events-none absolute -top-12 -right-12 w-36 h-36 rounded-full bg-brand-200/40 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 -left-12 w-36 h-36 rounded-full bg-emerald-200/40 blur-2xl" />
 
@@ -176,22 +167,23 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                   Daily Speaking Goal
                 </span>
                 <div className="text-sm font-extrabold text-slate-900">
-                  {progress.completedMinutes} of {progress.dailyGoalMinutes} mins spoken
+                  {currentMinutes} of {speakingMinutesTarget} mins spoken
                 </div>
               </div>
             </div>
 
-            {/* Percentage Badge */}
-            <div className={`px-2.5 py-1 rounded-full text-xs font-black tracking-wide border ${
-              isGoalReached 
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
-                : 'bg-brand-50 text-brand-700 border-brand-200'
-            }`}>
+            <div
+              className={`px-2.5 py-1 rounded-full text-xs font-black tracking-wide border ${
+                isGoalReached
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-brand-50 text-brand-700 border-brand-200'
+              }`}
+            >
               {minutesPercent}%
             </div>
           </div>
 
-          {/* Progress Bar with smooth soft gradient & glow */}
+          {/* Progress Bar */}
           <div className="space-y-1.5">
             <div className="w-full h-3.5 rounded-full bg-slate-100/90 overflow-hidden p-0.5 border border-slate-200/60 shadow-inner">
               <div
@@ -200,32 +192,62 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
               />
             </div>
             <div className="flex items-center justify-between text-[11px] font-medium text-slate-500">
-              <span>Goal: 15 mins daily practice</span>
-              <span>{Math.max(0, progress.dailyGoalMinutes - progress.completedMinutes)} mins remaining</span>
+              <span>Goal: {speakingMinutesTarget} mins daily practice</span>
+              <span>{Math.max(0, speakingMinutesTarget - currentMinutes)} mins remaining</span>
             </div>
           </div>
 
-          {/* Encouraging Context Message */}
-          <div className="rounded-2xl bg-white/80 border border-slate-200/60 p-3 flex items-center gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              {isGoalReached ? (
-                <span className="font-semibold text-emerald-700">
-                  🎉 Phenomenal job today! You unlocked today's fluency badge and protected your streak.
-                </span>
-              ) : (
-                <span>
-                  <strong className="text-slate-800">Speaking out loud</strong> creates neural pathways faster than reading alone. Tap any scenario below to practice!
-                </span>
-              )}
-            </p>
-          </div>
+          {/* Primary Hero Action: Start Today's Lesson */}
+          {onStartLesson && (
+            <div className="rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-sky-600 p-4 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-extrabold uppercase tracking-wider">
+                    Today&apos;s Guided Session
+                  </span>
+                  <span className="text-[11px] font-bold text-amber-300">5 min • +35 XP</span>
+                </div>
+                <h3 className="text-sm sm:text-base font-black">
+                  {progress.hasCompletedDailyLessonToday
+                    ? 'Daily Lesson Completed — Practice Again!'
+                    : `Daily 3-Stage Lesson with ${coachName}`}
+                </h3>
+                <p className="text-xs text-brand-100/90">
+                  {savedReviewCount > 0
+                    ? `Includes ${Math.min(2, savedReviewCount)} saved review phrases + live roleplay & scorecard`
+                    : 'Phrase warm-up → Live voice roleplay → AI fluency scorecard'}
+                </p>
+              </div>
 
-          {/* Goal Milestones Row with Active Multipliers & Milestone Chest */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            {/* Upgraded XP Today Card */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    onStartLesson();
+                  }}
+                  className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-white hover:bg-brand-50 text-brand-950 font-black text-xs shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95"
+                >
+                  <Play className="w-3.5 h-3.5 fill-brand-700 text-brand-700" />
+                  <span>Start Daily Lesson</span>
+                </button>
+                {onStartDirectRoleplay && (
+                  <button
+                    onClick={() => {
+                      playChime('tap');
+                      onStartDirectRoleplay();
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs transition active:scale-95"
+                    title="Skip warm-up phrases and jump straight into Stage 2 Roleplay"
+                  >
+                    ⚡ Skip Prep
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Goal Milestones Row */}
+          <div className="grid grid-cols-3 gap-2">
             <div className="relative p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center flex flex-col justify-between group shadow-2xs hover:border-brand-300 transition">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">XP Today</span>
@@ -244,8 +266,8 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                     dailyChestClaimed
                       ? "Today's Daily Milestone Chest Claimed ✓ (+50 XP bonus)"
                       : isDailyGoalMet
-                      ? "🎁 Daily Milestone Chest Ready! Tap to claim +50 XP bonus"
-                      : `🎁 Daily Chest: reach 100 XP & 15 mins to unlock (${Math.max(0, dailyXPTarget - dailyXP)} XP left)`
+                      ? '🎁 Daily Milestone Chest Ready! Tap to claim +50 XP bonus'
+                      : `🎁 Daily Chest: reach ${dailyXPTarget} XP & ${speakingMinutesTarget} mins to unlock`
                   }
                   className={`p-1 rounded-lg transition active:scale-95 ${
                     dailyChestClaimed
@@ -263,13 +285,11 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 {dailyXP}/{dailyXPTarget}
               </div>
 
-              {/* Multiplier Sub-Label */}
               <div className="text-[9px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200/70 rounded-md py-0.5 px-1 truncate flex items-center justify-center gap-0.5">
                 <span>{multiplierInfo.label}</span>
               </div>
             </div>
 
-            {/* CEFR Fluency Level */}
             <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center flex flex-col justify-between shadow-2xs">
               <div className="text-[10px] font-bold text-slate-400 uppercase">Fluency CEFR</div>
               <div className="text-sm font-black text-emerald-600 my-0.5">
@@ -280,7 +300,6 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
               </div>
             </div>
 
-            {/* Pronunciation Rolling Average */}
             <div className="p-2.5 rounded-2xl bg-white/90 border border-slate-200/60 text-center flex flex-col justify-between shadow-2xs">
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Pronunciation Avg
@@ -298,15 +317,40 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             </div>
           </div>
 
-          {/* Quick Immersion Actions: 60s Sprint & SRS Flashcards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          {/* 3-Card Quick Practice Modes: Free Talk, 60s Sprint, SRS Flashcards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-0.5">
+            {onOpenFreeTalk && (
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  onOpenFreeTalk();
+                }}
+                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-sky-500/10 via-brand-500/5 to-emerald-500/10 hover:from-sky-500/20 hover:to-emerald-500/20 border border-brand-200 text-slate-900 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs text-sm">
+                    {coachAvatar}
+                  </span>
+                  <span className="text-left leading-tight">
+                    <span className="block font-extrabold text-slate-900">
+                      Free Talk with {coachName}
+                    </span>
+                    <span className="text-[10px] text-brand-700 font-medium">
+                      Open voice chat · 0 prep
+                    </span>
+                  </span>
+                </span>
+                <MessageCircle className="w-3.5 h-3.5 text-brand-600 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+              </button>
+            )}
+
             {onOpenWarmup && (
               <button
                 onClick={onOpenWarmup}
                 className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-rose-500/10 hover:from-amber-500/20 hover:to-rose-500/20 border border-amber-300/80 text-amber-950 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
                 <span className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <span className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
                     <Zap className="w-3.5 h-3.5 animate-pulse" />
                   </span>
                   <span className="text-left leading-tight">
@@ -324,7 +368,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-200 text-indigo-950 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
                 <span className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                  <span className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
                     <Layers className="w-3.5 h-3.5" />
                   </span>
                   <span className="text-left leading-tight">
@@ -337,29 +381,8 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             )}
           </div>
 
-          {/* Spaced repetition review banner */}
-          {onStartLesson && (
-            <button
-              onClick={onStartLesson}
-              className="w-full py-2.5 px-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950 text-xs font-bold flex items-center justify-between transition shadow-xs group"
-            >
-              <span className="flex items-center gap-2 text-left">
-                <span className="flex items-center justify-center w-5 h-5 rounded-lg bg-amber-200 text-amber-800 flex-shrink-0">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                </span>
-                <span>
-                  <strong className="text-amber-900 font-extrabold">Full Lesson Plan:</strong>{' '}
-                  <span className="text-slate-700 font-semibold">{reviewCount} phrases ready for practice</span>
-                </span>
-              </span>
-              <span className="text-[11px] font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 flex-shrink-0">
-                Start Lesson &rarr;
-              </span>
-            </button>
-          )}
-
           {/* Toggle 365-Day Fluency Heatmap */}
-          <div className="pt-1">
+          <div className="pt-0.5">
             <button
               onClick={() => setShowHeatmap((prev) => !prev)}
               className="w-full py-2 px-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-98"
@@ -372,7 +395,6 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
         </div>
       </div>
 
-      {/* Expandable Heatmap Component */}
       {showHeatmap && (
         <div className="animate-fade-in pt-1">
           <FluencyHeatmap />

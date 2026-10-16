@@ -118,6 +118,8 @@ export interface SRSFlashcard {
   ipa: string;
   context: string;
   meaning: string;
+  whatYouSaid?: string;
+  isUserSaved?: boolean;
   box: 1 | 2 | 3 | 4 | 5; // Leitner box (1 = daily, 5 = mastered)
   nextReviewDate: string; // YYYY-MM-DD
   lastReviewed?: string;
