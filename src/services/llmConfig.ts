@@ -151,11 +151,19 @@ export function getCandidateGatewayUrls(base?: string): string[] {
 
   if (typeof window !== 'undefined' && window.location) {
     const origin = window.location.origin;
-    // Proxies configured on Vite dev server (zero-CORS)
+    // Proxies configured on Vite dev server and VPS Nginx (zero-CORS)
     const directV1Proxy = `${origin}/v1`;
     const gatewayV1Proxy = `${origin}/freellm-gateway/v1`;
     candidates.push(directV1Proxy);
     candidates.push(gatewayV1Proxy);
+
+    // If hosted under a subpath like /fluency/ on a domain
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0) {
+      const subpath = `/${pathParts[0]}`;
+      candidates.push(`${origin}${subpath}/v1`);
+      candidates.push(`${origin}${subpath}/freellm-gateway/v1`);
+    }
   }
   if (!candidates.includes(primary)) {
     candidates.push(primary);

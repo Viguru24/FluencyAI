@@ -25,6 +25,7 @@ import type {
 
 export const USER_STORAGE_KEY = 'fluencyai_user_progress_v1';
 export const PLACEMENT_ASSESSED_KEY = 'fluency_placement_assessed_v1';
+export const ONBOARDING_COMPLETED_KEY = 'fluency_onboarding_completed_v1';
 export const DAILY_LESSON_ID = 'daily-lesson-today';
 
 function loadInitialProgress(): UserProgress {
@@ -235,6 +236,22 @@ export function useUserStore() {
     Boolean(progress.hasCompletedPlacement) ||
     (typeof window !== 'undefined' && localStorage.getItem(PLACEMENT_ASSESSED_KEY) === 'true');
 
+  const isOnboardingCompleted =
+    Boolean(progress.hasCompletedOnboarding) ||
+    (typeof window !== 'undefined' && localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true');
+
+  const completeOnboarding = useCallback(() => {
+    try {
+      localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
+    } catch {
+      /* ignore */
+    }
+    setProgress((prev) => ({
+      ...prev,
+      hasCompletedOnboarding: true,
+    }));
+  }, []);
+
   return {
     progress,
     setProgress,
@@ -242,6 +259,8 @@ export function useUserStore() {
     selectPersona,
     savedCardsCount,
     isPlacementCompleted,
+    isOnboardingCompleted,
+    completeOnboarding,
     completePlacement,
     completeLesson,
     saveMistakes,

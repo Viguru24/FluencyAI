@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Volume2, Globe, Download, WifiOff, Check } from 'lucide-react';
+import { Sparkles, Volume2, Globe, Download, WifiOff, Check, Crown } from 'lucide-react';
 import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession, AIPersona } from '../types';
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
 import { playChime } from '../services/speech';
@@ -20,6 +20,8 @@ interface NavbarProps {
   activePersona?: AIPersona;
   onOpenPersonaSelector?: () => void;
   onOpenRoadmap?: () => void;
+  onOpenPricing?: () => void;
+  onOpenOnboarding?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -30,6 +32,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activePersona,
   onOpenPersonaSelector,
   onOpenRoadmap,
+  onOpenPricing,
+  onOpenOnboarding,
 }) => {
   const {
     currentTier,
@@ -326,6 +330,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </button>
 
+            {/* Pricing / Pro Upgrade Button */}
+            {onOpenPricing && (
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  onOpenPricing();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-indigo-500/15 hover:from-amber-500/25 hover:to-indigo-500/25 text-amber-700 dark:text-amber-300 border border-amber-300/40 dark:border-amber-500/30 text-xs font-black transition active:scale-95 shadow-2xs group"
+                title="View Plans & Pricing"
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-500 group-hover:rotate-12 transition-transform" />
+                <span className="hidden sm:inline">Pricing</span>
+                <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-500 text-white leading-none">
+                  Pro
+                </span>
+              </button>
+            )}
+
             {/* User Profile, Cloud Sync & Subtle AI Gateway Status Dot */}
             {(() => {
               const rawName = authSession ? authSession.user.name : (progress.name !== 'Alex' ? progress.name : '');
@@ -411,6 +433,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           onUpdateProgress={onUpdateProgress}
           onOpenPlacement={onOpenPlacement}
           onOpenGatewaySettings={() => setShowGatewayModal(true)}
+          onOpenPricing={onOpenPricing}
+          onOpenOnboarding={onOpenOnboarding}
           isGatewayConnected={isGatewayConnected}
           llmModelLabel={llmConfig.model}
         />

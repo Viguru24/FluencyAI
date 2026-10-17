@@ -10,6 +10,8 @@ import { PersonaSelectorModal } from './components/PersonaSelectorModal';
 import { SRSFlashcardModal } from './components/SRSFlashcardModal';
 import { CustomScenarioModal } from './components/CustomScenarioModal';
 import { RapidWarmupModal } from './components/RapidWarmupModal';
+import { OnboardingModal } from './components/OnboardingModal';
+import { PricingModal } from './components/PricingModal';
 import { roleplayScenarios } from './data/mockData';
 import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans';
 import { XPToastContainer } from './components/XPToast';
@@ -27,6 +29,7 @@ import type {
 import { registerServiceWorker } from './pwa';
 import { RefreshCw, Sparkles, BookmarkCheck } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
+import { toast } from './services/toast';
 import { playChime } from './services/speech';
 
 export function App() {
@@ -37,6 +40,8 @@ export function App() {
     selectPersona,
     savedCardsCount,
     isPlacementCompleted,
+    isOnboardingCompleted,
+    completeOnboarding,
     completePlacement,
     completeLesson,
     saveMistakes,
@@ -54,6 +59,8 @@ export function App() {
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const [isPlacementOpen, setIsPlacementOpen] = useState(false);
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(!isOnboardingCompleted);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [pendingLessonCallback, setPendingLessonCallback] = useState<(() => void) | null>(null);
   const [hasUpdate, setHasUpdate] = useState(false);
 
@@ -148,6 +155,8 @@ export function App() {
         activePersona={activePersona}
         onOpenPersonaSelector={() => setIsPersonaSelectorOpen(true)}
         onOpenRoadmap={() => setIsRoadmapOpen(true)}
+        onOpenPricing={() => setIsPricingOpen(true)}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
       />
 
       {/* Main App Container */}
@@ -337,6 +346,34 @@ export function App() {
           openDailyLesson('roleplay');
         }}
       />
+
+      {/* Ultra-Simple Onboarding Setup Flow */}
+      {isOnboardingOpen && (
+        <OnboardingModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
+          progress={progress}
+          onUpdateProgress={setProgress}
+          onComplete={({ startPlacement }) => {
+            completeOnboarding();
+            setIsOnboardingOpen(false);
+            if (startPlacement) {
+              setIsPlacementOpen(true);
+            }
+          }}
+        />
+      )}
+
+      {/* Stripe Pricing & Sales Page Modal */}
+      {isPricingOpen && (
+        <PricingModal
+          isOpen={isPricingOpen}
+          onClose={() => setIsPricingOpen(false)}
+          onSuccess={(planTier) => {
+            toast.success(`Welcome to FluencyAI ${planTier.toUpperCase()}!`, 'Plan Activated');
+          }}
+        />
+      )}
     </div>
   );
 }
