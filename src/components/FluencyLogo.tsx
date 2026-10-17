@@ -63,16 +63,16 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
     >
       {/* 3D App Emblem Badge */}
       <div
-        className={`relative ${cfg.iconSize} ${cfg.rounded} bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-lg shadow-cyan-950/20 overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105`}
+        className={`relative ${cfg.iconSize} ${cfg.rounded} bg-white dark:bg-gradient-to-b dark:from-[#1e293b] dark:to-[#0f172a] p-1 border border-slate-200/90 dark:border-cyan-500/30 shadow-md shadow-slate-200/80 dark:shadow-cyan-950/40 overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105`}
       >
         {/* Subtle Ambient Glow Behind Emblem */}
-        <div className="absolute inset-0 bg-radial from-cyan-500/20 via-emerald-500/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-radial from-cyan-500/10 via-emerald-500/5 to-transparent dark:from-cyan-500/25 dark:via-emerald-500/15 dark:to-transparent pointer-events-none" />
         
-        {/* Authentic Stylized F & Waveform Emblem */}
+        {/* Authentic Stylized F & Waveform Emblem (Cutout) */}
         <img
-          src="/icon-192.png"
+          src="/logo-mark.png"
           alt="Fluency AI Emblem"
-          className="w-full h-full object-contain relative z-10 drop-shadow-md"
+          className="w-full h-full object-contain relative z-10 drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]"
           loading="eager"
         />
 

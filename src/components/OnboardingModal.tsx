@@ -191,8 +191,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         {/* Top Progress Header */}
         <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-md flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src={logoMark} alt="Fluency AI" className="w-full h-full object-contain" />
+            <div className="w-9 h-9 rounded-xl bg-white dark:bg-gradient-to-b dark:from-[#1e293b] dark:to-[#0f172a] p-1 border border-slate-200/90 dark:border-cyan-500/30 shadow-md shadow-slate-200/80 dark:shadow-cyan-950/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img src={logoMark} alt="Fluency AI" className="w-full h-full object-contain drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]" />
             </div>
             <div className="min-w-0">
               <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 block whitespace-nowrap">
