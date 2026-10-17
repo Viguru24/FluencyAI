@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { DailyGoalCard } from './components/DailyGoalCard';
 import { RoleplayList } from './components/RoleplayList';
@@ -66,6 +66,24 @@ export function App() {
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [pendingLessonCallback, setPendingLessonCallback] = useState<(() => void) | null>(null);
   const [hasUpdate, setHasUpdate] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const touchStartYRef = useRef<number | null>(null);
+  const pullDistanceRef = useRef(0);
+
+  const isAnyModalOpen = Boolean(
+    activePlan ||
+      isPersonaSelectorOpen ||
+      isSRSOpen ||
+      isCustomScenarioOpen ||
+      isRapidWarmupOpen ||
+      isFreeTalkOpen ||
+      isInstallGuideOpen ||
+      isPlacementOpen ||
+      isRoadmapOpen ||
+      isOnboardingOpen ||
+      isPricingOpen
+  );
 
   useEffect(() => {
     registerServiceWorker(() => {
@@ -151,11 +169,100 @@ export function App() {
     }
   };
 
+  useEffect(() => {
+    const PULL_THRESHOLD = 65;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (isAnyModalOpen || isPullRefreshing || window.scrollY > 0) {
+        touchStartYRef.current = null;
+        return;
+      }
+      touchStartYRef.current = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchStartYRef.current === null || isAnyModalOpen || isPullRefreshing) return;
+      if (window.scrollY > 0) {
+        touchStartYRef.current = null;
+        pullDistanceRef.current = 0;
+        setPullDistance(0);
+        return;
+      }
+
+      const deltaY = e.touches[0].clientY - touchStartYRef.current;
+      if (deltaY > 12) {
+        const damped = Math.min(110, (deltaY - 12) * 0.45);
+        pullDistanceRef.current = damped;
+        setPullDistance(damped);
+      } else {
+        pullDistanceRef.current = 0;
+        setPullDistance(0);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (touchStartYRef.current === null) return;
+      touchStartYRef.current = null;
+
+      if (pullDistanceRef.current >= PULL_THRESHOLD && !isPullRefreshing) {
+        setIsPullRefreshing(true);
+        setPullDistance(56);
+        playChime('tap');
+        setTimeout(() => {
+          handleReloadApp();
+        }, 250);
+      } else {
+        pullDistanceRef.current = 0;
+        setPullDistance(0);
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [isAnyModalOpen, isPullRefreshing]);
+
   const reviewCount = Math.max(savedCardsCount, progress.savedMistakes?.length ?? 0);
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       <ToastContainer />
+
+      {/* Mobile Pull-to-Refresh Indicator */}
+      {(pullDistance > 0 || isPullRefreshing) && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-transform duration-150 ease-out"
+          style={{ top: `${Math.min(72, Math.max(12, pullDistance))}px` }}
+        >
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/95 dark:bg-slate-900/95 border border-brand-200 dark:border-brand-700 shadow-lg backdrop-blur-md text-xs font-extrabold text-brand-700 dark:text-brand-300">
+            <RefreshCw
+              className={`w-4 h-4 text-brand-600 dark:text-brand-400 ${
+                isPullRefreshing ? 'animate-spin' : ''
+              }`}
+              style={
+                !isPullRefreshing
+                  ? { transform: `rotate(${Math.round(pullDistance * 4)}deg)` }
+                  : undefined
+              }
+            />
+            <span>
+              {isPullRefreshing
+                ? 'Refreshing...'
+                : pullDistance >= 65
+                ? 'Release to refresh'
+                : 'Pull down to refresh'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {hasUpdate && (
         <div className="sticky top-0 z-50 bg-brand-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 shadow-md">

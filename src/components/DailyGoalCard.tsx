@@ -95,12 +95,9 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
       {/* Welcoming Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
-              {getGreeting()}, {formatDisplayName(progress.name)}!
-            </h1>
-            <span className="inline-block animate-bounce-subtle text-lg sm:text-xl">🌱</span>
-          </div>
+          <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug break-words">
+            {getGreeting()}, {formatDisplayName(progress.name)}!
+          </h1>
           <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-0.5">
             Consistency over perfection. Speak a little every day!
           </p>

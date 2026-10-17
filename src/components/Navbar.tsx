@@ -376,7 +376,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 showOnlineDot={Boolean(authSession)}
                 hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
               />
-              <span className="max-w-[120px] truncate font-extrabold text-slate-900 dark:text-slate-100">
+              <span className="max-w-[180px] truncate font-extrabold text-slate-900 dark:text-slate-100">
                 {buttonLabel}
               </span>
               <span
@@ -499,7 +499,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-black text-slate-900 dark:text-white truncate">
+                    <div className="text-xs font-black text-slate-900 dark:text-white leading-tight break-words">
                       {buttonLabel}
                     </div>
                     <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">
