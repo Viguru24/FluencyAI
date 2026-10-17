@@ -1,4 +1,8 @@
-# FluencyAI — AI-Powered English Language Tutoring PWA
+<p align="center">
+  <img src="./public/logo.png" alt="Fluency AI Logo" width="600" />
+</p>
+
+# Fluency AI — AI-Powered English Language Tutoring Platform
 
 A mobile-first, Progressive Web App (PWA) designed for English language learners, featuring interactive voice immersion, conversational roleplays, dynamic daily goal tracking, and accessible pronunciation coaching.
 

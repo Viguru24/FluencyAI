@@ -190,12 +190,12 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-850">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-xs">
-              <Crown className="w-4 h-4 text-amber-200" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-md flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img src="/icon-192.png" alt="Fluency AI" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                FluencyAI Membership Plans
+                Fluency AI Membership Plans
               </span>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Accelerate your English speaking with real-time AI speech feedback

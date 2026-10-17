@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download, Share, PlusSquare, Smartphone, Sparkles } from 'lucide-react';
+import { X, Download, Share, PlusSquare, Smartphone } from 'lucide-react';
 import { promptPWAInstall } from '../pwa';
 import { playChime } from '../services/speech';
 
@@ -37,8 +37,8 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({ onCl
 
         <div className="p-5 space-y-4">
           <div className="text-center space-y-1">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 text-white flex items-center justify-center mx-auto shadow-soft">
-              <Sparkles className="w-7 h-7 text-amber-200 animate-pulse-subtle" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1.5 border border-slate-700/60 shadow-xl mx-auto overflow-hidden flex items-center justify-center">
+              <img src="/icon-192.png" alt="Fluency AI App Icon" className="w-full h-full object-contain drop-shadow" />
             </div>
             <h4 className="font-extrabold text-base text-slate-900 dark:text-white pt-2">
               Practice English Anytime, Offline & Fullscreen

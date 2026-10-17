@@ -1,16 +1,17 @@
-// FluencyAI Service Worker - Offline Caching & PWA Experience
-const CACHE_NAME = 'fluencyai-cache-v3';
+// Fluency AI Service Worker - Offline Caching & PWA Experience
+const CACHE_NAME = 'fluencyai-cache-v4';
 
 // Install Event - Precache App Shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[FluencyAI SW] Pre-caching offline app shell');
+      console.log('[Fluency AI SW] Pre-caching offline app shell');
       const base = self.registration.scope;
       const assets = [
         base,
         new URL('index.html', base).href,
         new URL('manifest.webmanifest', base).href,
+        new URL('favicon.svg', base).href,
         new URL('icon.svg', base).href,
         new URL('icon-192.png', base).href,
         new URL('icon-512.png', base).href,
@@ -18,6 +19,11 @@ self.addEventListener('install', (event) => {
         new URL('icon-maskable-512.png', base).href,
         new URL('apple-touch-icon.png', base).href,
         new URL('favicon-32.png', base).href,
+        new URL('favicon-16.png', base).href,
+        new URL('favicon.ico', base).href,
+        new URL('logo.png', base).href,
+        new URL('logo-mark.png', base).href,
+        new URL('logo-square.png', base).href,
         'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'
       ];
       return cache.addAll(assets).catch((err) => {

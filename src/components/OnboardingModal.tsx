@@ -184,8 +184,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         {/* Top Progress Header */}
         <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-xs">
-              <Sparkles className="w-4 h-4 text-amber-200" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-md flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img src="/icon-192.png" alt="Fluency AI" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400">

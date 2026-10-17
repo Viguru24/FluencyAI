@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Volume2, Globe, Download, WifiOff, Check, Crown } from 'lucide-react';
+import {
+  Sparkles,
+  Volume2,
+  Globe,
+  Download,
+  WifiOff,
+  Check,
+  Crown,
+  Menu,
+  X,
+  ChevronDown,
+  SlidersHorizontal,
+} from 'lucide-react';
 import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession, AIPersona } from '../types';
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
 import { playChime } from '../services/speech';
@@ -11,6 +23,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { authService } from '../services/authService';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { useGamificationStore, getAvailableAudioSpeeds } from '../store/rewardSystem';
+import { FluencyLogo } from './FluencyLogo';
 
 interface NavbarProps {
   progress: UserProgress;
@@ -47,6 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showLevelMenu, setShowLevelMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showGatewayModal, setShowGatewayModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => authService.getSession());
@@ -113,6 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleInstallClick = async () => {
     playChime('tap');
+    setShowMobileMenu(false);
     if (canInstall) {
       const outcome = await promptPWAInstall();
       if (outcome === 'accepted') {
@@ -155,33 +170,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const levels: CEFRLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1'];
 
+  const rawName = authSession ? authSession.user.name : (progress.name !== 'Alex' ? progress.name : '');
+  const formattedName = formatDisplayName(rawName);
+  const buttonLabel = formattedName || 'Profile';
+  const pictureUrl = authSession?.user?.picture || progress.avatar;
+
   return (
     <>
       <header className="sticky top-0 z-40 w-full glass-card border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm transition-all">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2">
-          {/* Logo and Brand Name */}
-          <div className="flex items-center gap-2.5">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-emerald-400 text-white shadow-soft shadow-brand-500/20">
-              <Sparkles className="w-5 h-5 text-amber-200 animate-pulse-subtle" />
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center">
-                <span className="text-[9px] font-bold text-white">✓</span>
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 via-brand-900 to-brand-700 dark:from-white dark:via-brand-200 dark:to-brand-400 bg-clip-text text-transparent">
-                  FluencyAI
-                </span>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300/60 dark:border-slate-700">
-                  Tutor
-                </span>
-              </div>
-              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hidden sm:block">English Speaking Companion</p>
-            </div>
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 min-w-0">
+          {/* Official Brand Logo */}
+          <div className="flex-shrink-0 min-w-0">
+            <FluencyLogo size="sm" />
           </div>
 
-          {/* Streamlined Header Controls */}
-          <div className="flex items-center gap-1.5">
+          {/* Desktop Controls (md and up) */}
+          <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
             {/* Coach Selector Pill */}
             {onOpenPersonaSelector && (
               <button
@@ -190,7 +194,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition active:scale-95 shadow-2xs"
               >
                 <span className="text-sm">{activePersona?.avatar || '🧑‍💼'}</span>
-                <span className="hidden sm:inline font-bold">{activePersona?.name || 'James'}</span>
+                <span className="font-bold">{activePersona?.name || 'James'}</span>
               </button>
             )}
 
@@ -311,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 playChime('tap');
                 onOpenRoadmap?.();
               }}
-              className={`hidden md:flex group items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs hover:shadow-xs ${currentTierConfig.badgeAccent.pillBg}`}
+              className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs hover:shadow-xs ${currentTierConfig.badgeAccent.pillBg}`}
               title={`Fluency Tier: ${currentTierConfig.name} (${totalXP.toLocaleString()} Lifetime XP) • Click to open Rewards Roadmap`}
             >
               <span className="text-sm leading-none group-hover:scale-110 transition-transform">
@@ -341,7 +345,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title="View Plans & Pricing"
               >
                 <Crown className="w-3.5 h-3.5 text-amber-500 group-hover:rotate-12 transition-transform" />
-                <span className="hidden sm:inline">Pricing</span>
+                <span>Pricing</span>
                 <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-500 text-white leading-none">
                   Pro
                 </span>
@@ -349,50 +353,41 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* User Profile, Cloud Sync & Subtle AI Gateway Status Dot */}
-            {(() => {
-              const rawName = authSession ? authSession.user.name : (progress.name !== 'Alex' ? progress.name : '');
-              const formattedName = formatDisplayName(rawName);
-              const buttonLabel = formattedName || 'Profile';
-              const pictureUrl = authSession?.user?.picture || progress.avatar;
-
-              return (
-                <button
-                  onClick={() => {
-                    playChime('tap');
-                    setShowProfileModal(true);
-                  }}
-                  className={`relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs ${
-                    authSession
-                      ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 dark:from-brand-950/60 dark:to-emerald-950/60 text-brand-900 dark:text-brand-200 border-brand-200 dark:border-brand-800 hover:bg-brand-100'
-                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-                  }`}
-                  title={
-                    isGatewayConnected
-                      ? `${buttonLabel} • AI Connected (${llmConfig.model})`
-                      : `${buttonLabel} • AI in Mock Mode (Click to configure)`
-                  }
-                >
-                  <UserAvatar
-                    picture={pictureUrl}
-                    name={formattedName}
-                    size="xs"
-                    showOnlineDot={Boolean(authSession)}
-                    hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
-                  />
-                  <span className="max-w-[90px] sm:max-w-[130px] truncate font-extrabold text-slate-900 dark:text-slate-100">
-                    {buttonLabel}
-                  </span>
-                  <span
-                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      isGatewayConnected
-                        ? 'bg-emerald-500 shadow-xs shadow-emerald-400'
-                        : 'bg-rose-500 animate-pulse'
-                    }`}
-                    title={isGatewayConnected ? 'AI Gateway Connected' : 'AI Gateway Offline'}
-                  />
-                </button>
-              );
-            })()}
+            <button
+              onClick={() => {
+                playChime('tap');
+                setShowProfileModal(true);
+              }}
+              className={`relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs ${
+                authSession
+                  ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 dark:from-brand-950/60 dark:to-emerald-950/60 text-brand-900 dark:text-brand-200 border-brand-200 dark:border-brand-800 hover:bg-brand-100'
+                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+              }`}
+              title={
+                isGatewayConnected
+                  ? `${buttonLabel} • AI Connected (${llmConfig.model})`
+                  : `${buttonLabel} • AI in Mock Mode (Click to configure)`
+              }
+            >
+              <UserAvatar
+                picture={pictureUrl}
+                name={formattedName}
+                size="xs"
+                showOnlineDot={Boolean(authSession)}
+                hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
+              />
+              <span className="max-w-[120px] truncate font-extrabold text-slate-900 dark:text-slate-100">
+                {buttonLabel}
+              </span>
+              <span
+                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  isGatewayConnected
+                    ? 'bg-emerald-500 shadow-xs shadow-emerald-400'
+                    : 'bg-rose-500 animate-pulse'
+                }`}
+                title={isGatewayConnected ? 'AI Gateway Connected' : 'AI Gateway Offline'}
+              />
+            </button>
 
             {/* PWA Install Button */}
             <button
@@ -401,19 +396,298 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Install app to your home screen"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Install</span>
+              <span>Install</span>
+            </button>
+          </div>
+
+          {/* Streamlined Mobile Controls (< md): Compact Essentials + Pull-Down Menu Trigger */}
+          <div className="flex md:hidden items-center gap-1.5 flex-shrink-0">
+            {/* Quick Coach + Level Pill */}
+            {onOpenPersonaSelector && (
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  onOpenPersonaSelector();
+                }}
+                title="Switch English Coach"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-800/80 text-xs font-bold transition active:scale-95"
+              >
+                <span className="text-sm leading-none">{activePersona?.avatar || '🧑‍💼'}</span>
+                <span className="text-[11px] font-black text-indigo-900 dark:text-indigo-200">
+                  {activePersona?.name || 'James'}
+                </span>
+              </button>
+            )}
+
+            {/* Quick Profile Avatar Button */}
+            <button
+              onClick={() => {
+                playChime('tap');
+                setShowMobileMenu(false);
+                setShowProfileModal(true);
+              }}
+              aria-label="Open User Profile"
+              className={`relative flex items-center gap-1 p-1 rounded-xl border transition active:scale-95 ${
+                authSession
+                  ? 'bg-brand-50/90 dark:bg-brand-950/60 border-brand-200 dark:border-brand-800'
+                  : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <UserAvatar
+                picture={pictureUrl}
+                name={formattedName}
+                size="xs"
+                showOnlineDot={Boolean(authSession)}
+                hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
+              />
+              <span
+                className={`w-1.5 h-1.5 rounded-full mr-0.5 ${
+                  isGatewayConnected ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
+                }`}
+              />
+            </button>
+
+            {/* Mobile Pull-Down Menu Button */}
+            <button
+              onClick={() => {
+                playChime('tap');
+                setShowMobileMenu((prev) => !prev);
+              }}
+              aria-expanded={showMobileMenu}
+              aria-label="Toggle quick settings pull-down menu"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-black transition active:scale-95 shadow-2xs ${
+                showMobileMenu
+                  ? 'bg-brand-600 text-white border-brand-500 shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {showMobileMenu ? (
+                <X className="w-4 h-4" />
+              ) : (
+                <>
+                  <Menu className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                  <span className="text-[11px] font-extrabold">{progress.level}</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-75" />
+                </>
+              )}
             </button>
           </div>
         </div>
 
+        {/* Mobile Pull-Down Drawer Menu (< md) */}
+        {showMobileMenu && (
+          <div className="md:hidden border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl px-4 py-4 shadow-soft-lg animate-slide-up max-h-[82dvh] overflow-y-auto">
+            <div className="space-y-4 max-w-lg mx-auto">
+              {/* Top Row: User Profile, Fluency Tier & Pro Upgrade */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    setShowMobileMenu(false);
+                    setShowProfileModal(true);
+                  }}
+                  className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-left transition active:scale-98"
+                >
+                  <UserAvatar
+                    picture={pictureUrl}
+                    name={formattedName}
+                    size="sm"
+                    showOnlineDot={Boolean(authSession)}
+                    hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-black text-slate-900 dark:text-white truncate">
+                      {buttonLabel}
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                          isGatewayConnected ? 'bg-emerald-500' : 'bg-rose-500'
+                        }`}
+                      />
+                      <span className="truncate">
+                        {authSession ? 'Cloud Synced' : 'Account & AI'}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    setShowMobileMenu(false);
+                    onOpenRoadmap?.();
+                  }}
+                  className={`flex items-center gap-2.5 p-2.5 rounded-2xl border text-left transition active:scale-98 ${currentTierConfig.badgeAccent.pillBg}`}
+                >
+                  <span className="text-xl leading-none">{currentTierConfig.badgeAccent.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-black text-slate-900 dark:text-white truncate">
+                      {currentTierConfig.name}
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                      {totalXP.toLocaleString()} XP • Roadmap
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Target CEFR Level Selection */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Target English Level (CEFR)
+                  </span>
+                  {onOpenPlacement && (
+                    <button
+                      onClick={() => {
+                        playChime('tap');
+                        setShowMobileMenu(false);
+                        onOpenPlacement();
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-black text-brand-600 dark:text-brand-400 hover:underline"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Placement Check</span>
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {levels.map((lvl) => (
+                    <button
+                      key={lvl}
+                      onClick={() => {
+                        onUpdateProgress((prev) => ({ ...prev, level: lvl }));
+                        playChime('tap');
+                      }}
+                      className={`py-2 rounded-xl text-xs font-black transition active:scale-95 border ${
+                        progress.level === lvl
+                          ? 'bg-brand-600 text-white border-brand-500 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Audio Speed & Coach Switcher Row */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={handleSpeedToggle}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 text-left transition active:scale-95"
+                >
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Voice Speed
+                    </div>
+                    <div className="text-xs font-black text-slate-900 dark:text-white mt-0.5 flex items-center gap-1.5">
+                      <Volume2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                      <span>{progress.audioSpeed}x Playback</span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-300 text-[10px] font-black">
+                    Tap
+                  </span>
+                </button>
+
+                {onOpenPersonaSelector && (
+                  <button
+                    onClick={() => {
+                      playChime('tap');
+                      setShowMobileMenu(false);
+                      onOpenPersonaSelector();
+                    }}
+                    className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/70 text-left transition active:scale-95"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                        AI Coach
+                      </div>
+                      <div className="text-xs font-black text-indigo-950 dark:text-indigo-200 mt-0.5 truncate flex items-center gap-1">
+                        <span>{activePersona?.avatar || '🧑‍💼'}</span>
+                        <span className="truncate">{activePersona?.name || 'James'}</span>
+                      </div>
+                    </div>
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                  </button>
+                )}
+              </div>
+
+              {/* Native Translation Helper Language */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800">
+                <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                  <Globe className="w-3.5 h-3.5 text-brand-500" />
+                  <span>Translation Helper ({progress.nativeLanguage})</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => {
+                        onUpdateProgress((prev) => ({ ...prev, nativeLanguage: lang }));
+                        playChime('tap');
+                      }}
+                      className={`px-2 py-1.5 rounded-xl text-[11px] font-bold truncate transition active:scale-95 border ${
+                        progress.nativeLanguage === lang
+                          ? 'bg-brand-600 text-white border-brand-500 font-black shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      {lang}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom Utility Bar: Theme Toggle, Pro Plans, Install App */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <ThemeToggle variant="pill" />
+                  {onOpenPricing && (
+                    <button
+                      onClick={() => {
+                        playChime('tap');
+                        setShowMobileMenu(false);
+                        onOpenPricing();
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-indigo-500/15 text-amber-700 dark:text-amber-300 border border-amber-300/50 dark:border-amber-500/30 text-xs font-black transition active:scale-95"
+                    >
+                      <Crown className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Pro Plans</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleInstallClick}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 text-white text-xs font-bold shadow-xs transition active:scale-95"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Install App</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Connectivity & Offline Indicator */}
         {!isOnline && (
           <div className="bg-amber-500 text-amber-950 px-4 py-1 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all">
-            <WifiOff className="w-3.5 h-3.5" />
-            <span>Offline mode active • Roleplays and audio vocabulary are ready from cache</span>
+            <WifiOff className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate">Offline mode active • Roleplays & audio ready from cache</span>
           </div>
         )}
       </header>
+
+      {/* Backdrop for Mobile Pull-Down Menu */}
+      {showMobileMenu && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[2px] md:hidden"
+          onClick={() => setShowMobileMenu(false)}
+        />
+      )}
 
       {/* AI Gateway Settings Modal */}
       {showGatewayModal && (
