@@ -93,15 +93,15 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
   return (
     <div className="w-full space-y-3.5">
       {/* Welcoming Header Banner */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
               {getGreeting()}, {formatDisplayName(progress.name)}!
             </h1>
-            <span className="inline-block animate-bounce-subtle text-xl">🌱</span>
+            <span className="inline-block animate-bounce-subtle text-lg sm:text-xl">🌱</span>
           </div>
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-0.5">
+          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-0.5">
             Consistency over perfection. Speak a little every day!
           </p>
         </div>
@@ -113,7 +113,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
               playChime('tap');
               onOpenRoadmap?.();
             }}
-            className={`cursor-pointer group flex items-center gap-2 px-3 py-1.5 rounded-2xl border shadow-sm transition active:scale-95 ${currentTierConfig.badgeAccent.pillBg}`}
+            className={`flex-1 sm:flex-initial justify-center sm:justify-start cursor-pointer group flex items-center gap-2 px-3 py-1.5 rounded-2xl border shadow-sm transition active:scale-95 ${currentTierConfig.badgeAccent.pillBg}`}
             title={`Current Rank: ${currentTierConfig.name} • Click to open Rewards Roadmap`}
           >
             <span className="text-base group-hover:scale-110 transition-transform">
@@ -134,11 +134,11 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
               playChime('streak');
               confetti({ particleCount: 30, spread: 50, origin: { y: 0.2 } });
             }}
-            className="cursor-pointer group flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-50 dark:bg-amber-950/70 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200/80 dark:border-amber-700/80 shadow-sm transition active:scale-95"
+            className="flex-1 sm:flex-initial justify-center sm:justify-start cursor-pointer group flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-50 dark:bg-amber-950/70 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200/80 dark:border-amber-700/80 shadow-sm transition active:scale-95"
             title="Click to celebrate streak!"
           >
             <Flame className="w-5 h-5 text-amber-500 fill-amber-500 animate-pulse-subtle group-hover:scale-110 transition-transform" />
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <div className="text-xs font-black text-amber-900 dark:text-amber-100 leading-none">
                 {streakDays} Days
               </div>
@@ -151,29 +151,29 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
       </div>
 
       {/* Main Daily Goal & Hero Session Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-brand-50/30 to-emerald-50/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 p-5 shadow-soft border border-slate-200/80 dark:border-slate-800">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-brand-50/30 to-emerald-50/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 p-4 sm:p-5 shadow-soft border border-slate-200/80 dark:border-slate-800">
         <div className="pointer-events-none absolute -top-12 -right-12 w-36 h-36 rounded-full bg-brand-200/40 dark:bg-brand-500/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 -left-12 w-36 h-36 rounded-full bg-emerald-200/40 dark:bg-emerald-500/10 blur-2xl" />
 
         <div className="relative z-10 space-y-4">
           {/* Progress Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               <div className="flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-tr from-brand-600 to-sky-400 text-white shadow-soft shadow-brand-500/30 flex-shrink-0">
                 <Mic className="w-4.5 h-4.5 text-white" />
               </div>
-              <div>
-                <span className="text-[11px] font-black text-slate-500 dark:text-slate-300 uppercase tracking-wider block">
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-black text-slate-500 dark:text-slate-300 uppercase tracking-wider block">
                   Daily Speaking Goal
                 </span>
-                <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
                   {currentMinutes} of {speakingMinutesTarget} mins spoken
                 </div>
               </div>
             </div>
 
             <div
-              className={`px-3 py-1 rounded-xl text-xs font-black tracking-wide border shadow-2xs flex items-center gap-1 ${
+              className={`px-2.5 sm:px-3 py-1 rounded-xl text-xs font-black tracking-wide border shadow-2xs flex items-center gap-1 flex-shrink-0 ${
                 isGoalReached
                   ? 'bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/40 dark:border-emerald-500/40'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white border-slate-200 dark:border-slate-700'
@@ -192,17 +192,17 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 style={{ width: `${minutesPercent}%` }}
               />
             </div>
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200">
-              <span>Goal: {speakingMinutesTarget} mins daily practice</span>
+            <div className="flex items-center justify-between text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200">
+              <span>Goal: {speakingMinutesTarget} mins daily</span>
               <span>{Math.max(0, speakingMinutesTarget - currentMinutes)} mins remaining</span>
             </div>
           </div>
 
           {/* Primary Hero Action: Start Today's Lesson */}
           {onStartLesson && (
-            <div className="rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-sky-600 p-4 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
+            <div className="rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-sky-600 p-3.5 sm:p-4 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-extrabold uppercase tracking-wider">
                     Today&apos;s Guided Session
                   </span>
@@ -220,7 +220,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
                 <button
                   onClick={() => {
                     playChime('tap');
@@ -228,7 +228,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                   }}
                   className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-black text-xs shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95"
                 >
-                  <Play className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                  <Play className="w-3.5 h-3.5 fill-slate-950 text-slate-950 flex-shrink-0" />
                   <span className="text-slate-950 font-black">Start Daily Lesson</span>
                 </button>
                 {onStartDirectRoleplay && (
@@ -237,7 +237,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                       playChime('tap');
                       onStartDirectRoleplay();
                     }}
-                    className="py-2.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-black text-xs transition active:scale-95"
+                    className="py-2.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-black text-xs transition active:scale-95 flex-shrink-0"
                     title="Skip warm-up phrases and jump straight into Stage 2 Roleplay"
                   >
                     ⚡ Skip Prep
@@ -248,10 +248,12 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
           )}
 
           {/* Goal Milestones Row */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="relative p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between group shadow-2xs hover:border-brand-300 dark:hover:border-brand-500 transition">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">XP Today</span>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="relative p-2 sm:p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between group shadow-2xs hover:border-brand-300 dark:hover:border-brand-500 transition min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider truncate">
+                  XP Today
+                </span>
                 <button
                   onClick={() => {
                     if (!dailyChestClaimed && isDailyGoalMet) {
@@ -270,7 +272,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                       ? '🎁 Daily Milestone Chest Ready! Tap to claim +50 XP bonus'
                       : `🎁 Daily Chest: reach ${dailyXPTarget} XP & ${speakingMinutesTarget} mins to unlock`
                   }
-                  className={`p-1 rounded-lg transition active:scale-95 ${
+                  className={`p-0.5 sm:p-1 rounded-lg transition active:scale-95 flex-shrink-0 ${
                     dailyChestClaimed
                       ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60'
                       : isDailyGoalMet
@@ -278,37 +280,40 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                       : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <Gift className={`w-3.5 h-3.5 ${isDailyGoalMet && !dailyChestClaimed ? 'animate-pulse' : ''}`} />
+                  <Gift className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isDailyGoalMet && !dailyChestClaimed ? 'animate-pulse' : ''}`} />
                 </button>
               </div>
 
-              <div className="text-base font-black text-brand-600 dark:text-sky-300 my-0.5">
+              <div className="text-sm sm:text-base font-black text-brand-600 dark:text-sky-300 my-0.5 truncate">
                 {dailyXP}/{dailyXPTarget}
               </div>
 
-              <div className="text-[10px] font-black text-amber-950 dark:text-amber-100 bg-amber-200 dark:bg-amber-900/80 border border-amber-300 dark:border-amber-600 rounded-md py-0.5 px-1 truncate flex items-center justify-center gap-0.5">
-                <span>{multiplierInfo.label}</span>
+              <div className="text-[9px] sm:text-[10px] font-black text-amber-950 dark:text-amber-100 bg-amber-200 dark:bg-amber-900/80 border border-amber-300 dark:border-amber-600 rounded-md py-0.5 px-1 truncate flex items-center justify-center gap-0.5">
+                <span className="truncate">{multiplierInfo.label}</span>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between shadow-2xs">
-              <div className="text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">Fluency CEFR</div>
-              <div className="text-base font-black text-emerald-600 dark:text-emerald-300 my-0.5">
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between shadow-2xs min-w-0">
+              <div className="text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider truncate">
+                Fluency CEFR
+              </div>
+              <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-300 my-0.5 truncate">
                 Level {progress.level}
               </div>
-              <div className="text-[10px] font-black text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-500 rounded-md py-0.5 px-1 truncate">
+              <div className="text-[9px] sm:text-[10px] font-black text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-500 rounded-md py-0.5 px-1 truncate">
                 {currentTierConfig.shortName}
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between shadow-2xs">
-              <div className="text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">
-                Pronunciation Avg
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between shadow-2xs min-w-0">
+              <div className="text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider truncate">
+                <span className="sm:hidden">Clarity</span>
+                <span className="hidden sm:inline">Pronunciation Avg</span>
               </div>
-              <div className="text-base font-black text-emerald-600 dark:text-emerald-300 my-0.5">
+              <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-300 my-0.5 truncate">
                 {pronunciationAvg}%
               </div>
-              <div className="text-[10px] font-black text-emerald-950 dark:text-emerald-100 bg-emerald-200 dark:bg-emerald-900/80 border border-emerald-300 dark:border-emerald-600 rounded-md py-0.5 px-1 truncate">
+              <div className="text-[9px] sm:text-[10px] font-black text-emerald-950 dark:text-emerald-100 bg-emerald-200 dark:bg-emerald-900/80 border border-emerald-300 dark:border-emerald-600 rounded-md py-0.5 px-1 truncate">
                 {pronunciationAvg >= 90
                   ? '💎 +25% Bonus'
                   : pronunciationAvg >= 85
@@ -328,15 +333,15 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 }}
                 className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-sky-500/15 via-brand-500/10 to-emerald-500/15 dark:from-sky-950/60 dark:to-emerald-950/60 hover:from-sky-500/25 hover:to-emerald-500/25 dark:hover:from-sky-950/80 dark:hover:to-emerald-950/80 border border-brand-300 dark:border-brand-600 text-slate-900 dark:text-slate-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
-                <span className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs text-sm">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs text-sm flex-shrink-0">
                     {coachAvatar}
                   </span>
-                  <span className="text-left leading-tight">
-                    <span className="block font-black text-slate-900 dark:text-white">
+                  <span className="text-left leading-tight min-w-0">
+                    <span className="block font-black text-slate-900 dark:text-white truncate">
                       Free Talk with {coachName}
                     </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-200 font-bold">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-200 font-bold block truncate">
                       Open voice chat · 0 prep
                     </span>
                   </span>
@@ -350,16 +355,16 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 onClick={onOpenWarmup}
                 className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-rose-500/15 dark:from-amber-950/60 dark:to-rose-950/60 hover:from-amber-500/25 hover:to-rose-500/25 dark:hover:from-amber-950/80 dark:hover:to-rose-950/80 border border-amber-300 dark:border-amber-600 text-amber-950 dark:text-amber-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
-                <span className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs flex-shrink-0">
                     <Zap className="w-3.5 h-3.5 animate-pulse" />
                   </span>
-                  <span className="text-left leading-tight">
-                    <span className="block font-black text-amber-950 dark:text-white">60s Spoken Sprint</span>
-                    <span className="text-[11px] text-amber-900 dark:text-amber-200 font-bold">Rapid warm-up · +50 XP</span>
+                  <span className="text-left leading-tight min-w-0">
+                    <span className="block font-black text-amber-950 dark:text-white truncate">60s Spoken Sprint</span>
+                    <span className="text-[11px] text-amber-900 dark:text-amber-200 font-bold block truncate">Rapid warm-up · +50 XP</span>
                   </span>
                 </span>
-                <span className="text-xs text-amber-700 dark:text-amber-300 font-black group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+                <span className="text-xs text-amber-700 dark:text-amber-300 font-black group-hover:translate-x-0.5 transition-transform flex-shrink-0">&rarr;</span>
               </button>
             )}
 
@@ -368,16 +373,16 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 onClick={onOpenSRS}
                 className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-indigo-500/10 to-purple-500/15 dark:from-indigo-950/60 dark:to-purple-950/60 hover:from-indigo-500/25 hover:to-purple-500/25 dark:hover:from-indigo-950/80 dark:hover:to-purple-950/80 border border-indigo-300 dark:border-indigo-600 text-indigo-950 dark:text-indigo-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
-                <span className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
                     <Layers className="w-3.5 h-3.5" />
                   </span>
-                  <span className="text-left leading-tight">
-                    <span className="block font-black text-indigo-950 dark:text-white">SRS Flashcards</span>
-                    <span className="text-[11px] text-indigo-900 dark:text-indigo-200 font-bold">{srsDueCount} cards due for recall</span>
+                  <span className="text-left leading-tight min-w-0">
+                    <span className="block font-black text-indigo-950 dark:text-white truncate">SRS Flashcards</span>
+                    <span className="text-[11px] text-indigo-900 dark:text-indigo-200 font-bold block truncate">{srsDueCount} cards due for recall</span>
                   </span>
                 </span>
-                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-black group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-black group-hover:translate-x-0.5 transition-transform flex-shrink-0">&rarr;</span>
               </button>
             )}
           </div>
