@@ -30,6 +30,7 @@ interface PlacementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCompletePlacement: (assessedLevel: CEFRLevel, details: PlacementAssessmentResult) => void;
+  onSkipPlacement?: () => void;
   audioSpeed?: number;
   initialLevel?: CEFRLevel;
 }
@@ -105,6 +106,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
   isOpen,
   onClose,
   onCompletePlacement,
+  onSkipPlacement,
   audioSpeed = 0.9,
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -506,17 +508,30 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-2 flex items-center justify-between gap-3">
-                <button
-                  onClick={() => {
-                    playChime('tap');
-                    if (currentStep > 0) setCurrentStep((p) => p - 1);
-                  }}
-                  disabled={currentStep === 0}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  Back
-                </button>
+              <div className="pt-2 flex items-center justify-between gap-2.5">
+                {currentStep > 0 ? (
+                  <button
+                    onClick={() => {
+                      playChime('tap');
+                      setCurrentStep((p) => p - 1);
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    Back
+                  </button>
+                ) : onSkipPlacement ? (
+                  <button
+                    onClick={() => {
+                      playChime('tap');
+                      stopSpeaking();
+                      onSkipPlacement();
+                      onClose();
+                    }}
+                    className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    Skip Placement
+                  </button>
+                ) : null}
 
                 <button
                   onClick={handleNextStep}

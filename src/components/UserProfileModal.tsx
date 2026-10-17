@@ -1249,6 +1249,30 @@ export const UserProfileModal: React.FC<Props> = ({
               </button>
             </div>
           )}
+
+          {/* Onboarding Restart Banner */}
+          {onOpenOnboarding && (
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2.5">
+                <Compass className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <div>
+                  <div className="font-bold text-slate-900 dark:text-white">Interactive Onboarding</div>
+                  <div className="text-[10px] text-slate-400">Replay the simple 4-step setup tour</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playChime('tap');
+                  onClose();
+                  onOpenOnboarding();
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-[11px] transition active:scale-95"
+              >
+                Restart Tour
+              </button>
+            </div>
+          )}
             </>
           ) : (
             /* VIEW: STRIPE BILLING & PAYMENT METHODS */

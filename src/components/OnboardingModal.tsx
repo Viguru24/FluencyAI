@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   Volume2,
@@ -115,6 +115,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     progress.dailyGoalMinutes || 15
   );
   const [auditioningId, setAuditioningId] = useState<PersonaId | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

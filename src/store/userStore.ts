@@ -252,6 +252,42 @@ export function useUserStore() {
     }));
   }, []);
 
+  const restartOnboarding = useCallback(() => {
+    try {
+      localStorage.removeItem(ONBOARDING_COMPLETED_KEY);
+    } catch {
+      /* ignore */
+    }
+    setProgress((prev) => ({
+      ...prev,
+      hasCompletedOnboarding: false,
+    }));
+  }, []);
+
+  const dismissPlacement = useCallback(() => {
+    try {
+      localStorage.setItem(PLACEMENT_ASSESSED_KEY, 'true');
+    } catch {
+      /* ignore */
+    }
+    setProgress((prev) => ({
+      ...prev,
+      hasCompletedPlacement: true,
+    }));
+  }, []);
+
+  const resetPlacement = useCallback(() => {
+    try {
+      localStorage.removeItem(PLACEMENT_ASSESSED_KEY);
+    } catch {
+      /* ignore */
+    }
+    setProgress((prev) => ({
+      ...prev,
+      hasCompletedPlacement: false,
+    }));
+  }, []);
+
   return {
     progress,
     setProgress,
@@ -261,7 +297,10 @@ export function useUserStore() {
     isPlacementCompleted,
     isOnboardingCompleted,
     completeOnboarding,
+    restartOnboarding,
     completePlacement,
+    dismissPlacement,
+    resetPlacement,
     completeLesson,
     saveMistakes,
     rewardXP,
