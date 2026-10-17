@@ -151,7 +151,7 @@ interface Props {
   onEnd: (stats: RoleplayStats) => void;
 }
 
-const HOLD_THRESHOLD_MS = 280;
+const HOLD_THRESHOLD_MS = 600;
 
 export const RoleplayStage: React.FC<Props> = ({
   plan,
@@ -607,7 +607,7 @@ export const RoleplayStage: React.FC<Props> = ({
     if (!isPressingRef.current) return;
     const duration = Date.now() - pressStartTimeRef.current;
     isPressingRef.current = false;
-    const wasHolding = isHoldingRef.current || duration >= HOLD_THRESHOLD_MS;
+    const wasHolding = isHoldingRef.current && duration >= HOLD_THRESHOLD_MS;
     setIsHolding(false);
     isHoldingRef.current = false;
 

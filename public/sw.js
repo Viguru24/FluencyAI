@@ -1,5 +1,5 @@
 // Fluency AI Service Worker - Offline Caching & PWA Experience
-const CACHE_NAME = 'fluencyai-cache-v9';
+const CACHE_NAME = 'fluencyai-cache-v10';
 
 // Install Event - Precache App Shell
 self.addEventListener('install', (event) => {
