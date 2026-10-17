@@ -452,7 +452,8 @@ class AuthService {
   public loginWithGoogle(redirectUri?: string): void {
     if (typeof window === 'undefined') return;
     const baseUrl = getAuthProviderUrl();
-    const returnTarget = redirectUri || window.location.origin;
+    const defaultTarget = window.location.origin + (window.location.pathname.startsWith('/fluency') ? '/fluency/' : window.location.pathname);
+    const returnTarget = redirectUri || defaultTarget;
     const authUrl = `${baseUrl}/api/auth/google?platform=fluency&redirect=${encodeURIComponent(returnTarget)}`;
     window.location.href = authUrl;
   }
