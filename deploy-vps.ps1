@@ -16,7 +16,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # 2. Deploy to Ra VPS via SCP
 Write-Host "`n📡 Uploading to Ra VPS ('192.168.1.28:/opt/fluencyai/dist')..." -ForegroundColor Yellow
-scp -r -o BatchMode=yes ./dist/* viguru@192.168.1.28:/opt/fluencyai/dist/
+scp -r -o BatchMode=yes dist/. viguru@192.168.1.28:/opt/fluencyai/dist/
 if ($LASTEXITCODE -ne 0) {
     Write-Error "SCP upload failed! Check SSH connectivity to Ra server."
     exit 1
