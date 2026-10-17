@@ -34,8 +34,11 @@ import {
   generateJamesReply,
   generateGeminiScorecard,
   cleanTextForTTS,
+  transcribeAudioWithAI,
+  isGeminiConfigured,
   type AudioAttachment,
 } from '../../services/geminiService';
+import { toast } from '../../services/toast';
 import { getDueSRSFlashcards } from '../../services/srsService';
 import { getAvailableAudioSpeeds, useGamificationStore } from '../../store/rewardSystem';
 import { InteractiveTranscriptText, WordLookupModal } from '../WordLookupPopover';
@@ -441,7 +444,7 @@ export const RoleplayStage: React.FC<Props> = ({
       }
     }
 
-    const finalTranscript = livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '';
+    let finalTranscript = livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '';
     livePreviewRef.current = '';
     setLivePreview('');
     setLiveLowConfidenceWords([]);
@@ -455,10 +458,36 @@ export const RoleplayStage: React.FC<Props> = ({
       recordedClipsRef.current.push(audioAttachment);
     }
 
+    // AI Audio Transcription Fallback:
+    // If the browser Web Speech API did not return text (common on mobile Android due to mic exclusive lock),
+    // but the microphone successfully recorded audio, transcribe the audio using Gemini multimodal AI!
+    if (!finalTranscript && audioAttachment && audioAttachment.base64 && isGeminiConfigured()) {
+      try {
+        const aiTranscript = await transcribeAudioWithAI({
+          base64: audioAttachment.base64,
+          mimeType: audioAttachment.mimeType,
+          blob: audioClip?.blob,
+        });
+        if (aiTranscript && aiTranscript.trim().length > 0) {
+          finalTranscript = aiTranscript.trim();
+          console.log('[RoleplayStage] Recovered user transcript via AI:', finalTranscript);
+        }
+      } catch (err) {
+        console.warn('[RoleplayStage] AI audio transcription fallback error:', err);
+      }
+    }
+
+    // Guard: If no speech was captured at all (mic silent, accidentally touched for 50ms, or muted),
+    // prompt user to try speaking again rather than silently inserting fake demo words.
+    if (!finalTranscript) {
+      setIsProcessing(false);
+      toast.warning('No speech detected. Please hold or tap the mic and speak clearly.', "Didn't Catch That");
+      return;
+    }
+
     const idx = userTurnCount.current++;
-    const fallback = plan.mockUserReplies[idx % plan.mockUserReplies.length];
     const userSpokeReal = Boolean(finalTranscript.length > 0);
-    const text = userSpokeReal ? finalTranscript : fallback;
+    const text = finalTranscript;
 
     if (userSpokeReal) {
       const phrasesToCheck = [...plan.phrases];

@@ -3,3 +3,4 @@ export * from './ai/aiClient';
 export * from './ai/tutorChat';
 export * from './ai/scorecardGrader';
 export * from './ai/scenarioGenerator';
+export * from './ai/audioTranscription';

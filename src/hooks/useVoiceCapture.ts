@@ -8,7 +8,7 @@ import {
 } from '../services/speechRecognition';
 import { AudioRecorderController, type RecordedAudioClip } from '../services/audioRecorder';
 import { AudioVisualizerController } from '../services/audioVisualizer';
-import type { AudioAttachment } from '../services/geminiService';
+import { transcribeAudioWithAI, isGeminiConfigured, type AudioAttachment } from '../services/geminiService';
 
 const HOLD_THRESHOLD_MS = 280;
 
@@ -107,8 +107,24 @@ export function useVoiceCapture({
       }
     }
 
-    const finalSpoken = livePreviewRef.current.trim() || heard.trim();
+    let finalSpoken = livePreviewRef.current.trim() || heard.trim();
     updateLivePreview('');
+
+    if (!finalSpoken && audioClip?.base64 && isGeminiConfigured()) {
+      try {
+        const aiTranscript = await transcribeAudioWithAI({
+          base64: audioClip.base64,
+          mimeType: audioClip.mimeType,
+          blob: audioClip.blob,
+        });
+        if (aiTranscript && aiTranscript.trim().length > 0) {
+          finalSpoken = aiTranscript.trim();
+          console.log('[useVoiceCapture] Recovered user transcript via AI:', finalSpoken);
+        }
+      } catch (err) {
+        console.warn('[useVoiceCapture] AI audio transcription fallback error:', err);
+      }
+    }
 
     if (finalSpoken) {
       onCompleteCapture(finalSpoken, audioClip);

@@ -123,6 +123,11 @@ export function startRecognition(
     }
   };
 
+  const isMobileDevice = (): boolean => {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
   const initRecognition = () => {
     if (isStopped) return;
 
@@ -130,7 +135,10 @@ export function startRecognition(
       rec = new Ctor();
       rec.lang = lang;
       rec.interimResults = true;
-      rec.continuous = true;
+      // On mobile devices (especially Android Chrome), continuous mode is unstable and often causes
+      // SpeechRecognition to abort immediately or fail to fire onresult.
+      // Non-continuous mode is rock-solid on mobile and auto-restarts seamlessly via onend.
+      rec.continuous = !isMobileDevice();
       rec.maxAlternatives = 3;
 
       rec.onstart = () => {
@@ -202,7 +210,7 @@ export function startRecognition(
 
       rec.onerror = (event: any) => {
         const err = event?.error;
-        console.log('[SpeechRecognition] Event:', err);
+        console.warn('[SpeechRecognition] Error event:', err);
 
         // Benign errors: 'no-speech' happens when the user is thinking/pausing mid-sentence.
         // DO NOT stop or clear transcript on 'no-speech'
@@ -210,10 +218,18 @@ export function startRecognition(
           return;
         }
 
-        if (err === 'audio-capture' || err === 'not-allowed') {
-          clearSilenceTimer();
-          onStatusChange?.('error', `Microphone error: ${err}`);
+        clearSilenceTimer();
+        let errorMsg = `Speech recognition error: ${err}`;
+        if (err === 'not-allowed') {
+          errorMsg = 'Microphone permission denied. Please allow microphone access in your browser settings.';
+        } else if (err === 'audio-capture') {
+          errorMsg = 'Microphone is busy or blocked by another audio process.';
+        } else if (err === 'service-not-allowed') {
+          errorMsg = 'Speech recognition service is disabled or unavailable on this device.';
+        } else if (err === 'network') {
+          errorMsg = 'Network error connecting to speech recognition service.';
         }
+        onStatusChange?.('error', errorMsg);
       };
 
       rec.onend = () => {
