@@ -25,6 +25,7 @@ import { formatDisplayName } from '../utils/nameFormatter';
 import { useGamificationStore, getAvailableAudioSpeeds } from '../store/rewardSystem';
 import { FluencyLogo } from './FluencyLogo';
 import { isDevMode } from '../utils/devMode';
+import { navigationHistory } from '../services/navigationHistory';
 
 interface NavbarProps {
   progress: UserProgress;
@@ -80,6 +81,29 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsGatewayConnected(res.ok);
   };
 
+  const openGatewayModal = () => {
+    playChime('tap');
+    setShowGatewayModal(true);
+    navigationHistory.pushView('gateway');
+  };
+
+  const closeGatewayModal = () => {
+    setShowGatewayModal(false);
+    navigationHistory.navigateToHome();
+  };
+
+  const openProfileModal = () => {
+    playChime('tap');
+    setShowMobileMenu(false);
+    setShowProfileModal(true);
+    navigationHistory.pushView('profile');
+  };
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+    navigationHistory.navigateToHome();
+  };
+
   useEffect(() => {
     const unsub = subscribeToInstallPrompt((available) => {
       setCanInstall(available);
@@ -111,6 +135,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       checkGateway(updated);
     };
 
+    const handleCloseNavModals = () => {
+      setShowGatewayModal(false);
+      setShowProfileModal(false);
+      setShowMobileMenu(false);
+      setShowLangMenu(false);
+      setShowLevelMenu(false);
+    };
+
+    window.addEventListener('fluency_close_nav_modals', handleCloseNavModals);
     window.addEventListener('fluency_llm_config_changed', handleConfigChange);
 
     const unsubAuth = authService.onAuthStateChange((sess) => {
@@ -122,6 +155,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       unsubAuth();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('fluency_close_nav_modals', handleCloseNavModals);
       window.removeEventListener('fluency_llm_config_changed', handleConfigChange);
     };
   }, []);
@@ -183,7 +217,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <header className="sticky top-0 z-40 w-full glass-card border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm transition-all pt-safe">
         <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-2 flex items-center justify-between gap-1.5 sm:gap-3 min-w-0">
           {/* Official Brand Logo */}
-          <div className="min-w-0 shrink">
+          <div className="shrink-0 flex items-center">
             <FluencyLogo size="sm" />
           </div>
 
@@ -192,10 +226,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Clean Status Pill for Production Users / Dev Gateway Pill in Dev Mode */}
             {devMode ? (
               <button
-                onClick={() => {
-                  playChime('tap');
-                  setShowGatewayModal(true);
-                }}
+                onClick={openGatewayModal}
                 title={`AI Gateway (${llmConfig.model})`}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95"
               >
@@ -380,10 +411,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* User Profile & Cloud Sync */}
             <button
-              onClick={() => {
-                playChime('tap');
-                setShowProfileModal(true);
-              }}
+              onClick={openProfileModal}
               className={`relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs shrink-0 ${
                 authSession
                   ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 dark:from-brand-950/60 dark:to-emerald-950/60 text-brand-900 dark:text-brand-200 border-brand-200 dark:border-brand-800 hover:bg-brand-100'
@@ -430,39 +458,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Mobile & Tablet Controls (< lg): Un-Squashed on 360px Android Screens */}
-          <div className="flex lg:hidden items-center gap-1.5 sm:gap-3 min-w-0 shrink-0">
-            {/* Compact Streak Badge (< 640px: 🔥 5d, >= 640px: 🔥 5 Days) */}
+          {/* Mobile & Tablet Controls (< lg): Clean, balanced, never crowded */}
+          <div className="flex lg:hidden items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
+            {/* Streak Badge (Shown on tablet/wide screens; on mobile < sm, displayed right below in the greeting) */}
             <span
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/70 text-[11px] font-black shrink-0"
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/70 text-xs font-black shrink-0"
               title={`${progress.streakDays} Day Practice Streak`}
             >
               <span className="shrink-0 leading-none">🔥</span>
-              <span className="sm:hidden">{progress.streakDays}d</span>
-              <span className="hidden sm:inline">{progress.streakDays} Days</span>
+              <span>{progress.streakDays} Days</span>
             </span>
 
-            {/* Compact Tier Pill (< 640px: 🥈 Silver, >= 640px: full tier name) */}
+            {/* Fluency Tier Pill (Shown on tablet/wide screens) */}
             <button
               onClick={() => {
                 playChime('tap');
                 onOpenRoadmap?.();
               }}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border text-[11px] font-black transition active:scale-95 shrink-0 ${currentTierConfig.badgeAccent.pillBg}`}
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-black transition active:scale-95 shrink-0 ${currentTierConfig.badgeAccent.pillBg}`}
               title={`Fluency Tier: ${currentTierConfig.name}`}
             >
               <span className="shrink-0 leading-none">{currentTierConfig.badgeAccent.icon}</span>
-              <span className="sm:hidden text-slate-900 dark:text-white">{currentTierConfig.shortName}</span>
-              <span className="hidden sm:inline text-slate-900 dark:text-white">{currentTierConfig.name}</span>
+              <span className="text-slate-900 dark:text-white">{currentTierConfig.shortName}</span>
             </button>
 
             {/* Quick Profile Avatar Button */}
             <button
-              onClick={() => {
-                playChime('tap');
-                setShowMobileMenu(false);
-                setShowProfileModal(true);
-              }}
+              onClick={openProfileModal}
               aria-label="Open User Profile"
               className={`relative flex items-center gap-1 p-1 rounded-xl border transition active:scale-95 shrink-0 ${
                 authSession
@@ -526,11 +548,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <div className="grid grid-cols-2 gap-2.5">
                 <button
-                  onClick={() => {
-                    playChime('tap');
-                    setShowMobileMenu(false);
-                    setShowProfileModal(true);
-                  }}
+                  onClick={openProfileModal}
                   className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-left transition active:scale-98"
                 >
                   <UserAvatar
@@ -734,7 +752,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {showGatewayModal && (
         <AIGatewaySettingsModal
           isOpen={showGatewayModal}
-          onClose={() => setShowGatewayModal(false)}
+          onClose={closeGatewayModal}
           onConnectionStatusChange={(ok) => setIsGatewayConnected(ok)}
         />
       )}
@@ -743,11 +761,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       {showProfileModal && (
         <UserProfileModal
           isOpen={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
+          onClose={closeProfileModal}
           progress={progress}
           onUpdateProgress={onUpdateProgress}
           onOpenPlacement={onOpenPlacement}
-          onOpenGatewaySettings={() => setShowGatewayModal(true)}
+          onOpenGatewaySettings={openGatewayModal}
           onOpenPricing={onOpenPricing}
           onOpenOnboarding={onOpenOnboarding}
           isGatewayConnected={isGatewayConnected}

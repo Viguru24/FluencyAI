@@ -13,6 +13,7 @@ import {
   Pencil,
   Check,
   Bot,
+  ArrowLeft,
 } from 'lucide-react';
 import { speakEnglish, stopSpeaking, playChime } from '../services/speech';
 import type { RecordedAudioClip } from '../services/audioRecorder';
@@ -460,6 +461,19 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           <header className="sticky top-0 z-10 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-brand-700 via-indigo-700 to-sky-700 text-white shrink-0 shadow-md">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopSpeaking();
+                    onClose();
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-black shadow-xs transition active:scale-95 flex items-center gap-1.5 shrink-0 border border-white/20"
+                  aria-label="Back to home page"
+                  title="Back to Home Page"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="font-extrabold">Home</span>
+                </button>
                 <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-lg sm:text-xl shadow-inner shrink-0">
                   {coach.avatar || '🧑‍💼'}
                   {isAiSpeaking && (

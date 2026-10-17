@@ -1,4 +1,5 @@
 // Web Audio API Microphone Stream & Waveform Visualizer Service
+import { diagnosticLogger } from './diagnosticLogger';
 
 export class AudioVisualizerController {
   private audioContext: AudioContext | null = null;
@@ -11,12 +12,14 @@ export class AudioVisualizerController {
   async startMicrophone(onAudioData?: (normalizedAmplitudes: number[]) => void): Promise<boolean> {
     try {
       if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
+        diagnosticLogger.warn('MIC', 'navigator.mediaDevices.getUserMedia is unavailable');
         return false;
       }
 
       // Stop any existing session
       this.stopMicrophone();
 
+      diagnosticLogger.log('MIC', 'Requesting microphone access via getUserMedia...');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -26,12 +29,21 @@ export class AudioVisualizerController {
       });
 
       this.mediaStream = stream;
+      const tracks = stream.getAudioTracks();
+      diagnosticLogger.log('MIC', `Microphone stream acquired (${tracks.length} track(s))`, {
+        label: tracks[0]?.label,
+        enabled: tracks[0]?.enabled,
+        muted: tracks[0]?.muted,
+      });
+
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.audioContext = new AudioCtx();
       
       if (this.audioContext.state === 'suspended') {
+        diagnosticLogger.log('AUDIO', 'AudioContext suspended, resuming for user gesture...');
         await this.audioContext.resume();
       }
+      diagnosticLogger.log('AUDIO', `AudioContext running (sampleRate: ${this.audioContext.sampleRate})`);
 
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 64;
@@ -68,6 +80,7 @@ export class AudioVisualizerController {
       updateLoop();
       return true;
     } catch (err) {
+      diagnosticLogger.error('MIC', 'Microphone access blocked or failed in getUserMedia', err);
       console.warn('[AudioVisualizer] Microphone access blocked or unavailable:', err);
       this.stopMicrophone();
       return false;

@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Brain,
   ShieldCheck,
+  ArrowLeft,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { CEFRLevel, PlacementAssessmentResult } from '../types';
@@ -303,15 +304,30 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              stopSpeaking();
-              onClose();
-            }}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                stopSpeaking();
+                onClose();
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 transition active:scale-95"
+              aria-label="Back to home"
+              title="Back to home page"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Home</span>
+            </button>
+            <button
+              onClick={() => {
+                stopSpeaking();
+                onClose();
+              }}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition shrink-0"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Progress Bar (if not on results view) */}

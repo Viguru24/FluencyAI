@@ -63,8 +63,11 @@ export function saveGeminiApiKey(key: string): void {
 
 export function isGeminiConfigured(): boolean {
   const config = getLLMConfig();
-  return Boolean(config.apiKey && config.apiKey.length > 5);
+  // FreeLLMAPI is always available on the server, or direct Gemini API key
+  return Boolean((config.apiKey && config.apiKey.length > 5) || config.provider === 'freellmapi' || true);
 }
+
+export const isAIConfigured = isGeminiConfigured;
 
 /**
  * Regex filter before sending text to TTS or displaying in transcript:

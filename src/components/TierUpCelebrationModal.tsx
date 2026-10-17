@@ -157,12 +157,20 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
       }, 500);
     };
 
+    const handleCloseFromNav = () => {
+      stopSpeaking();
+      setIsSpeaking(false);
+      setData(null);
+    };
+
     window.addEventListener('fluency_tier_celebration', handleTierUp);
     window.addEventListener('fluency_daily_goal_celebration', handleDailyGoal);
+    window.addEventListener('fluency_close_nav_modals', handleCloseFromNav);
 
     return () => {
       window.removeEventListener('fluency_tier_celebration', handleTierUp);
       window.removeEventListener('fluency_daily_goal_celebration', handleDailyGoal);
+      window.removeEventListener('fluency_close_nav_modals', handleCloseFromNav);
       stopSpeaking();
     };
   }, [getCelebrationMessage, handleSpeak]);

@@ -4,6 +4,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NativeLanguage } from '../types';
+import { diagnosticLogger } from './diagnosticLogger';
 
 type AnyRecognition = any;
 
@@ -58,6 +59,7 @@ export interface RecognitionOptions {
   onStatusChange?: (status: 'listening' | 'heard' | 'error' | 'stopped', details?: string) => void;
   silenceTimeoutMs?: number; // Defaults to 6000ms (6s pause tolerance for ESL learners)
   onSilenceTimeout?: () => void;
+  onSilenceStop?: () => void;
   onSegmentAnalysis?: (segments: SpokenSegmentAnalysis[]) => void;
   onSpeechResults?: (results: any) => void;
 }
@@ -91,13 +93,14 @@ export function startRecognition(
   const onInterim = opts.onInterim;
   const onStatusChange = opts.onStatusChange;
   const silenceTimeoutMs = opts.silenceTimeoutMs ?? 6000;
-  const onSilenceTimeout = opts.onSilenceTimeout;
+  const onSilenceTimeout = opts.onSilenceTimeout || opts.onSilenceStop;
   const onSegmentAnalysis = opts.onSegmentAnalysis;
 
   const w = window as any;
   const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
 
   if (!Ctor) {
+    diagnosticLogger.warn('STT', 'SpeechRecognition is not supported in this browser environment');
     onStatusChange?.('error', 'Speech recognition not supported in this browser');
     return {
       stop: async () => null,
@@ -246,6 +249,7 @@ export function startRecognition(
         } else if (err === 'network') {
           errorMsg = 'Network error connecting to speech recognition service.';
         }
+        diagnosticLogger.warn('STT', `SpeechRecognition onerror: ${err}`, { errorMsg });
         onStatusChange?.('error', errorMsg);
       };
 
@@ -254,19 +258,17 @@ export function startRecognition(
         // save what was accumulated so far and restart seamlessly to maintain Pause-Tolerant mode.
         if (!isStopped) {
           accumulatedFinalText = latestTranscript;
-          try {
-            rec.start();
-          } catch {
-            // If restart failed on this instance, re-init
-            setTimeout(() => {
-              if (!isStopped) initRecognition();
-            }, 100);
-          }
+          diagnosticLogger.log('STT', 'SpeechRecognition session ended, re-initializing', { accumulated: accumulatedFinalText });
+          setTimeout(() => {
+            if (!isStopped) initRecognition();
+          }, 80);
         }
       };
 
       rec.start();
+      diagnosticLogger.log('STT', 'SpeechRecognition started', { lang, continuous: rec.continuous });
     } catch (e: any) {
+      diagnosticLogger.error('STT', 'Failed to start SpeechRecognition', e?.message || e);
       console.warn('[SpeechRecognition] Failed to start:', e);
       onStatusChange?.('error', e?.message || 'Failed to start');
     }

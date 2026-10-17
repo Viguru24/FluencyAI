@@ -8,7 +8,7 @@ import {
 } from '../services/speechRecognition';
 import { AudioRecorderController, type RecordedAudioClip } from '../services/audioRecorder';
 import { AudioVisualizerController } from '../services/audioVisualizer';
-import { transcribeAudioWithAI, isGeminiConfigured, type AudioAttachment } from '../services/geminiService';
+import { transcribeAudioWithAI, type AudioAttachment } from '../services/geminiService';
 
 const HOLD_THRESHOLD_MS = 280;
 
@@ -120,7 +120,7 @@ export function useVoiceCapture({
     let finalSpoken = livePreviewRef.current.trim() || heard.trim();
     updateLivePreview('');
 
-    if (!finalSpoken && audioClip?.base64 && isGeminiConfigured()) {
+    if (!finalSpoken && audioClip?.base64) {
       try {
         const aiTranscript = await transcribeAudioWithAI({
           base64: audioClip.base64,
@@ -160,7 +160,7 @@ export function useVoiceCapture({
       if (!isRecordingRef.current) return;
       const avg = newBands.length > 0 ? newBands.reduce((a, b) => a + b, 0) / newBands.length : 0;
       const now = Date.now();
-      if (avg > 0.14) {
+      if (avg > 0.04) {
         hasDetectedVoiceRef.current = true;
         lastVoiceTimeRef.current = now;
       } else if (
@@ -168,7 +168,7 @@ export function useVoiceCapture({
         !isPressingRef.current &&
         !isHoldingRef.current &&
         now - recordingStartedAtRef.current > 1200 &&
-        now - lastVoiceTimeRef.current > 2100
+        now - lastVoiceTimeRef.current > 2000
       ) {
         hasDetectedVoiceRef.current = false;
         stopRecording();

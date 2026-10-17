@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, MicOff, Check } from 'lucide-react';
+import { X, MicOff, Check, ArrowLeft } from 'lucide-react';
 import type { CEFRLevel, LessonPlan, LessonStage, LessonSessionResult, NativeLanguage, PhrasingUpgrade } from '../../types';
 import type { XPCalculationResult } from '../../store/rewardSystem';
 import { stopSpeaking } from '../../services/speech';
@@ -65,11 +65,26 @@ export const LessonFlow: React.FC<Props> = ({
         {/* Header with interactive stage stepper */}
         <header className="px-3.5 sm:px-6 pt-safe pb-2.5 sm:py-3 bg-gradient-to-r from-brand-600 via-sky-600 to-emerald-600 text-white flex-shrink-0">
           <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100 truncate">
-                {plan.contextLabel}
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  stopSpeaking();
+                  onExit();
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-black shadow-xs transition active:scale-95 flex items-center gap-1.5 flex-shrink-0 border border-white/20"
+                aria-label="Back to home page"
+                title="Back to Home Page"
+              >
+                <ArrowLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                <span className="font-extrabold">Home</span>
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100 truncate">
+                  {plan.contextLabel}
+                </div>
+                <h1 className="text-xs sm:text-sm font-extrabold truncate">{plan.title}</h1>
               </div>
-              <h1 className="text-xs sm:text-sm font-extrabold truncate">{plan.title}</h1>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
               {stage === 'scaffolding' && (
@@ -202,7 +217,7 @@ export const LessonFlow: React.FC<Props> = ({
                   }}
                   className="flex-1 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold active:scale-95 transition border border-transparent dark:border-slate-700"
                 >
-                  Leave
+                  Go to Home
                 </button>
               </div>
             </div>

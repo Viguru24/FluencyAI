@@ -82,15 +82,15 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
 
       {/* Typography: FLUENCY AI */}
       {showText && (
-        <div className="flex flex-col justify-center min-w-0">
-          <div className="flex items-center gap-1 sm:gap-1.5 leading-none">
+        <div className="flex flex-col justify-center shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 leading-none shrink-0">
             <span
-              className={`font-black tracking-tight ${cfg.textSize} text-slate-900 dark:text-white transition-colors truncate`}
+              className={`font-black tracking-tight ${cfg.textSize} text-slate-900 dark:text-white transition-colors shrink-0`}
             >
               FLUENCY
             </span>
             <span
-              className={`font-black tracking-tight ${cfg.textSize} bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 bg-clip-text text-transparent flex-shrink-0`}
+              className={`font-black tracking-tight ${cfg.textSize} bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 bg-clip-text text-transparent shrink-0`}
             >
               AI
             </span>

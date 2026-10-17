@@ -42,6 +42,7 @@ import { toast } from '../../services/toast';
 import { getDueSRSFlashcards } from '../../services/srsService';
 import { getAvailableAudioSpeeds, useGamificationStore } from '../../store/rewardSystem';
 import { InteractiveTranscriptText, WordLookupModal } from '../WordLookupPopover';
+import { diagnosticLogger } from '../../services/diagnosticLogger';
 
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'is', 'are', 'was', 'were', 'to', 'in', 'on', 'at', 'for', 'of', 'with', 'it', 'that', 'this', 'and', 'or', 'so'
@@ -341,12 +342,17 @@ export const RoleplayStage: React.FC<Props> = ({
     setLiveLowConfidenceWords([]);
     playChime('micStart');
 
+    diagnosticLogger.log('VOICE', 'startRecording initiated by user gesture');
+
     const ok = await vizRef.current.startMicrophone((newBands) => {
       setBands(newBands);
       if (!isRecordingRef.current) return;
       const avg = newBands.length > 0 ? newBands.reduce((a, b) => a + b, 0) / newBands.length : 0;
       const now = Date.now();
-      if (avg > 0.14) {
+      if (avg > 0.04) {
+        if (!hasDetectedVoiceRef.current) {
+          diagnosticLogger.log('VOICE', `Voice activity detected (amplitude: ${avg.toFixed(3)})`);
+        }
         hasDetectedVoiceRef.current = true;
         lastVoiceTimeRef.current = now;
       } else if (
@@ -354,15 +360,17 @@ export const RoleplayStage: React.FC<Props> = ({
         !isPressingRef.current &&
         !isHoldingRef.current &&
         now - recordingStartedAtRef.current > 1200 &&
-        now - lastVoiceTimeRef.current > 2100
+        now - lastVoiceTimeRef.current > 2000
       ) {
-        // User tapped once, spoke, and paused for ~2.1s -> auto-finish recording!
+        // User tapped once, spoke, and paused for ~2.0s -> auto-finish recording!
         hasDetectedVoiceRef.current = false;
+        diagnosticLogger.log('VOICE', '2-second silence detected, auto-completing speaking turn');
         stopRecording();
       }
     });
 
     if (!ok) {
+      diagnosticLogger.error('VOICE', 'Microphone start failed or permission denied in viz.startMicrophone');
       isInitializingMicRef.current = false;
       isRecordingRef.current = false;
       setIsRecording(false);

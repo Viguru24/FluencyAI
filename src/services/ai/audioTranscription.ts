@@ -5,6 +5,7 @@
 import { getLLMConfig } from '../llmConfig';
 import { readFromPersistentVaultSync } from '../persistentKeyVault';
 import { fetchFreeLLMWithFallback, filterTextForTTS } from './aiClient';
+import { diagnosticLogger } from '../diagnosticLogger';
 
 export interface TranscribeAudioParams {
   base64: string;
@@ -210,11 +211,13 @@ export async function transcribeAudioWithAI(params: TranscribeAudioParams): Prom
           const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
           const cleaned = cleanTranscriptionOutput(rawText);
           if (cleaned) {
+            diagnosticLogger.log('AI', `Audio transcribed via Direct Gemini (${model}): "${cleaned}"`);
             console.log(`[AudioTranscription] Transcribed via Direct Gemini (${model}):`, cleaned);
             return cleaned;
           }
         }
       } catch (err) {
+        diagnosticLogger.warn('AI', `Direct Gemini (${model}) error:`, err);
         console.warn(`[AudioTranscription] Direct Gemini (${model}) error:`, err);
       }
     }
@@ -278,9 +281,11 @@ export async function transcribeAudioWithAI(params: TranscribeAudioParams): Prom
         const rawText = data?.choices?.[0]?.message?.content?.trim() || '';
         const cleaned = cleanTranscriptionOutput(rawText);
         if (cleaned) {
+          diagnosticLogger.log('AI', `Audio transcribed via FreeLLMAPI (${candidateModel}): "${cleaned}"`);
           console.log(`[AudioTranscription] Transcribed via FreeLLMAPI (${candidateModel}):`, cleaned);
           return cleaned;
         }
+        diagnosticLogger.log('AI', `FreeLLMAPI (${candidateModel}) returned empty speech`, { raw: rawText });
         // If model explicitly returned EMPTY/SILENT, do not retry other models
         if (rawText.toUpperCase().includes('EMPTY')) {
           return null;
