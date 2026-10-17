@@ -1,0 +1,86 @@
+# Eng Tutor - Permanent Project Rules (.cursorrules)
+# Version: 1.0.0
+# Description: Unshakeable mobile UI physics, responsive constraints, and UX guidelines for the Eng Tutor project.
+
+You are an expert mobile-first web engineer and UI/UX designer working on Eng Tutor.
+All future code generations, modifications, component designs, and UI refactors in this repository MUST strictly and unconditionally adhere to the following unshakeable rules.
+
+---
+
+## 1. DYNAMIC VIEWPORT HEIGHT (`100dvh`)
+- **NEVER use raw `100vh`** for full-screen containers, views, or modals. Mobile browser navigation bars and address bars collapse and expand dynamically, which causes severe content cutoff, jumping, and unwanted page scrolling when `100vh` is used.
+- **ALWAYS use dynamic viewport units (`100dvh`)**:
+  - In Tailwind CSS: `min-h-[100dvh]`, `h-[100dvh]`, or `max-h-[100dvh]`.
+  - In raw CSS / inline styles: `height: 100dvh; min-height: 100dvh;` (with `100vh` as fallback where relevant).
+- Ensure modal backdrops, full-page flows (e.g., `LessonFlow`, `RoleplayStage`), overlays, and drawer backdrops fill exactly `100dvh`.
+
+---
+
+## 2. SCROLLABLE BOTTOM-SHEET MODALS FOR MOBILE (`<640px`)
+- **Modal Geometry by Screen Size**:
+  - **Mobile (< 640px)**: ALL modals, dialogs, drawers, and popovers MUST render as **bottom sheets**:
+    - Container alignment: `items-end` (anchored to the bottom of the screen).
+    - Borders/Corners: `rounded-t-2xl` or `rounded-t-3xl` with flat bottom edges (`rounded-b-none`).
+    - Animation: Slide up from the bottom (`animate-slide-up` or `translate-y-0`).
+    - Width: Full width (`w-full`).
+    - Internal Scrollability: `max-h-[85dvh]` or `max-h-[90dvh]`, with `overflow-y-auto` and `overscroll-contain`. Content inside the modal must scroll smoothly without moving the background body.
+    - Drag / Pull Indicator: Provide a visual grab-handle at the top (`w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-3`).
+    - Sticky Actions: Modal action buttons (Close, Confirm, Submit, Next) must remain accessible and not be pushed off-screen.
+  - **Tablet & Desktop (>= 640px / `sm:`)**:
+    - Gracefully transition to centered modals: `sm:items-center sm:justify-center sm:rounded-2xl sm:max-w-lg sm:w-full`.
+
+---
+
+## 3. SAFE-AREA INSETS (`env(safe-area-inset-*)`)
+- **Always respect device hardware cutouts**, including the iPhone dynamic island/notch, Android camera punch-holes, and home indicator swipe bars.
+- **Bottom Navigation, Floating Action Buttons (FABs), and Fixed Bars**:
+  - MUST include safe bottom clearance: use `.pb-safe`, `.pb-safe-floating`, or `padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px))`.
+  - Never allow primary interactive buttons (e.g., voice record button, primary action CTA) to overlap the iOS swipe bar or Android system navigation bar.
+- **Top Headers, Status Bars, and Sticky Headers**:
+  - MUST include safe top clearance: use `.pt-safe` or `padding-top: max(0.75rem, env(safe-area-inset-top, 0px))`.
+- When designing sticky footers or full-height drawer actions, add safe padding at the base: `pb-[calc(1rem+env(safe-area-inset-bottom,0px))]`.
+
+---
+
+## 4. 360px RESPONSIVE SAFETY (ZERO HORIZONTAL OVERFLOW)
+- **Minimum Viewport Target**: The entire user interface MUST render flawlessly down to **360px width** (e.g., compact Android devices, iPhone SE / Mini) without horizontal scrolling or clipped elements.
+- **Guaranteed No-Overflow Physics**:
+  - Never allow hardcoded pixel widths (`w-[400px]`, `min-w-[380px]`) that exceed 360px.
+  - All flex child containers containing text must include `min-w-0` to allow proper text truncation (`truncate`) or word wrapping (`break-words`).
+  - Badges, pills, and tag rows must use `flex-wrap gap-1.5` or an explicit horizontal scroll container with `overflow-x-auto no-scrollbar`.
+  - Multi-column grids must collapse cleanly: `grid-cols-1 sm:grid-cols-2`.
+  - Dialog padding on mobile should use `p-4` or `p-5`, scaling to `sm:p-6`.
+  - Touch targets must maintain at least 44x44px tap area without causing horizontal breakout.
+
+---
+
+## 5. PLAIN-ENGLISH USER COPY
+- **Voice & Tone**:
+  - Crystal-clear, warm, conversational, encouraging, and free of developer or system jargon.
+  - Remember: Users are learning English! Clarity, simplicity, and warmth are paramount.
+- **Copy Guidelines**:
+  - **No Technical Error Codes**: Never display raw errors like "HTTP 500", "Unhandled promise rejection", "State sync error", or "AudioContext failed".
+  - **Humanized Messages**:
+    - Instead of "Network error fetching lesson", write: *"We couldn't load your lesson right now. Please check your internet connection and try again."*
+    - Instead of "Microphone permission denied (NotAllowedError)", write: *"We need access to your microphone so you can practice speaking. Please enable microphone permissions in your browser settings."*
+    - Instead of "Session token invalid", write: *"Your session took a quick break. Let's get you back in."*
+  - **Encouraging Feedback**: Emphasize learner progress, positivity, and constructive tips (e.g., *"Great try! Let's polish that pronunciation together"* rather than *"Incorrect pronunciation score 42%"*).
+  - **Action-Oriented Buttons**: Use intuitive verb phrases like *"Start Speaking"*, *"Try Again"*, *"Continue Lesson"*, *"Save & Exit"*.
+
+---
+
+## 6. DESIGN SYSTEM & CODE QUALITY STANDARDS
+- **Framework**: React 19 + TypeScript + Tailwind CSS 3 + Lucide Icons.
+- **Theme**: Seamless Light and Dark mode support (`dark:` classes throughout).
+- **Aesthetics**: Glassmorphism cards (`glass-card`), frosted navigation (`glass-nav`), subtle micro-animations (`animate-fade-in`, `animate-slide-up`, `bounce-subtle`), and high-contrast accessibility.
+- **Interactive Feedback**: Haptic/audio feedback where applicable, instant hover and active states (`active:scale-95 transition-transform`).
+
+---
+
+## MANDATORY PRE-GENERATION CHECKLIST
+Before outputting any code for this repository, verify:
+1. [ ] Does this layout use `100dvh` instead of `100vh`?
+2. [ ] If this is a modal or drawer, does it anchor as a scrollable bottom sheet on screens `<640px` (`max-h-[85dvh]` or `max-h-[90dvh]`)?
+3. [ ] Are safe-area insets (`env(safe-area-inset-*)` / `pt-safe` / `pb-safe`) applied to all fixed, floating, or viewport-edge elements?
+4. [ ] Does the UI render without horizontal clipping or overflow on screens as narrow as 360px?
+5. [ ] Is all copy written in warm, welcoming, plain English suitable for language learners?

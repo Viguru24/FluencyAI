@@ -1,4 +1,5 @@
 import React from 'react';
+import logoMark from '../assets/logo-mark.png';
 
 interface FluencyLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -19,7 +20,7 @@ const sizeConfig = {
     tagPadding: 'px-1.5 py-0.5 text-[9px]',
   },
   md: {
-    iconSize: 'w-11 h-11',
+    iconSize: 'w-10 h-10 sm:w-11 sm:h-11',
     rounded: 'rounded-2xl',
     textSize: 'text-xl',
     subSize: 'text-[11px]',
@@ -61,23 +62,20 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
         onClick ? 'cursor-pointer group' : ''
       } ${className}`}
     >
-      {/* 3D App Emblem Badge */}
+      {/* 3D App Emblem (Clean Cutout) */}
       <div
-        className={`relative ${cfg.iconSize} ${cfg.rounded} bg-white dark:bg-gradient-to-b dark:from-[#1e293b] dark:to-[#0f172a] p-1 border border-slate-200/90 dark:border-cyan-500/30 shadow-md shadow-slate-200/80 dark:shadow-cyan-950/40 overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105`}
+        className={`relative ${cfg.iconSize} flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105`}
       >
-        {/* Subtle Ambient Glow Behind Emblem */}
-        <div className="absolute inset-0 bg-radial from-cyan-500/10 via-emerald-500/5 to-transparent dark:from-cyan-500/25 dark:via-emerald-500/15 dark:to-transparent pointer-events-none" />
-        
         {/* Authentic Stylized F & Waveform Emblem (Cutout) */}
         <img
-          src="/logo-mark.png"
+          src={logoMark}
           alt="Fluency AI Emblem"
-          className="w-full h-full object-contain relative z-10 drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]"
+          className="w-full h-full object-contain relative z-10 drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]"
           loading="eager"
         />
 
         {/* Live Active Pill Indicator */}
-        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center z-20">
+        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center z-20 shadow-sm">
           <span className="text-[7px] sm:text-[8px] font-black text-white leading-none">✓</span>
         </div>
       </div>
