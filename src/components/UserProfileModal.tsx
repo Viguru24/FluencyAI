@@ -24,7 +24,9 @@ import {
   FileText,
   Compass,
   ChevronRight,
+  Terminal,
 } from 'lucide-react';
+import { DiagnosticLogsModal } from './DiagnosticLogsModal';
 import {
   authService,
   getAuthProviderUrl,
@@ -83,6 +85,7 @@ export const UserProfileModal: React.FC<Props> = ({
   const [session, setSession] = useState<AuthSession | null>(() => authService.getSession());
   const [mainTab, setMainTab] = useState<'profile' | 'billing'>('profile');
   const [activeTab, setActiveTab] = useState<'signin' | 'signup' | 'otp' | 'server'>('signin');
+  const [showLogsModal, setShowLogsModal] = useState(false);
 
   // Sign In / Sign Up Form State
   const [email, setEmail] = useState('');
@@ -586,21 +589,21 @@ export const UserProfileModal: React.FC<Props> = ({
         </div>
 
         {/* Top Sub-Navigation Tabs */}
-        <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-xs font-bold shrink-0">
+        <div className="grid grid-cols-3 p-1.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-xs font-bold shrink-0">
           <button
             type="button"
             onClick={() => {
               playChime('tap');
               setMainTab('profile');
             }}
-            className={`py-2 rounded-xl transition flex items-center justify-center gap-2 ${
+            className={`py-2 rounded-xl transition flex items-center justify-center gap-1.5 ${
               mainTab === 'profile'
                 ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <User className="w-3.5 h-3.5 shrink-0" />
-            <span>Profile &amp; Cloud Sync</span>
+            <span className="truncate">Profile &amp; Sync</span>
           </button>
 
           <button
@@ -609,21 +612,34 @@ export const UserProfileModal: React.FC<Props> = ({
               playChime('tap');
               setMainTab('billing');
             }}
-            className={`py-2 rounded-xl transition flex items-center justify-center gap-2 ${
+            className={`py-2 rounded-xl transition flex items-center justify-center gap-1.5 ${
               mainTab === 'billing'
                 ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <CreditCard className="w-3.5 h-3.5 shrink-0" />
-            <span>Stripe Billing &amp; Cards</span>
+            <span className="truncate">Billing</span>
             {subscription.planTier !== 'free' ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-400 shrink-0" />
             ) : paymentMethods.length > 0 ? (
-              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 font-bold">
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 font-bold shrink-0">
                 {paymentMethods.length}
               </span>
             ) : null}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playChime('tap');
+              setShowLogsModal(true);
+            }}
+            className="py-2 rounded-xl transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            title="View live microphone and AI logs"
+          >
+            <Terminal className="w-3.5 h-3.5 shrink-0 text-brand-600 dark:text-brand-400" />
+            <span className="truncate">Logs</span>
           </button>
         </div>
 
@@ -1206,6 +1222,39 @@ export const UserProfileModal: React.FC<Props> = ({
             <ThemeToggle variant="switch" />
           </div>
 
+          {/* Diagnostic & Voice Logs Button (Mobile & Desktop) */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                playChime('tap');
+                setShowLogsModal(true);
+              }}
+              className="w-full p-3.5 rounded-2xl border text-xs flex items-center justify-between transition active:scale-[0.99] bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-slate-700/80 shadow-soft hover:border-brand-500/50"
+            >
+              <div className="flex items-center gap-2.5 text-left">
+                <div className="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center border border-brand-500/30 shrink-0">
+                  <Terminal className="w-4 h-4 text-brand-300" />
+                </div>
+                <div>
+                  <div className="font-extrabold flex items-center gap-1.5 text-white">
+                    <span>Diagnostic &amp; Voice Logs</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono font-bold">
+                      Live
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-300">
+                    Inspect microphone capture, AI transcription, and STT events
+                  </div>
+                </div>
+              </div>
+              <span className="flex items-center gap-1 font-extrabold text-brand-300 flex-shrink-0 text-[11px] bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/10">
+                <span>View</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </button>
+          </div>
+
           {/* AI Gateway & Model Settings Row (Dev Mode Only) */}
           {devMode && onOpenGatewaySettings && (
             <div className="pt-1">
@@ -1678,6 +1727,12 @@ export const UserProfileModal: React.FC<Props> = ({
           </div>
         )}
       </div>
+
+      {/* Diagnostic & Voice Logs Modal */}
+      <DiagnosticLogsModal
+        isOpen={showLogsModal}
+        onClose={() => setShowLogsModal(false)}
+      />
     </div>
   );
 };

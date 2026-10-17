@@ -36,8 +36,9 @@ import { getLLMConfig } from './services/llmConfig';
 import { RefreshCw, Sparkles, BookmarkCheck, RotateCcw, X, EyeOff, Eye } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './services/toast';
-import { playChime } from './services/speech';
+import { playChime, stopSpeaking } from './services/speech';
 import { isDevMode } from './utils/devMode';
+import { navigationHistory } from './services/navigationHistory';
 
 export function App() {
   const {
@@ -92,7 +93,33 @@ export function App() {
       isPricingOpen
   );
 
+  const closeAllToHome = () => {
+    navigationHistory.navigateToHome();
+  };
+
   useEffect(() => {
+    // Initialize navigation history manager to intercept back clicks
+    navigationHistory.init();
+
+    const unsubscribeNav = navigationHistory.subscribe((view) => {
+      if (view === 'home') {
+        stopSpeaking();
+        setActivePlan(null);
+        setIsPersonaSelectorOpen(false);
+        setIsSRSOpen(false);
+        setIsCustomScenarioOpen(false);
+        setIsRapidWarmupOpen(false);
+        setIsFreeTalkOpen(false);
+        setIsInstallGuideOpen(false);
+        setIsPlacementOpen(false);
+        setIsRoadmapOpen(false);
+        setIsPricingOpen(false);
+        setIsOnboardingOpen(false);
+        setPendingLessonCallback(null);
+        window.dispatchEvent(new CustomEvent('fluency_close_nav_modals'));
+      }
+    });
+
     // 1. Lock in persistent storage with mobile OS (iOS Safari / Android Chrome)
     requestPersistentStorage().catch(() => {});
 
@@ -102,12 +129,18 @@ export function App() {
     registerServiceWorker(() => {
       setHasUpdate(true);
     });
+
+    return () => {
+      unsubscribeNav();
+      navigationHistory.destroy();
+    };
   }, []);
 
   const checkPlacementBeforeLesson = (callback: () => void) => {
     if (!isPlacementCompleted) {
       setPendingLessonCallback(() => callback);
       setIsPlacementOpen(true);
+      navigationHistory.pushView('placement');
       return;
     }
     callback();
@@ -117,6 +150,7 @@ export function App() {
     checkPlacementBeforeLesson(() => {
       setLessonInitialStage(initialStage);
       setActivePlan(getDailyLessonPlan());
+      navigationHistory.pushView('lesson');
     });
   };
 
@@ -124,6 +158,7 @@ export function App() {
     checkPlacementBeforeLesson(() => {
       setLessonInitialStage(initialStage);
       setActivePlan(getLessonPlanForScenario(scenarioId));
+      navigationHistory.pushView('lesson');
     });
   };
 
@@ -133,6 +168,8 @@ export function App() {
       const cb = pendingLessonCallback;
       setPendingLessonCallback(null);
       cb();
+    } else {
+      closeAllToHome();
     }
   };
 
@@ -143,6 +180,8 @@ export function App() {
       const cb = pendingLessonCallback;
       setPendingLessonCallback(null);
       cb();
+    } else {
+      closeAllToHome();
     }
     toast.info('Removed "Find Your CEFR Starting Level" banner.', 'Placement Dismissed');
   };
@@ -157,18 +196,20 @@ export function App() {
     playChime('tap');
     restartOnboarding();
     setIsOnboardingOpen(true);
+    navigationHistory.pushView('onboarding');
     toast.info('Onboarding flow restarted from Step 1.', 'Testing Mode');
   };
 
   const handleLessonComplete = (plan: LessonPlan, customXPCalc?: XPCalculationResult) => {
     completeLesson(plan, customXPCalc);
-    setActivePlan(null);
+    closeAllToHome();
   };
 
   const handleLaunchCustomScenario = (scenario: RoleplayScenario, plan: LessonPlan) => {
     setCustomScenarios((prev) => [scenario, ...prev.filter((s) => s.id !== scenario.id)]);
     setActivePlan(plan);
     setLessonInitialStage('scaffolding');
+    navigationHistory.pushView('lesson');
   };
 
   const handleReloadApp = () => {
@@ -300,12 +341,27 @@ export function App() {
       <Navbar
         progress={progress}
         onUpdateProgress={setProgress}
-        onOpenInstallGuide={() => setIsInstallGuideOpen(true)}
-        onOpenPlacement={() => setIsPlacementOpen(true)}
+        onOpenInstallGuide={() => {
+          setIsInstallGuideOpen(true);
+          navigationHistory.pushView('install-guide');
+        }}
+        onOpenPlacement={() => {
+          setIsPlacementOpen(true);
+          navigationHistory.pushView('placement');
+        }}
         activePersona={activePersona}
-        onOpenPersonaSelector={() => setIsPersonaSelectorOpen(true)}
-        onOpenRoadmap={() => setIsRoadmapOpen(true)}
-        onOpenPricing={() => setIsPricingOpen(true)}
+        onOpenPersonaSelector={() => {
+          setIsPersonaSelectorOpen(true);
+          navigationHistory.pushView('persona');
+        }}
+        onOpenRoadmap={() => {
+          setIsRoadmapOpen(true);
+          navigationHistory.pushView('roadmap');
+        }}
+        onOpenPricing={() => {
+          setIsPricingOpen(true);
+          navigationHistory.pushView('pricing');
+        }}
         onOpenOnboarding={handleRestartOnboarding}
       />
 
@@ -382,6 +438,7 @@ export function App() {
                   onClick={() => {
                     playChime('tap');
                     setIsPlacementOpen(true);
+                    navigationHistory.pushView('placement');
                   }}
                   className="flex-1 sm:flex-initial py-2.5 px-4 rounded-2xl bg-white hover:bg-brand-50 text-brand-900 font-black text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1.5"
                 >
@@ -408,10 +465,22 @@ export function App() {
           onUpdateProgress={setProgress}
           onStartLesson={() => openDailyLesson('scaffolding')}
           onStartDirectRoleplay={() => openDailyLesson('roleplay')}
-          onOpenFreeTalk={() => setIsFreeTalkOpen(true)}
-          onOpenSRS={() => setIsSRSOpen(true)}
-          onOpenWarmup={() => setIsRapidWarmupOpen(true)}
-          onOpenRoadmap={() => setIsRoadmapOpen(true)}
+          onOpenFreeTalk={() => {
+            setIsFreeTalkOpen(true);
+            navigationHistory.pushView('free-talk');
+          }}
+          onOpenSRS={() => {
+            setIsSRSOpen(true);
+            navigationHistory.pushView('phrasebook');
+          }}
+          onOpenWarmup={() => {
+            setIsRapidWarmupOpen(true);
+            navigationHistory.pushView('warmup');
+          }}
+          onOpenRoadmap={() => {
+            setIsRoadmapOpen(true);
+            navigationHistory.pushView('roadmap');
+          }}
         />
 
         {/* Review Queue Indicator */}
@@ -430,6 +499,7 @@ export function App() {
               onClick={() => {
                 playChime('tap');
                 setIsSRSOpen(true);
+                navigationHistory.pushView('phrasebook');
               }}
               className="w-full sm:w-auto text-center px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 text-xs font-bold transition flex-shrink-0"
             >
@@ -443,7 +513,10 @@ export function App() {
           scenarios={[...customScenarios, ...roleplayScenarios]}
           progress={progress}
           onSelectScenario={(scenario) => openScenario(scenario.id)}
-          onOpenCustomBuilder={() => setIsCustomScenarioOpen(true)}
+          onOpenCustomBuilder={() => {
+            setIsCustomScenarioOpen(true);
+            navigationHistory.pushView('custom-scenario');
+          }}
         />
       </main>
 
@@ -459,7 +532,7 @@ export function App() {
           initialStage={lessonInitialStage}
           onSaveMistakes={saveMistakes}
           onComplete={handleLessonComplete}
-          onExit={() => setActivePlan(null)}
+          onExit={closeAllToHome}
         />
       )}
 
@@ -467,7 +540,7 @@ export function App() {
       {isPersonaSelectorOpen && (
         <PersonaSelectorModal
           isOpen={isPersonaSelectorOpen}
-          onClose={() => setIsPersonaSelectorOpen(false)}
+          onClose={closeAllToHome}
           activePersona={activePersona}
           onSelectPersona={selectPersona}
         />
@@ -477,7 +550,7 @@ export function App() {
       {isSRSOpen && (
         <SRSFlashcardModal
           isOpen={isSRSOpen}
-          onClose={() => setIsSRSOpen(false)}
+          onClose={closeAllToHome}
           onRewardXP={rewardXP}
           persona={activePersona}
         />
@@ -487,7 +560,7 @@ export function App() {
       {isCustomScenarioOpen && (
         <CustomScenarioModal
           isOpen={isCustomScenarioOpen}
-          onClose={() => setIsCustomScenarioOpen(false)}
+          onClose={closeAllToHome}
           activePersona={activePersona}
           userLevel={progress.level}
           nativeLanguage={progress.nativeLanguage}
@@ -499,7 +572,7 @@ export function App() {
       {isRapidWarmupOpen && (
         <RapidWarmupModal
           isOpen={isRapidWarmupOpen}
-          onClose={() => setIsRapidWarmupOpen(false)}
+          onClose={closeAllToHome}
           onRewardXP={rewardXP}
           persona={activePersona}
         />
@@ -509,10 +582,7 @@ export function App() {
       {isPlacementOpen && (
         <PlacementModal
           isOpen={isPlacementOpen}
-          onClose={() => {
-            setIsPlacementOpen(false);
-            setPendingLessonCallback(null);
-          }}
+          onClose={closeAllToHome}
           onCompletePlacement={handleCompletePlacement}
           onSkipPlacement={handleDismissPlacement}
           audioSpeed={progress.audioSpeed}
@@ -524,7 +594,7 @@ export function App() {
       {isFreeTalkOpen && (
         <JamesTestAreaModal
           isOpen={isFreeTalkOpen}
-          onClose={() => setIsFreeTalkOpen(false)}
+          onClose={closeAllToHome}
           audioSpeed={progress.audioSpeed}
           persona={activePersona}
           userLevel={progress.level}
@@ -533,23 +603,26 @@ export function App() {
       )}
 
       {/* PWA Installation Guide Modal */}
-      {isInstallGuideOpen && <PWAInstallGuideModal onClose={() => setIsInstallGuideOpen(false)} />}
+      {isInstallGuideOpen && <PWAInstallGuideModal onClose={closeAllToHome} />}
 
       {/* Floating Micro-Celebration XP Toast Container */}
       <XPToastContainer />
 
       {/* Tier Promotion & Daily Goal Celebration Modal */}
       <TierUpCelebrationModal
-        onOpenRoadmap={() => setIsRoadmapOpen(true)}
+        onOpenRoadmap={() => {
+          setIsRoadmapOpen(true);
+          navigationHistory.pushView('roadmap');
+        }}
         onOpenStage2Roleplay={() => openDailyLesson('roleplay')}
       />
 
       {/* Full Fluency Journey & Rewards Roadmap Modal */}
       <TierRoadmapModal
         isOpen={isRoadmapOpen}
-        onClose={() => setIsRoadmapOpen(false)}
+        onClose={closeAllToHome}
         onOpenStage2Roleplay={() => {
-          setIsRoadmapOpen(false);
+          closeAllToHome();
           openDailyLesson('roleplay');
         }}
       />
@@ -558,14 +631,15 @@ export function App() {
       {isOnboardingOpen && (
         <OnboardingModal
           isOpen={isOnboardingOpen}
-          onClose={() => setIsOnboardingOpen(false)}
+          onClose={closeAllToHome}
           progress={progress}
           onUpdateProgress={setProgress}
           onComplete={({ startPlacement }) => {
             completeOnboarding();
-            setIsOnboardingOpen(false);
+            closeAllToHome();
             if (startPlacement) {
               setIsPlacementOpen(true);
+              navigationHistory.pushView('placement');
             }
           }}
         />
@@ -575,7 +649,7 @@ export function App() {
       {isPricingOpen && (
         <PricingModal
           isOpen={isPricingOpen}
-          onClose={() => setIsPricingOpen(false)}
+          onClose={closeAllToHome}
           onSuccess={(planTier) => {
             toast.success(`Welcome to FluencyAI ${planTier.toUpperCase()}!`, 'Plan Activated');
           }}

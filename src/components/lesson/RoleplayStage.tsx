@@ -16,6 +16,7 @@ import {
   ChevronUp,
   Lock,
   Headphones,
+  Terminal,
 } from 'lucide-react';
 import type { CEFRLevel, LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, stopSpeaking, playChime, isCurrentlySpeaking } from '../../services/speech';
@@ -35,7 +36,6 @@ import {
   generateGeminiScorecard,
   cleanTextForTTS,
   transcribeAudioWithAI,
-  isGeminiConfigured,
   type AudioAttachment,
 } from '../../services/geminiService';
 import { toast } from '../../services/toast';
@@ -43,6 +43,7 @@ import { getDueSRSFlashcards } from '../../services/srsService';
 import { getAvailableAudioSpeeds, useGamificationStore } from '../../store/rewardSystem';
 import { InteractiveTranscriptText, WordLookupModal } from '../WordLookupPopover';
 import { diagnosticLogger } from '../../services/diagnosticLogger';
+import { DiagnosticLogsModal } from '../DiagnosticLogsModal';
 
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'is', 'are', 'was', 'were', 'to', 'in', 'on', 'at', 'for', 'of', 'with', 'it', 'that', 'this', 'and', 'or', 'so'
@@ -179,6 +180,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const [lookupWord, setLookupWord] = useState<{ word: string; sentence: string } | null>(null);
   const [helpRequests, setHelpRequests] = useState(0);
   const [analyzingSeconds, setAnalyzingSeconds] = useState(0);
+  const [isDiagnosticLogsOpen, setIsDiagnosticLogsOpen] = useState(false);
   const scorecardCancelledRef = useRef(false);
 
   // Gamification, live mission tracking & speed control
@@ -512,7 +514,11 @@ export const RoleplayStage: React.FC<Props> = ({
     // AI Audio Transcription Fallback:
     // If the browser Web Speech API did not return text (common on mobile Android due to mic exclusive lock),
     // but the microphone successfully recorded audio, transcribe the audio using Gemini multimodal AI!
-    if (!finalTranscript && audioAttachment && audioAttachment.base64 && isGeminiConfigured()) {
+    if (!finalTranscript && audioAttachment && audioAttachment.base64) {
+      diagnosticLogger.log(
+        'VOICE',
+        `Web Speech API returned empty transcript. Triggering AI audio transcription fallback (${audioAttachment.mimeType}, size: ${audioAttachment.base64.length} chars)...`
+      );
       setIsTranscribingAudio(true);
       try {
         const aiTranscript = await transcribeAudioWithAI({
@@ -522,9 +528,13 @@ export const RoleplayStage: React.FC<Props> = ({
         });
         if (aiTranscript && aiTranscript.trim().length > 0) {
           finalTranscript = aiTranscript.trim();
+          diagnosticLogger.log('VOICE', `AI audio fallback transcription successful: "${finalTranscript}"`);
           console.log('[RoleplayStage] Recovered user transcript via AI:', finalTranscript);
+        } else {
+          diagnosticLogger.warn('VOICE', 'AI audio fallback returned empty or whitespace-only text');
         }
-      } catch (err) {
+      } catch (err: any) {
+        diagnosticLogger.error('VOICE', `AI audio fallback transcription error: ${err?.message || err}`);
         console.warn('[RoleplayStage] AI audio transcription fallback error:', err);
       } finally {
         setIsTranscribingAudio(false);
@@ -534,6 +544,10 @@ export const RoleplayStage: React.FC<Props> = ({
     // Guard: If no speech was captured at all (mic silent, accidentally touched for 50ms, or muted),
     // prompt user to try speaking again rather than silently inserting fake demo words.
     if (!finalTranscript) {
+      diagnosticLogger.warn('VOICE', 'No speech detected after recording stop', {
+        hadAudioAttachment: Boolean(audioAttachment),
+        audioLength: audioAttachment?.base64?.length ?? 0,
+      });
       setIsProcessing(false);
       toast.warning('No speech detected. Please speak clearly into your microphone.', "Didn't Catch That");
       return;
@@ -843,6 +857,20 @@ export const RoleplayStage: React.FC<Props> = ({
           >
             {revealAll ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">{revealAll ? 'Revealed' : 'Blurred'}</span>
+          </button>
+
+          {/* Diagnostic Logs Button */}
+          <button
+            type="button"
+            onClick={() => {
+              playChime('tap');
+              setIsDiagnosticLogsOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition"
+            title="Open Diagnostic & Voice Logs"
+          >
+            <Terminal className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+            <span className="hidden sm:inline">Logs</span>
           </button>
         </div>
       </div>
@@ -1284,6 +1312,12 @@ export const RoleplayStage: React.FC<Props> = ({
           onClose={() => setLookupWord(null)}
         />
       )}
+
+      {/* In-App Diagnostic Logs Modal */}
+      <DiagnosticLogsModal
+        isOpen={isDiagnosticLogsOpen}
+        onClose={() => setIsDiagnosticLogsOpen(false)}
+      />
     </div>
   );
 };

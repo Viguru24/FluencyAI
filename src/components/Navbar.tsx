@@ -11,6 +11,7 @@ import {
   X,
   ChevronDown,
   SlidersHorizontal,
+  Terminal,
 } from 'lucide-react';
 import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession, AIPersona } from '../types';
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
@@ -18,6 +19,7 @@ import { playChime } from '../services/speech';
 import { getLLMConfig, testGatewayConnection, type LLMConfig } from '../services/llmConfig';
 import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
 import { UserProfileModal } from './UserProfileModal';
+import { DiagnosticLogsModal } from './DiagnosticLogsModal';
 import { UserAvatar } from './UserAvatar';
 import { ThemeToggle } from './ThemeToggle';
 import { authService } from '../services/authService';
@@ -65,6 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showGatewayModal, setShowGatewayModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => authService.getSession());
   const [llmConfig, setLlmConfig] = useState<LLMConfig>(getLLMConfig);
   const [isGatewayConnected, setIsGatewayConnected] = useState<boolean>(() => {
@@ -717,6 +720,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>Pro Plans</span>
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      playChime('tap');
+                      setShowMobileMenu(false);
+                      setShowLogsModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95"
+                    title="Device & Microphone Logs"
+                  >
+                    <Terminal className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                    <span>Logs</span>
+                  </button>
                 </div>
 
                 <button
@@ -772,6 +787,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           llmModelLabel={llmConfig.model}
         />
       )}
+
+      {/* Device & Voice Diagnostic Logs Modal */}
+      <DiagnosticLogsModal
+        isOpen={showLogsModal}
+        onClose={() => setShowLogsModal(false)}
+      />
     </>
   );
 };
