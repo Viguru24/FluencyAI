@@ -9,13 +9,11 @@ import {
   Sparkles,
   Zap,
   Server,
-  Square,
   Award,
   Pencil,
   Check,
   Bot,
 } from 'lucide-react';
-import { WaveformVisualizer, type VisualizerMode } from './lesson/WaveformVisualizer';
 import { speakEnglish, stopSpeaking, playChime } from '../services/speech';
 import type { RecordedAudioClip } from '../services/audioRecorder';
 import {
@@ -445,7 +443,9 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     }
   };
 
-  const visualizerMode: VisualizerMode = isRecording ? 'user' : isAiSpeaking ? 'ai' : 'idle';
+  const avgBandAmp =
+    bands.length > 0 ? bands.reduce((acc, v) => acc + v, 0) / bands.length : 0;
+  const voiceBloomScale = isRecording ? 1 + Math.min(0.4, avgBandAmp * 0.75) : 1;
 
   if (!isOpen) return null;
 
@@ -457,8 +457,11 @@ export const JamesTestAreaModal: React.FC<Props> = ({
           <header className="px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-brand-700 via-indigo-700 to-sky-700 text-white flex-shrink-0 shadow-md">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-lg sm:text-xl shadow-inner flex-shrink-0">
+                <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-lg sm:text-xl shadow-inner flex-shrink-0">
                   {coach.avatar || '🧑‍💼'}
+                  {isAiSpeaking && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-brand-700 animate-pulse" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 sm:gap-2">
@@ -821,57 +824,94 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                 <span>{coach.name} is replying…</span>
               </div>
             )}
+
+            {isAiSpeaking && (
+              <div className="flex items-center gap-2 text-indigo-500 text-xs font-semibold py-1 animate-pulse">
+                <Volume2 className="w-4 h-4" />
+                <span>{coach.name} is speaking…</span>
+              </div>
+            )}
           </div>
 
-          {/* Interactive Speaking Visualizer & Push-To-Talk Bar */}
-          <div className="px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex-shrink-0 space-y-3 shadow-lg">
-            <div className="flex flex-col items-center justify-center">
-              <div className="scale-75 -my-6">
-                <WaveformVisualizer mode={visualizerMode} bands={bands} />
-              </div>
-              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 text-center">
-                {isRecording
-                  ? isHolding
-                    ? `Speaking (Hold-to-Talk) • Release to send to ${coach.name}`
-                    : 'Speaking (Tap-to-Talk) • Tap mic button again when done'
-                  : isAiSpeaking
-                  ? `${coach.name} is speaking — listen carefully`
-                  : isProcessing
-                  ? 'Crafting response…'
-                  : `Tap or Hold microphone to speak to ${coach.name}`}
-              </div>
-            </div>
+          {/* Sleek Silky Voice & Text Input Bar */}
+          <div className="px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 flex-shrink-0 space-y-2 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="relative flex items-center justify-center flex-shrink-0">
+                {/* Ambient breathing radial bloom */}
+                <span
+                  className={`absolute -inset-3.5 rounded-full pointer-events-none transition-all duration-500 ease-out ${
+                    isRecording
+                      ? 'silky-orb-active-bloom opacity-100'
+                      : 'bg-indigo-500/15 dark:bg-indigo-400/15 blur-lg silky-orb-idle'
+                  }`}
+                  style={
+                    isRecording
+                      ? { transform: `scale(${voiceBloomScale})` }
+                      : undefined
+                  }
+                />
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onPointerDown={(e) => onPointerDown(e, isProcessing)}
-                onPointerUp={onPointerUp}
-                onPointerCancel={onPointerUp}
-                disabled={isProcessing}
-                className={`relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all active:scale-95 flex-shrink-0 shadow-md ${
-                  isRecording
-                    ? 'bg-rose-500 text-white ring-4 ring-rose-300 animate-pulse'
-                    : 'bg-gradient-to-tr from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-brand-500/30'
-                } disabled:opacity-50`}
-                title={isRecording ? 'Tap or release to finish' : 'Tap or hold to speak'}
-              >
-                {isRecording ? <Square className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-              </button>
+                {/* Silky rotating aurora halo */}
+                <span
+                  className={`absolute -inset-1.5 rounded-full blur-xs pointer-events-none transition-all duration-500 ease-out ${
+                    isRecording
+                      ? 'silky-orb-active-aura opacity-95'
+                      : 'opacity-0 scale-75'
+                  }`}
+                  style={
+                    isRecording
+                      ? { transform: `scale(${voiceBloomScale * 0.98})` }
+                      : undefined
+                  }
+                />
+
+                <button
+                  type="button"
+                  onPointerDown={(e) => onPointerDown(e, isProcessing)}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerUp}
+                  onContextMenu={(e) => e.preventDefault()}
+                  disabled={isProcessing}
+                  className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full text-white transition-all duration-500 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
+                    isRecording
+                      ? 'bg-gradient-to-tr from-indigo-600 via-violet-500 to-sky-400 scale-105 shadow-[0_0_24px_rgba(99,102,241,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
+                      : 'bg-gradient-to-tr from-brand-600 via-indigo-500 to-sky-500 hover:scale-[1.04] active:scale-95 shadow-[0_4px_16px_rgba(59,130,246,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)]'
+                  }`}
+                  title={
+                    isRecording
+                      ? isHolding
+                        ? 'Release to finish'
+                        : 'Tap again to finish'
+                      : 'Hold to talk, or tap to start and tap again to end'
+                  }
+                >
+                  <Mic
+                    className={`w-5 h-5 transition-transform duration-300 ${
+                      isRecording ? 'scale-110 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'text-white'
+                    }`}
+                  />
+                </button>
+              </div>
 
               <form onSubmit={handleSendTyped} className="flex-1 flex items-center gap-1.5">
                 <input
                   type="text"
                   value={typedInput}
                   onChange={(e) => setTypedInput(e.target.value)}
-                  placeholder={`Type a message or question for ${coach.name}…`}
+                  placeholder={
+                    isRecording
+                      ? isHolding
+                        ? 'Listening… release button when finished'
+                        : 'Listening… tap button again when finished'
+                      : `Hold or tap mic to speak, or type to ${coach.name}…`
+                  }
                   disabled={isRecording || isProcessing}
-                  className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 outline-none transition shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 outline-none transition shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
                 <button
                   type="submit"
                   disabled={!typedInput.trim() || isProcessing || isRecording}
-                  className="p-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-600 shadow-sm"
+                  className="p-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-600 shadow-sm"
                   title={`Send message to ${coach.name}`}
                 >
                   <Send className="w-4 h-4" />
@@ -880,7 +920,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
             </div>
 
             {onOpenLessonRoleplay && (
-              <div className="pt-1 text-center">
+              <div className="pt-0.5 text-center">
                 <button
                   onClick={() => {
                     stopSpeaking();
