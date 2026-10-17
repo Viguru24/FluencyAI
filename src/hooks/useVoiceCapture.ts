@@ -3,6 +3,7 @@ import { stopSpeaking, playChime } from '../services/speech';
 import {
   startRecognition,
   isRecognitionSupported,
+  deduplicateSpokenText,
   type RecognitionHandle,
   type SpokenSegmentAnalysis,
 } from '../services/speechRecognition';
@@ -37,6 +38,7 @@ export function useVoiceCapture({
   const pronunciationMetadataRef = useRef<SpokenSegmentAnalysis[]>([]);
 
   const isRecordingRef = useRef(false);
+  const isStoppingRef = useRef(false);
   const isInitializingMicRef = useRef(false);
   const pressStartTimeRef = useRef(0);
   const isPressingRef = useRef(false);
@@ -60,6 +62,7 @@ export function useVoiceCapture({
     recRef.current?.stop();
     isInitializingMicRef.current = false;
     isRecordingRef.current = false;
+    isStoppingRef.current = false;
     hasDetectedVoiceRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
@@ -77,10 +80,11 @@ export function useVoiceCapture({
       pendingStopRef.current = true;
       return;
     }
-    if (!isRecordingRef.current) {
+    if (!isRecordingRef.current || isStoppingRef.current) {
       return;
     }
 
+    isStoppingRef.current = true;
     isRecordingRef.current = false;
     hasDetectedVoiceRef.current = false;
     setIsRecording(false);
@@ -90,54 +94,61 @@ export function useVoiceCapture({
     setBands([]);
     playChime('micStop');
 
-    let audioClip: RecordedAudioClip | null = null;
     try {
-      audioClip = await recorderRef.current.stop();
-      if (audioClip?.base64) {
-        recordedClipsRef.current.push({
-          base64: audioClip.base64,
-          mimeType: audioClip.mimeType,
-        });
-      }
-    } catch (e) {
-      console.warn('[useVoiceCapture] Recorder stop error:', e);
-    }
-
-    vizRef.current.stopMicrophone();
-
-    let heard = '';
-    if (recRef.current) {
-      const details = await recRef.current.stopWithDetails();
-      recRef.current = null;
-      if (details) {
-        heard = details.transcript;
-        if (details.segments.length > 0) {
-          pronunciationMetadataRef.current.push(...details.segments);
-        }
-      }
-    }
-
-    let finalSpoken = livePreviewRef.current.trim() || heard.trim();
-    updateLivePreview('');
-
-    if (!finalSpoken && audioClip?.base64) {
+      let audioClip: RecordedAudioClip | null = null;
       try {
-        const aiTranscript = await transcribeAudioWithAI({
-          base64: audioClip.base64,
-          mimeType: audioClip.mimeType,
-          blob: audioClip.blob,
-        });
-        if (aiTranscript && aiTranscript.trim().length > 0) {
-          finalSpoken = aiTranscript.trim();
-          console.log('[useVoiceCapture] Recovered user transcript via AI:', finalSpoken);
+        audioClip = await recorderRef.current.stop();
+        if (audioClip?.base64) {
+          recordedClipsRef.current.push({
+            base64: audioClip.base64,
+            mimeType: audioClip.mimeType,
+          });
         }
-      } catch (err) {
-        console.warn('[useVoiceCapture] AI audio transcription fallback error:', err);
+      } catch (e) {
+        console.warn('[useVoiceCapture] Recorder stop error:', e);
       }
-    }
 
-    if (finalSpoken) {
+      vizRef.current.stopMicrophone();
+
+      let heard = '';
+      if (recRef.current) {
+        const details = await recRef.current.stopWithDetails();
+        recRef.current = null;
+        if (details) {
+          heard = details.transcript;
+          if (details.segments.length > 0) {
+            pronunciationMetadataRef.current.push(...details.segments);
+          }
+        }
+      }
+
+      let finalSpoken = deduplicateSpokenText(livePreviewRef.current.trim() || heard.trim());
+      updateLivePreview('');
+
+      if (!finalSpoken && audioClip?.base64) {
+        try {
+          const aiTranscript = await transcribeAudioWithAI({
+            base64: audioClip.base64,
+            mimeType: audioClip.mimeType,
+            blob: audioClip.blob,
+          });
+          if (aiTranscript && aiTranscript.trim().length > 0) {
+            finalSpoken = deduplicateSpokenText(aiTranscript.trim());
+            console.log('[useVoiceCapture] Recovered user transcript via AI:', finalSpoken);
+          }
+        } catch (err) {
+          console.warn('[useVoiceCapture] AI audio transcription fallback error:', err);
+        }
+      }
+
+      // If user said nothing / silence / hesitation, don't ignore them — let tutor respond and guide them!
+      if (!finalSpoken) {
+        finalSpoken = '(Silence / hesitated)';
+      }
+
       onCompleteCapture(finalSpoken, audioClip);
+    } finally {
+      isStoppingRef.current = false;
     }
   }, [onCompleteCapture, updateLivePreview]);
 
@@ -171,6 +182,14 @@ export function useVoiceCapture({
         now - lastVoiceTimeRef.current > 2000
       ) {
         hasDetectedVoiceRef.current = false;
+        stopRecording();
+      } else if (
+        !hasDetectedVoiceRef.current &&
+        !isPressingRef.current &&
+        !isHoldingRef.current &&
+        now - recordingStartedAtRef.current > 5500
+      ) {
+        // User started recording but stayed silent for 5.5s -> auto-finish and let tutor prompt them
         stopRecording();
       }
     });

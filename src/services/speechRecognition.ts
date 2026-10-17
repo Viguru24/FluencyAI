@@ -74,6 +74,89 @@ export interface RecognitionHandle {
 }
 
 /**
+ * Merges accumulated transcript with current cycle transcript, eliminating accidental duplicate text
+ * from Web Speech API restarts, audio buffer flushes, and interim-to-final transitions.
+ */
+export function mergeTranscripts(accumulated: string, current: string): string {
+  const acc = (accumulated || '').trim();
+  const curr = (current || '').trim();
+
+  if (!acc) return curr;
+  if (!curr) return acc;
+
+  const accLower = acc.toLowerCase();
+  const currLower = curr.toLowerCase();
+
+  // 1. Exact identical match
+  if (accLower === currLower) {
+    return curr;
+  }
+
+  // 2. Current cycle already contains accumulated text from beginning (e.g. Chrome continuous buffer)
+  if (currLower.startsWith(accLower)) {
+    return curr;
+  }
+
+  // 3. Current cycle is completely contained within accumulated text
+  if (accLower.includes(currLower)) {
+    return acc;
+  }
+
+  // 4. Accumulated text is completely contained within current cycle
+  if (currLower.includes(accLower)) {
+    return curr;
+  }
+
+  // 5. Overlapping word boundary detection (e.g. acc ends with words that curr starts with)
+  const accWords = acc.split(/\s+/);
+  const currWords = curr.split(/\s+/);
+
+  const maxOverlap = Math.min(accWords.length, currWords.length);
+  for (let len = maxOverlap; len > 0; len--) {
+    const accEnd = accWords.slice(accWords.length - len).map((w) => w.toLowerCase()).join(' ');
+    const currStart = currWords.slice(0, len).map((w) => w.toLowerCase()).join(' ');
+    if (accEnd === currStart) {
+      const nonOverlappingCurr = currWords.slice(len).join(' ');
+      return nonOverlappingCurr ? `${acc} ${nonOverlappingCurr}`.trim() : acc;
+    }
+  }
+
+  return `${acc} ${curr}`.trim();
+}
+
+/**
+ * Removes immediate consecutive duplicate phrases or sentences.
+ * E.g. "Could I have a flat white? Could I have a flat white?" -> "Could I have a flat white?"
+ */
+export function deduplicateSpokenText(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  const words = cleaned.split(/\s+/);
+  // Check if string is two identical halves
+  if (words.length >= 2 && words.length % 2 === 0) {
+    const half = words.length / 2;
+    const firstHalf = words.slice(0, half).join(' ');
+    const secondHalf = words.slice(half).join(' ');
+    if (firstHalf.toLowerCase().replace(/[^a-z0-9]/g, '') === secondHalf.toLowerCase().replace(/[^a-z0-9]/g, '')) {
+      return firstHalf;
+    }
+  }
+
+  // Check for repeated trailing multi-word chunks
+  for (let n = Math.min(10, Math.floor(words.length / 2)); n >= 2; n--) {
+    const endChunk = words.slice(words.length - n).map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
+    const prevChunk = words.slice(words.length - 2 * n, words.length - n).map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
+    if (endChunk && endChunk === prevChunk) {
+      cleaned = words.slice(0, words.length - n).join(' ');
+      break;
+    }
+  }
+
+  return cleaned;
+}
+
+/**
  * Start listening with SpeechRecognition engineered for non-native ESL learners:
  * - continuous = true, interimResults = true, maxAlternatives = 3
  * - Pause-tolerant session accumulation across browser auto-stops
@@ -128,18 +211,19 @@ export function startRecognition(
     }
   };
 
-  const scheduleSilenceTimer = () => {
+  const scheduleSilenceTimer = (customMs?: number) => {
     clearSilenceTimer();
     if (isStopped || isSilenceTimerPaused) return;
 
-    // Only arm silence timeout if the learner has begun speaking
-    if (latestTranscript.trim().length > 0 && silenceTimeoutMs > 0) {
+    // Arm silence timeout (either silenceTimeoutMs or custom duration)
+    const delay = customMs ?? (silenceTimeoutMs > 0 ? silenceTimeoutMs : 6000);
+    if (delay > 0) {
       silenceTimerId = window.setTimeout(() => {
         if (!isStopped && !isSilenceTimerPaused) {
-          console.log('[SpeechRecognition] 6-second silence timeout reached. Auto-completing learner turn.');
+          console.log('[SpeechRecognition] Silence timeout reached. Auto-completing learner turn.');
           onSilenceTimeout?.();
         }
-      }, silenceTimeoutMs);
+      }, delay);
     }
   };
 
@@ -215,9 +299,7 @@ export function startRecognition(
           }
         }
 
-        const combined = accumulatedFinalText
-          ? `${accumulatedFinalText} ${currentCycleText}`.trim()
-          : currentCycleText.trim();
+        const combined = deduplicateSpokenText(mergeTranscripts(accumulatedFinalText, currentCycleText));
 
         if (combined) {
           latestTranscript = combined;
@@ -257,7 +339,7 @@ export function startRecognition(
         // If recognition ended without manual user stop (e.g. Chrome 3-second auto cutoff),
         // save what was accumulated so far and restart seamlessly to maintain Pause-Tolerant mode.
         if (!isStopped) {
-          accumulatedFinalText = latestTranscript;
+          accumulatedFinalText = deduplicateSpokenText(latestTranscript);
           diagnosticLogger.log('STT', 'SpeechRecognition session ended, re-initializing', { accumulated: accumulatedFinalText });
           setTimeout(() => {
             if (!isStopped) initRecognition();
@@ -266,6 +348,7 @@ export function startRecognition(
       };
 
       rec.start();
+      scheduleSilenceTimer();
       diagnosticLogger.log('STT', 'SpeechRecognition started', { lang, continuous: rec.continuous });
     } catch (e: any) {
       diagnosticLogger.error('STT', 'Failed to start SpeechRecognition', e?.message || e);
@@ -324,7 +407,7 @@ export function startRecognition(
   };
 
   const getDetails = (): RecognitionDetails => {
-    const text = latestTranscript.trim();
+    const text = deduplicateSpokenText(latestTranscript.trim());
     let totalConf = 0;
     let counted = 0;
 
@@ -348,7 +431,7 @@ export function startRecognition(
   };
 
   return {
-    getLatestTranscript: () => latestTranscript,
+    getLatestTranscript: () => deduplicateSpokenText(latestTranscript.trim()),
     getPronunciationMetadata: () => [...recordedSegments],
     resetSilenceTimer: () => {
       scheduleSilenceTimer();
@@ -375,7 +458,7 @@ export function startRecognition(
 
       // Allow 200ms for final audio buffers to flush
       await new Promise((r) => setTimeout(r, 200));
-      return latestTranscript.trim() || null;
+      return deduplicateSpokenText(latestTranscript.trim()) || null;
     },
     stopWithDetails: async () => {
       isStopped = true;

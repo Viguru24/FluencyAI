@@ -78,7 +78,8 @@ STRICT OUTPUT RULES:
 2. NEVER output internal thinking, reasoning steps, chain-of-thought, or analysis (such as "Thinking Process:", "1. Analyze:", or planning bullets).
 3. NEVER include labels or prefixes like "${pName}:" or "Dialogue:". Start immediately with your spoken words.
 4. Keep your response strictly between 1 to 3 short, natural sentences (maximum 40 words).
-5. Acknowledge what the user just said with warmth or context-appropriate British professionalism, and end with a single, natural follow-up question or response to keep the simulation moving forward.`;
+5. Directly understand and acknowledge what the user said with warmth or context-appropriate British professionalism, and end with a natural follow-up response to keep the conversation flowing smoothly.
+6. HANDLING HESITATION & SILENCE: If the learner hesitated, stayed silent, or took no response (e.g., "(Silence / hesitated)"), DO NOT ignore them. Be exceptionally patient, friendly, and supportive. Reassure them, and give them an easy 1-sentence prompt or hint that they can say right now to answer your previous question.`;
 
   try {
     if (config.provider === 'freellmapi') {
@@ -98,9 +99,13 @@ STRICT OUTPUT RULES:
             content: msg.text,
           });
         } else {
+          const content =
+            msg.speaker === 'user' && msg.text.includes('Silence / hesitated')
+              ? `[The learner hesitated and stayed silent. Gently reassure them with British warmth and suggest a simple phrase they can say to reply to your last question.]`
+              : msg.text;
           messages.push({
             role: msg.speaker === 'user' ? 'user' : 'assistant',
-            content: msg.text,
+            content,
           });
         }
       }
@@ -203,7 +208,11 @@ STRICT OUTPUT RULES:
             });
           }
 
-          parts.push({ text: msg.text });
+          const textContent =
+            isUser && msg.text.includes('Silence / hesitated')
+              ? `[The learner hesitated and stayed silent. Gently reassure them with British warmth and suggest a simple phrase they can say to reply to your last question.]`
+              : msg.text;
+          parts.push({ text: textContent });
 
           const lastEntry = contents[contents.length - 1];
           if (lastEntry && lastEntry.role === targetRole) {
@@ -275,9 +284,12 @@ STRICT OUTPUT RULES:
       );
     }
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
-    const chosenFallback =
-      fallbackReplies[fallbackIdx] ||
-      "Brilliant! Lovely chatting with you today — let's have a look at your scorecard.";
+    const lastUserMsg = conversationHistory[conversationHistory.length - 1];
+    const isHesitation = lastUserMsg?.speaker === 'user' && lastUserMsg.text.includes('Silence / hesitated');
+    const chosenFallback = isHesitation
+      ? "No worries at all, take your time! If you're not sure what to say, you can try: 'Could you give me a moment, please?' or ask for a hint."
+      : fallbackReplies[fallbackIdx] ||
+        "Brilliant! Lovely chatting with you today — let's have a look at your scorecard.";
     return filterTextForTTS(chosenFallback, pName);
   }
 }

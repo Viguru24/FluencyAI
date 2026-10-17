@@ -34,6 +34,7 @@ import {
   awardGamificationXP,
 } from '../store/rewardSystem';
 import { useVoiceCapture } from '../hooks/useVoiceCapture';
+import { deduplicateSpokenText } from '../services/speechRecognition';
 import { InteractiveTranscriptText, WordLookupModal } from './WordLookupPopover';
 import { isDevMode } from '../utils/devMode';
 
@@ -228,7 +229,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
   const handleUserMessage = useCallback(
     async (rawMessage: string, audioClip?: RecordedAudioClip | null) => {
-      const text = rawMessage.trim();
+      const text = deduplicateSpokenText(rawMessage.trim());
       if (!text) return;
 
       stopSpeaking();
@@ -292,7 +293,10 @@ export const JamesTestAreaModal: React.FC<Props> = ({
         awardGamificationXP(xpResult, 1);
       } catch (err) {
         console.warn('[FreeTalk] Reply error:', err);
-        const fallback = "Lovely speaking with you! Keep going — what else would you like to practice?";
+        const isHesitation = text.includes('Silence / hesitated');
+        const fallback = isHesitation
+          ? "No worries at all, take your time! If you're not sure what to say, you can try: 'Could you give me a moment, please?'"
+          : "Lovely speaking with you! Keep going — what else would you like to practice?";
         const latency = Math.round(performance.now() - startTime);
         setLastLatency(latency);
 
@@ -775,6 +779,10 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                               <Check className="w-3 h-3" /> Save
                             </button>
                           </div>
+                        </div>
+                      ) : turn.text.includes('Silence / hesitated') ? (
+                        <div className="flex items-center gap-1.5 py-0.5 text-xs text-brand-100/95 font-medium italic">
+                          <span>💭 (Hesitated · No speech heard)</span>
                         </div>
                       ) : (
                         <div className="whitespace-pre-wrap">

@@ -24,6 +24,7 @@ import {
   startRecognition,
   isRecognitionSupported,
   extractWordsFromSpeechResults,
+  deduplicateSpokenText,
   type RecognitionHandle,
   type SpokenSegmentAnalysis,
   type WordConfidenceInfo,
@@ -38,7 +39,6 @@ import {
   transcribeAudioWithAI,
   type AudioAttachment,
 } from '../../services/geminiService';
-import { toast } from '../../services/toast';
 import { getDueSRSFlashcards } from '../../services/srsService';
 import { getAvailableAudioSpeeds, useGamificationStore } from '../../store/rewardSystem';
 import { InteractiveTranscriptText, WordLookupModal } from '../WordLookupPopover';
@@ -242,6 +242,7 @@ export const RoleplayStage: React.FC<Props> = ({
 
   // Synchronous Push-To-Talk / Tap-To-Talk tracking refs
   const isRecordingRef = useRef(false);
+  const isStoppingRef = useRef(false);
   const isInitializingMicRef = useRef(false);
   const livePreviewRef = useRef('');
   const pressStartTimeRef = useRef(0);
@@ -368,6 +369,15 @@ export const RoleplayStage: React.FC<Props> = ({
         hasDetectedVoiceRef.current = false;
         diagnosticLogger.log('VOICE', '2-second silence detected, auto-completing speaking turn');
         stopRecording();
+      } else if (
+        !hasDetectedVoiceRef.current &&
+        !isPressingRef.current &&
+        !isHoldingRef.current &&
+        now - recordingStartedAtRef.current > 5500
+      ) {
+        // User started recording but stayed silent for 5.5s -> auto-finish and let tutor prompt them
+        diagnosticLogger.log('VOICE', '5.5s initial silence detected, auto-completing speaking turn');
+        stopRecording();
       }
     });
 
@@ -434,9 +444,10 @@ export const RoleplayStage: React.FC<Props> = ({
       pendingStopRef.current = true;
       return;
     }
-    if (!isRecordingRef.current) {
+    if (!isRecordingRef.current || isStoppingRef.current) {
       return;
     }
+    isStoppingRef.current = true;
     isRecordingRef.current = false;
     hasDetectedVoiceRef.current = false;
     setIsRecording(false);
@@ -447,191 +458,193 @@ export const RoleplayStage: React.FC<Props> = ({
     setIsProcessing(true);
     playChime('micStop');
 
-    let audioClip: RecordedAudioClip | null = null;
     try {
-      audioClip = await recorderRef.current.stop();
-    } catch (e) {
-      console.warn('[RoleplayStage] Failed to stop audio recorder:', e);
-    }
-
-    vizRef.current.stopMicrophone();
-
-    let heard: string | null = null;
-    let turnLowConfidenceWords: string[] = [];
-    let turnWordConfidences: WordConfidenceInfo[] = [];
-
-    if (recRef.current) {
-      const details = await recRef.current.stopWithDetails();
-      recRef.current = null;
-      if (details) {
-        heard = details.transcript;
-
-        const extractedWords = details.rawResults
-          ? extractWordsFromSpeechResults(details.rawResults)
-          : details.allWords && details.allWords.length > 0
-          ? details.allWords
-          : [];
-
-        turnWordConfidences = extractedWords;
-
-        const lowConfWordsFromResult = extractedWords
-          .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
-          .map((w) => w.word.toLowerCase());
-
-        const lowConfWordsFromDetails = (details.lowConfidenceWords || [])
-          .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
-          .map((w) => w.word.toLowerCase());
-
-        const flaggedSegments = details.segments.filter(
-          (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.75) || s.alternatives.length > 0
-        );
-        if (flaggedSegments.length > 0) {
-          pronunciationMetadataRef.current.push(...flaggedSegments);
-        }
-
-        turnLowConfidenceWords = Array.from(
-          new Set([...lowConfWordsFromResult, ...lowConfWordsFromDetails, ...liveLowConfidenceWords])
-        );
-
-        turnLowConfidenceWords.forEach((word) => sessionLowConfidenceWordsRef.current.add(word));
-      }
-    }
-
-    let finalTranscript = livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '';
-    livePreviewRef.current = '';
-    setLivePreview('');
-    setLiveLowConfidenceWords([]);
-
-    let audioAttachment: AudioAttachment | null = null;
-    if (audioClip && audioClip.base64) {
-      audioAttachment = {
-        base64: audioClip.base64,
-        mimeType: audioClip.mimeType,
-      };
-      recordedClipsRef.current.push(audioAttachment);
-    }
-
-    // AI Audio Transcription Fallback:
-    // If the browser Web Speech API did not return text (common on mobile Android due to mic exclusive lock),
-    // but the microphone successfully recorded audio, transcribe the audio using Gemini multimodal AI!
-    if (!finalTranscript && audioAttachment && audioAttachment.base64) {
-      diagnosticLogger.log(
-        'VOICE',
-        `Web Speech API returned empty transcript. Triggering AI audio transcription fallback (${audioAttachment.mimeType}, size: ${audioAttachment.base64.length} chars)...`
-      );
-      setIsTranscribingAudio(true);
+      let audioClip: RecordedAudioClip | null = null;
       try {
-        const aiTranscript = await transcribeAudioWithAI({
-          base64: audioAttachment.base64,
-          mimeType: audioAttachment.mimeType,
-          blob: audioClip?.blob,
-        });
-        if (aiTranscript && aiTranscript.trim().length > 0) {
-          finalTranscript = aiTranscript.trim();
-          diagnosticLogger.log('VOICE', `AI audio fallback transcription successful: "${finalTranscript}"`);
-          console.log('[RoleplayStage] Recovered user transcript via AI:', finalTranscript);
-        } else {
-          diagnosticLogger.warn('VOICE', 'AI audio fallback returned empty or whitespace-only text');
-        }
-      } catch (err: any) {
-        diagnosticLogger.error('VOICE', `AI audio fallback transcription error: ${err?.message || err}`);
-        console.warn('[RoleplayStage] AI audio transcription fallback error:', err);
-      } finally {
-        setIsTranscribingAudio(false);
-      }
-    }
-
-    // Guard: If no speech was captured at all (mic silent, accidentally touched for 50ms, or muted),
-    // prompt user to try speaking again rather than silently inserting fake demo words.
-    if (!finalTranscript) {
-      diagnosticLogger.warn('VOICE', 'No speech detected after recording stop', {
-        hadAudioAttachment: Boolean(audioAttachment),
-        audioLength: audioAttachment?.base64?.length ?? 0,
-      });
-      setIsProcessing(false);
-      toast.warning('No speech detected. Please speak clearly into your microphone.', "Didn't Catch That");
-      return;
-    }
-
-    const idx = userTurnCount.current++;
-    const userSpokeReal = true;
-    const text = finalTranscript;
-
-    if (userSpokeReal) {
-      const phrasesToCheck = [...plan.phrases];
-      if (dueSRSCard) {
-        phrasesToCheck.push({
-          id: dueSRSCard.id,
-          phrase: dueSRSCard.phrase,
-          ipa: dueSRSCard.ipa,
-          usageContext: dueSRSCard.context,
-          translations: {},
-        });
+        audioClip = await recorderRef.current.stop();
+      } catch (e) {
+        console.warn('[RoleplayStage] Failed to stop audio recorder:', e);
       }
 
-      const newlyMatched: string[] = [];
-      phrasesToCheck.forEach((tp) => {
-        if (!usedTargetPhraseIds.has(tp.id)) {
-          if (matchesTargetPhrase(text, tp.phrase)) {
-            newlyMatched.push(tp.id);
+      vizRef.current.stopMicrophone();
+
+      let heard: string | null = null;
+      let turnLowConfidenceWords: string[] = [];
+      let turnWordConfidences: WordConfidenceInfo[] = [];
+
+      if (recRef.current) {
+        const details = await recRef.current.stopWithDetails();
+        recRef.current = null;
+        if (details) {
+          heard = details.transcript;
+
+          const extractedWords = details.rawResults
+            ? extractWordsFromSpeechResults(details.rawResults)
+            : details.allWords && details.allWords.length > 0
+            ? details.allWords
+            : [];
+
+          turnWordConfidences = extractedWords;
+
+          const lowConfWordsFromResult = extractedWords
+            .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
+            .map((w) => w.word.toLowerCase());
+
+          const lowConfWordsFromDetails = (details.lowConfidenceWords || [])
+            .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
+            .map((w) => w.word.toLowerCase());
+
+          const flaggedSegments = details.segments.filter(
+            (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.75) || s.alternatives.length > 0
+          );
+          if (flaggedSegments.length > 0) {
+            pronunciationMetadataRef.current.push(...flaggedSegments);
           }
+
+          turnLowConfidenceWords = Array.from(
+            new Set([...lowConfWordsFromResult, ...lowConfWordsFromDetails, ...liveLowConfidenceWords])
+          );
+
+          turnLowConfidenceWords.forEach((word) => sessionLowConfidenceWordsRef.current.add(word));
         }
-      });
-
-      if (newlyMatched.length > 0) {
-        setUsedTargetPhraseIds((prev) => {
-          const next = new Set(prev);
-          newlyMatched.forEach((id) => next.add(id));
-          return next;
-        });
-        setJustMatchedPhraseId(newlyMatched[0]);
-        setTimeout(() => setJustMatchedPhraseId(null), 3500);
-        playChime('success');
       }
-    }
 
-    const newTurns: Turn[] = [
-      ...turns,
-      {
-        id: `u-${idx}`,
-        speaker: 'user',
-        text,
-        revealed: true,
-        isMock: !userSpokeReal,
-        lowConfidenceWords: turnLowConfidenceWords,
-        wordConfidences: turnWordConfidences,
-      },
-    ];
-    setTurns(newTurns);
+      let finalTranscript = deduplicateSpokenText(livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '');
+      livePreviewRef.current = '';
+      setLivePreview('');
+      setLiveLowConfidenceWords([]);
 
-    try {
-      const historyForGemini = newTurns.map((t) => ({ speaker: t.speaker, text: t.text }));
+      let audioAttachment: AudioAttachment | null = null;
+      if (audioClip && audioClip.base64) {
+        audioAttachment = {
+          base64: audioClip.base64,
+          mimeType: audioClip.mimeType,
+        };
+        recordedClipsRef.current.push(audioAttachment);
+      }
 
-      const aiReply = await generateJamesReply(
-        historyForGemini,
-        plan.title,
-        plan.aiTurns,
-        plan.persona,
-        audioAttachment,
-        userLevel
-      );
+      // AI Audio Transcription Fallback:
+      // If the browser Web Speech API did not return text (common on mobile Android due to mic exclusive lock),
+      // but the microphone successfully recorded audio, transcribe the audio using Gemini multimodal AI!
+      if (!finalTranscript && audioAttachment && audioAttachment.base64) {
+        diagnosticLogger.log(
+          'VOICE',
+          `Web Speech API returned empty transcript. Triggering AI audio transcription fallback (${audioAttachment.mimeType}, size: ${audioAttachment.base64.length} chars)...`
+        );
+        setIsTranscribingAudio(true);
+        try {
+          const aiTranscript = await transcribeAudioWithAI({
+            base64: audioAttachment.base64,
+            mimeType: audioAttachment.mimeType,
+            blob: audioClip?.blob,
+          });
+          if (aiTranscript && aiTranscript.trim().length > 0) {
+            finalTranscript = deduplicateSpokenText(aiTranscript.trim());
+            diagnosticLogger.log('VOICE', `AI audio fallback transcription successful: "${finalTranscript}"`);
+            console.log('[RoleplayStage] Recovered user transcript via AI:', finalTranscript);
+          } else {
+            diagnosticLogger.warn('VOICE', 'AI audio fallback returned empty or whitespace-only text');
+          }
+        } catch (err: any) {
+          diagnosticLogger.error('VOICE', `AI audio fallback transcription error: ${err?.message || err}`);
+          console.warn('[RoleplayStage] AI audio transcription fallback error:', err);
+        } finally {
+          setIsTranscribingAudio(false);
+        }
+      }
 
-      setTurns((prev) => [
-        ...prev,
-        { id: `ai-${Date.now()}`, speaker: 'ai', text: aiReply, revealed: false },
-      ]);
-      setAiIndex((i) => i + 1);
-      speakAi(aiReply);
-    } catch (err) {
-      console.warn('Error fetching tutor reply:', err);
-      const fallbackAi = plan.aiTurns[Math.min(aiIndex, plan.aiTurns.length - 1)] || 'Splendid! Lovely chatting with you.';
-      setTurns((prev) => [
-        ...prev,
-        { id: `ai-${Date.now()}`, speaker: 'ai', text: fallbackAi, revealed: false },
-      ]);
-      setAiIndex((i) => i + 1);
-      speakAi(fallbackAi);
+      // If user stayed silent or no speech was captured, DO NOT ignore it — register hesitation and let tutor guide them!
+      if (!finalTranscript) {
+        diagnosticLogger.log('VOICE', 'No speech detected after recording stop, registering hesitation turn');
+        finalTranscript = '(Silence / hesitated)';
+      }
+
+      finalTranscript = deduplicateSpokenText(finalTranscript);
+
+      const idx = userTurnCount.current++;
+      const userSpokeReal = true;
+      const text = finalTranscript;
+
+      if (userSpokeReal && text !== '(Silence / hesitated)') {
+        const phrasesToCheck = [...plan.phrases];
+        if (dueSRSCard) {
+          phrasesToCheck.push({
+            id: dueSRSCard.id,
+            phrase: dueSRSCard.phrase,
+            ipa: dueSRSCard.ipa,
+            usageContext: dueSRSCard.context,
+            translations: {},
+          });
+        }
+
+        const newlyMatched: string[] = [];
+        phrasesToCheck.forEach((tp) => {
+          if (!usedTargetPhraseIds.has(tp.id)) {
+            if (matchesTargetPhrase(text, tp.phrase)) {
+              newlyMatched.push(tp.id);
+            }
+          }
+        });
+
+        if (newlyMatched.length > 0) {
+          setUsedTargetPhraseIds((prev) => {
+            const next = new Set(prev);
+            newlyMatched.forEach((id) => next.add(id));
+            return next;
+          });
+          setJustMatchedPhraseId(newlyMatched[0]);
+          setTimeout(() => setJustMatchedPhraseId(null), 3500);
+          playChime('success');
+        }
+      }
+
+      const newTurns: Turn[] = [
+        ...turns,
+        {
+          id: `u-${idx}`,
+          speaker: 'user',
+          text,
+          revealed: true,
+          isMock: !userSpokeReal,
+          lowConfidenceWords: turnLowConfidenceWords,
+          wordConfidences: turnWordConfidences,
+        },
+      ];
+      setTurns(newTurns);
+
+      try {
+        const historyForGemini = newTurns.map((t) => ({ speaker: t.speaker, text: t.text }));
+
+        const aiReply = await generateJamesReply(
+          historyForGemini,
+          plan.title,
+          plan.aiTurns,
+          plan.persona,
+          audioAttachment,
+          userLevel
+        );
+
+        setTurns((prev) => [
+          ...prev,
+          { id: `ai-${Date.now()}`, speaker: 'ai', text: aiReply, revealed: false },
+        ]);
+        setAiIndex((i) => i + 1);
+        speakAi(aiReply);
+      } catch (err) {
+        console.warn('Error fetching tutor reply:', err);
+        const isHesitation = text.includes('Silence / hesitated');
+        const fallbackAi = isHesitation
+          ? "No worries at all, take your time! If you're not sure how to answer, you could say: 'Could you give me a moment, please?' or ask for a hint."
+          : plan.aiTurns[Math.min(aiIndex, plan.aiTurns.length - 1)] || 'Splendid! Lovely chatting with you.';
+        setTurns((prev) => [
+          ...prev,
+          { id: `ai-${Date.now()}`, speaker: 'ai', text: fallbackAi, revealed: false },
+        ]);
+        setAiIndex((i) => i + 1);
+        speakAi(fallbackAi);
+      }
     } finally {
+      isStoppingRef.current = false;
       setIsProcessing(false);
     }
   };
@@ -1052,10 +1065,16 @@ export const RoleplayStage: React.FC<Props> = ({
                     </div>
                   ) : (
                     <>
-                      {(() => {
-                        if (!t.lowConfidenceWords || t.lowConfidenceWords.length === 0) {
-                          return <span>{t.text}</span>;
-                        }
+                      {t.text.includes('Silence / hesitated') ? (
+                        <div className="flex items-center gap-1.5 py-0.5 text-xs text-brand-100/95 font-medium italic">
+                          <LifeBuoy className="w-3.5 h-3.5 text-amber-300 flex-shrink-0 animate-pulse" />
+                          <span>(Hesitated · Taking time to think)</span>
+                        </div>
+                      ) : (
+                        (() => {
+                          if (!t.lowConfidenceWords || t.lowConfidenceWords.length === 0) {
+                            return <span>{t.text}</span>;
+                          }
                         const lowConfSet = new Set(t.lowConfidenceWords.map((w) => w.toLowerCase()));
                         const tokens = t.text.split(/(\s+)/);
                         return (
@@ -1078,7 +1097,7 @@ export const RoleplayStage: React.FC<Props> = ({
                             })}
                           </span>
                         );
-                      })()}
+                      })())}
                       {t.lowConfidenceWords && t.lowConfidenceWords.length > 0 && (
                         <div className="mt-1.5 flex items-center gap-1.5 text-[10px] font-bold text-amber-200 bg-black/20 px-2 py-0.5 rounded-md border border-amber-300/30">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
