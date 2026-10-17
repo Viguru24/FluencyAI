@@ -181,10 +181,12 @@ export function getCandidateGatewayUrls(base?: string): string[] {
     }
   }
 
-  // 4. Primary configured URL (e.g. http://127.0.0.1:31415/v1)
+  // 4. Primary configured URL (e.g. http://192.168.1.28:3001/v1 or http://127.0.0.1:31415/v1)
   addUnique(primary);
 
-  // 5. Local loopback fallbacks
+  // 5. Local LAN and loopback fallbacks
+  addUnique('http://192.168.1.28:3001/v1');
+  addUnique('http://127.0.0.1:31415/v1');
   if (primary.includes('127.0.0.1:31415')) {
     addUnique(primary.replace('127.0.0.1:31415', 'localhost:31415'));
   } else if (primary.includes('localhost:31415')) {

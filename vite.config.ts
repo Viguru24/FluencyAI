@@ -16,12 +16,12 @@ export default defineConfig({
     },
     proxy: {
       '/freellm-gateway': {
-        target: 'http://127.0.0.1:31415',
+        target: 'http://192.168.1.28:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/freellm-gateway/, ''),
       },
       '/v1': {
-        target: 'http://127.0.0.1:31415',
+        target: 'http://192.168.1.28:3001',
         changeOrigin: true,
       },
     },
