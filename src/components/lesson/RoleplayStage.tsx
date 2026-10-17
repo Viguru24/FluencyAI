@@ -239,12 +239,17 @@ export const RoleplayStage: React.FC<Props> = ({
 
   // Synchronous Push-To-Talk / Tap-To-Talk tracking refs
   const isRecordingRef = useRef(false);
+  const isInitializingMicRef = useRef(false);
   const livePreviewRef = useRef('');
   const pressStartTimeRef = useRef(0);
   const isPressingRef = useRef(false);
   const isHoldingRef = useRef(false);
   const holdTimerRef = useRef<number | null>(null);
   const pendingStopRef = useRef(false);
+  const hasDetectedVoiceRef = useRef(false);
+  const lastVoiceTimeRef = useRef(0);
+  const recordingStartedAtRef = useRef(0);
+  const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
 
   const userTurnsCount = turns.filter((t) => t.speaker === 'user').length;
   const currentTurn = userTurnsCount + 1;
@@ -318,24 +323,47 @@ export const RoleplayStage: React.FC<Props> = ({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [turns, livePreview]);
+  }, [turns, livePreview, isRecording, isTranscribingAudio]);
 
   const startRecording = async () => {
-    if (isRecordingRef.current || isProcessing) return;
+    if (isRecordingRef.current || isInitializingMicRef.current || isProcessing) return;
     pendingStopRef.current = false;
+    isInitializingMicRef.current = true;
+    hasDetectedVoiceRef.current = false;
+    lastVoiceTimeRef.current = Date.now();
     stopSpeaking();
     setIsAiSpeaking(false);
 
     // Instant silky glow + warm acoustic chime on touch
-    isRecordingRef.current = true;
     setIsRecording(true);
     livePreviewRef.current = '';
     setLivePreview('');
     setLiveLowConfidenceWords([]);
     playChime('micStart');
 
-    const ok = await vizRef.current.startMicrophone(setBands);
+    const ok = await vizRef.current.startMicrophone((newBands) => {
+      setBands(newBands);
+      if (!isRecordingRef.current) return;
+      const avg = newBands.length > 0 ? newBands.reduce((a, b) => a + b, 0) / newBands.length : 0;
+      const now = Date.now();
+      if (avg > 0.14) {
+        hasDetectedVoiceRef.current = true;
+        lastVoiceTimeRef.current = now;
+      } else if (
+        hasDetectedVoiceRef.current &&
+        !isPressingRef.current &&
+        !isHoldingRef.current &&
+        now - recordingStartedAtRef.current > 1200 &&
+        now - lastVoiceTimeRef.current > 2100
+      ) {
+        // User tapped once, spoke, and paused for ~2.1s -> auto-finish recording!
+        hasDetectedVoiceRef.current = false;
+        stopRecording();
+      }
+    });
+
     if (!ok) {
+      isInitializingMicRef.current = false;
       isRecordingRef.current = false;
       setIsRecording(false);
       setIsHolding(false);
@@ -343,8 +371,9 @@ export const RoleplayStage: React.FC<Props> = ({
       return;
     }
 
-    if (pendingStopRef.current || !isRecordingRef.current) {
+    if (pendingStopRef.current) {
       pendingStopRef.current = false;
+      isInitializingMicRef.current = false;
       vizRef.current.stopMicrophone();
       isRecordingRef.current = false;
       setIsRecording(false);
@@ -353,14 +382,24 @@ export const RoleplayStage: React.FC<Props> = ({
 
     const activeStream = vizRef.current.getStream();
     await recorderRef.current.start(activeStream);
+    recordingStartedAtRef.current = Date.now();
+    isInitializingMicRef.current = false;
+    isRecordingRef.current = true;
 
     recRef.current = isRecognitionSupported()
       ? startRecognition({
           lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
-          silenceTimeoutMs: 0,
+          silenceTimeoutMs: 2300,
           onInterim: (text) => {
             livePreviewRef.current = text;
             setLivePreview(text);
+            hasDetectedVoiceRef.current = true;
+            lastVoiceTimeRef.current = Date.now();
+          },
+          onSilenceTimeout: () => {
+            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
+              stopRecording();
+            }
           },
           onSpeechResults: (eventResults) => {
             const extracted = extractWordsFromSpeechResults(eventResults);
@@ -381,11 +420,15 @@ export const RoleplayStage: React.FC<Props> = ({
   };
 
   const stopRecording = async () => {
-    if (!isRecordingRef.current) {
+    if (isInitializingMicRef.current) {
       pendingStopRef.current = true;
       return;
     }
+    if (!isRecordingRef.current) {
+      return;
+    }
     isRecordingRef.current = false;
+    hasDetectedVoiceRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
     isHoldingRef.current = false;
@@ -462,6 +505,7 @@ export const RoleplayStage: React.FC<Props> = ({
     // If the browser Web Speech API did not return text (common on mobile Android due to mic exclusive lock),
     // but the microphone successfully recorded audio, transcribe the audio using Gemini multimodal AI!
     if (!finalTranscript && audioAttachment && audioAttachment.base64 && isGeminiConfigured()) {
+      setIsTranscribingAudio(true);
       try {
         const aiTranscript = await transcribeAudioWithAI({
           base64: audioAttachment.base64,
@@ -474,6 +518,8 @@ export const RoleplayStage: React.FC<Props> = ({
         }
       } catch (err) {
         console.warn('[RoleplayStage] AI audio transcription fallback error:', err);
+      } finally {
+        setIsTranscribingAudio(false);
       }
     }
 
@@ -481,12 +527,12 @@ export const RoleplayStage: React.FC<Props> = ({
     // prompt user to try speaking again rather than silently inserting fake demo words.
     if (!finalTranscript) {
       setIsProcessing(false);
-      toast.warning('No speech detected. Please hold or tap the mic and speak clearly.', "Didn't Catch That");
+      toast.warning('No speech detected. Please speak clearly into your microphone.', "Didn't Catch That");
       return;
     }
 
     const idx = userTurnCount.current++;
-    const userSpokeReal = Boolean(finalTranscript.length > 0);
+    const userSpokeReal = true;
     const text = finalTranscript;
 
     if (userSpokeReal) {
@@ -568,12 +614,12 @@ export const RoleplayStage: React.FC<Props> = ({
     }
   };
 
-  // Supports both Hold-and-Release AND Quick-Tap-to-Start / Tap-Again-to-End
+  // Supports both Hold-and-Release AND Quick-Tap-to-Start / Tap-Again-to-End (plus Auto-Silence Stop)
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     if (isProcessing || isAnalyzingScorecard) return;
 
-    if (isRecordingRef.current) {
+    if (isRecordingRef.current || isInitializingMicRef.current) {
       isPressingRef.current = false;
       stopRecording();
       return;
@@ -1003,11 +1049,6 @@ export const RoleplayStage: React.FC<Props> = ({
                           <span>Flagged pronunciation (&lt;75%): {t.lowConfidenceWords.join(', ')}</span>
                         </div>
                       )}
-                      {t.isMock && (
-                        <span className="block mt-1 text-[10px] text-brand-100">
-                          Demo transcript (speech-to-text unavailable)
-                        </span>
-                      )}
                     </>
                   )}
                   {t.speaker === 'ai' && (
@@ -1024,11 +1065,20 @@ export const RoleplayStage: React.FC<Props> = ({
           })}
 
           {/* Subtle inline live speech preview inside the chat flow (no floating popup clutter) */}
-          {isRecording && livePreview && (
+          {isRecording && (
             <div className="flex justify-end animate-fade-in">
               <div className="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-sm bg-indigo-600/85 text-white/95 shadow-sm backdrop-blur-xs">
-                <span>{livePreview}</span>
+                <span>{livePreview || '🎙️ Listening… speak now'}</span>
                 <span className="inline-block w-1 h-3.5 ml-1 bg-white/80 animate-pulse align-middle rounded-full" />
+              </div>
+            </div>
+          )}
+
+          {isTranscribingAudio && !isRecording && (
+            <div className="flex justify-end animate-fade-in">
+              <div className="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-xs font-semibold bg-indigo-600/75 text-white/95 shadow-sm backdrop-blur-xs flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                <span>Transcribing your speech…</span>
               </div>
             </div>
           )}
@@ -1042,7 +1092,8 @@ export const RoleplayStage: React.FC<Props> = ({
           <button
             onClick={() => {
               handleStopSpeaking();
-              if (isRecordingRef.current) {
+              if (isRecordingRef.current || isInitializingMicRef.current) {
+                isInitializingMicRef.current = false;
                 isRecordingRef.current = false;
                 setIsRecording(false);
                 setIsHolding(false);
@@ -1141,12 +1192,14 @@ export const RoleplayStage: React.FC<Props> = ({
             </div>
 
             <span className="mt-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 select-none">
-              {isProcessing
+              {isTranscribingAudio
+                ? 'Transcribing…'
+                : isProcessing
                 ? 'Thinking…'
                 : isRecording
                 ? isHolding
                   ? 'Release to finish'
-                  : 'Tap again to finish'
+                  : 'Tap to finish (or pause)'
                 : 'Hold or tap to speak'}
             </span>
           </div>

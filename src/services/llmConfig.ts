@@ -12,12 +12,12 @@ export interface LLMConfig {
 
 export const STORAGE_KEY_LLM_CONFIG = 'fluency_llm_config';
 export const DEFAULT_FREELLM_BASE_URL = 'http://127.0.0.1:31415/v1';
-export const DEFAULT_MODEL = 'gemini-3.1-flash-lite';
+export const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 export const AVAILABLE_MODELS_FREELLM = [
-  { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite (Blazing Fast ~500ms · Recommended)' },
+  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (Blazing Fast ~500ms · Recommended)' },
   { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Latest & Most Capable)' },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (Balanced ~1.4s)' },
+  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (Balanced ~1.2s)' },
   { id: 'auto', label: 'Auto (FreeLLMAPI Default Routing)' },
   { id: 'gemma-4-31b-it', label: 'Gemma 4 31B IT' },
 ];
@@ -113,7 +113,10 @@ export function getLLMConfig(): LLMConfig {
   let model = saved.model;
   if (!model) {
     model = provider === 'direct-gemini' ? 'gemini-2.5-flash' : DEFAULT_MODEL;
-  } else if (provider === 'freellmapi' && (model === 'gemini-2.5-flash' || model === 'gemini-2.0-flash' || model === 'auto')) {
+  } else if (
+    provider === 'freellmapi' &&
+    (model === 'gemini-2.5-flash' || model === 'gemini-2.0-flash' || model === 'gemini-3.1-flash-lite' || model === 'auto')
+  ) {
     model = DEFAULT_MODEL;
   }
 

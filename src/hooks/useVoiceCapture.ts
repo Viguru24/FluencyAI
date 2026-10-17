@@ -37,12 +37,16 @@ export function useVoiceCapture({
   const pronunciationMetadataRef = useRef<SpokenSegmentAnalysis[]>([]);
 
   const isRecordingRef = useRef(false);
+  const isInitializingMicRef = useRef(false);
   const pressStartTimeRef = useRef(0);
   const isPressingRef = useRef(false);
   const isHoldingRef = useRef(false);
   const holdTimerRef = useRef<number | null>(null);
   const pendingStopRef = useRef(false);
   const livePreviewRef = useRef('');
+  const hasDetectedVoiceRef = useRef(false);
+  const lastVoiceTimeRef = useRef(0);
+  const recordingStartedAtRef = useRef(0);
 
   const updateLivePreview = useCallback((text: string) => {
     livePreviewRef.current = text;
@@ -54,7 +58,9 @@ export function useVoiceCapture({
     vizRef.current.stopMicrophone();
     recorderRef.current.stop().catch(() => {});
     recRef.current?.stop();
+    isInitializingMicRef.current = false;
     isRecordingRef.current = false;
+    hasDetectedVoiceRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
     updateLivePreview('');
@@ -67,12 +73,16 @@ export function useVoiceCapture({
   }, [cleanupAudio]);
 
   const stopRecording = useCallback(async () => {
-    if (!isRecordingRef.current) {
+    if (isInitializingMicRef.current) {
       pendingStopRef.current = true;
+      return;
+    }
+    if (!isRecordingRef.current) {
       return;
     }
 
     isRecordingRef.current = false;
+    hasDetectedVoiceRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
     isHoldingRef.current = false;
@@ -132,19 +142,40 @@ export function useVoiceCapture({
   }, [onCompleteCapture, updateLivePreview]);
 
   const startRecording = useCallback(async () => {
-    if (isRecordingRef.current) return;
+    if (isRecordingRef.current || isInitializingMicRef.current) return;
     pendingStopRef.current = false;
+    isInitializingMicRef.current = true;
+    hasDetectedVoiceRef.current = false;
+    lastVoiceTimeRef.current = Date.now();
     stopSpeaking();
     onBeforeStart?.();
 
     // Instant visual & audio feedback on touch
-    isRecordingRef.current = true;
     setIsRecording(true);
     updateLivePreview('');
     playChime('micStart');
 
-    const ok = await vizRef.current.startMicrophone(setBands);
+    const ok = await vizRef.current.startMicrophone((newBands) => {
+      setBands(newBands);
+      if (!isRecordingRef.current) return;
+      const avg = newBands.length > 0 ? newBands.reduce((a, b) => a + b, 0) / newBands.length : 0;
+      const now = Date.now();
+      if (avg > 0.14) {
+        hasDetectedVoiceRef.current = true;
+        lastVoiceTimeRef.current = now;
+      } else if (
+        hasDetectedVoiceRef.current &&
+        !isPressingRef.current &&
+        !isHoldingRef.current &&
+        now - recordingStartedAtRef.current > 1200 &&
+        now - lastVoiceTimeRef.current > 2100
+      ) {
+        hasDetectedVoiceRef.current = false;
+        stopRecording();
+      }
+    });
     if (!ok) {
+      isInitializingMicRef.current = false;
       isRecordingRef.current = false;
       setIsRecording(false);
       setIsHolding(false);
@@ -156,8 +187,9 @@ export function useVoiceCapture({
       return;
     }
 
-    if (pendingStopRef.current || !isRecordingRef.current) {
+    if (pendingStopRef.current) {
       pendingStopRef.current = false;
+      isInitializingMicRef.current = false;
       vizRef.current.stopMicrophone();
       isRecordingRef.current = false;
       setIsRecording(false);
@@ -166,12 +198,24 @@ export function useVoiceCapture({
 
     const stream = vizRef.current.getStream();
     await recorderRef.current.start(stream);
+    recordingStartedAtRef.current = Date.now();
+    isInitializingMicRef.current = false;
+    isRecordingRef.current = true;
 
     recRef.current = isRecognitionSupported()
       ? startRecognition({
           lang,
-          silenceTimeoutMs: 0,
-          onInterim: (text) => updateLivePreview(text),
+          silenceTimeoutMs: 2300,
+          onInterim: (text) => {
+            updateLivePreview(text);
+            hasDetectedVoiceRef.current = true;
+            lastVoiceTimeRef.current = Date.now();
+          },
+          onSilenceTimeout: () => {
+            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
+              stopRecording();
+            }
+          },
         })
       : null;
 
@@ -186,7 +230,7 @@ export function useVoiceCapture({
       e.preventDefault();
       if (disabled) return;
 
-      if (isRecordingRef.current) {
+      if (isRecordingRef.current || isInitializingMicRef.current) {
         isPressingRef.current = false;
         stopRecording();
         return;

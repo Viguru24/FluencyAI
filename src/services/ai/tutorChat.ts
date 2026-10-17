@@ -112,32 +112,49 @@ STRICT OUTPUT RULES:
         });
       }
 
-      const freeLLMModel =
-        config.model && config.model !== 'auto' && config.model !== 'gemini-2.5-flash' && config.model !== 'gemini-2.0-flash'
+      const preferredModel =
+        config.model &&
+        config.model !== 'auto' &&
+        config.model !== 'gemini-2.5-flash' &&
+        config.model !== 'gemini-2.0-flash' &&
+        config.model !== 'gemini-3.1-flash-lite'
           ? config.model
-          : 'gemini-3.1-flash-lite';
+          : 'gemini-3.5-flash-lite';
 
-      const response = await fetchFreeLLMWithFallback(
-        '/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-          },
-          body: JSON.stringify({
-            model: freeLLMModel,
-            messages,
-            temperature: 0.75,
-            max_tokens: 600,
-          }),
-        },
-        config.baseUrl
+      const candidateModels = Array.from(
+        new Set([preferredModel, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash'])
       );
 
-      if (!response.ok) {
-        const errText = await response.text();
-        let detailedMsg = `HTTP ${response.status}`;
+      let response: Response | null = null;
+      for (const modelCandidate of candidateModels) {
+        response = await fetchFreeLLMWithFallback(
+          '/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              model: modelCandidate,
+              messages,
+              temperature: 0.75,
+              max_tokens: 600,
+            }),
+          },
+          config.baseUrl
+        );
+
+        if (response.ok) break;
+        if (response.status !== 429 && response.status !== 404 && response.status !== 503) {
+          break;
+        }
+      }
+
+      if (!response || !response.ok) {
+        const errText = response ? await response.text() : 'Network error';
+        const status = response ? response.status : 500;
+        let detailedMsg = `HTTP ${status}`;
         try {
           const parsed = JSON.parse(errText);
           detailedMsg = parsed?.error?.message || detailedMsg;
@@ -145,8 +162,8 @@ STRICT OUTPUT RULES:
           detailedMsg = errText.slice(0, 200) || detailedMsg;
         }
 
-        toast.error(`FreeLLMAPI Error (${response.status}): ${detailedMsg}`, 'FreeLLMAPI Router Issue');
-        throw new Error(`FreeLLMAPI status ${response.status}: ${detailedMsg}`);
+        toast.error(`FreeLLMAPI Error (${status}): ${detailedMsg}`, 'FreeLLMAPI Router Issue');
+        throw new Error(`FreeLLMAPI status ${status}: ${detailedMsg}`);
       }
 
       const data = await response.json();
