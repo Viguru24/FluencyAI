@@ -158,28 +158,29 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
         <div className="relative z-10 space-y-4">
           {/* Progress Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">
-                <Mic className="w-4 h-4" />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-tr from-brand-600 to-sky-400 text-white shadow-soft shadow-brand-500/30 flex-shrink-0">
+                <Mic className="w-4.5 h-4.5 text-white" />
               </div>
               <div>
-                <span className="text-xs font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                <span className="text-[11px] font-black text-slate-500 dark:text-slate-300 uppercase tracking-wider block">
                   Daily Speaking Goal
                 </span>
-                <div className="text-sm font-black text-slate-900 dark:text-white">
+                <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
                   {currentMinutes} of {speakingMinutesTarget} mins spoken
                 </div>
               </div>
             </div>
 
             <div
-              className={`px-2.5 py-1 rounded-full text-xs font-black tracking-wide border ${
+              className={`px-3 py-1 rounded-xl text-xs font-black tracking-wide border shadow-2xs flex items-center gap-1 ${
                 isGoalReached
-                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                  : 'bg-brand-50 dark:bg-brand-950/80 text-brand-700 dark:text-brand-200 border-brand-200 dark:border-brand-800'
+                  ? 'bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/40 dark:border-emerald-500/40'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white border-slate-200 dark:border-slate-700'
               }`}
             >
-              {minutesPercent}%
+              <span className="text-[10px] text-slate-400 dark:text-slate-400 font-bold">Done</span>
+              <span className="text-brand-600 dark:text-sky-300 font-black">{minutesPercent}%</span>
             </div>
           </div>
 
@@ -225,10 +226,10 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                     playChime('tap');
                     onStartLesson();
                   }}
-                  className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-white hover:bg-brand-50 text-brand-950 font-black text-xs shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95"
+                  className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-black text-xs shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95"
                 >
-                  <Play className="w-3.5 h-3.5 fill-brand-700 text-brand-700" />
-                  <span>Start Daily Lesson</span>
+                  <Play className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                  <span className="text-slate-950 font-black">Start Daily Lesson</span>
                 </button>
                 {onStartDirectRoleplay && (
                   <button
@@ -236,7 +237,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                       playChime('tap');
                       onStartDirectRoleplay();
                     }}
-                    className="py-2.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs transition active:scale-95"
+                    className="py-2.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-black text-xs transition active:scale-95"
                     title="Skip warm-up phrases and jump straight into Stage 2 Roleplay"
                   >
                     ⚡ Skip Prep
@@ -247,11 +248,10 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
           )}
 
           {/* Goal Milestones Row */}
-          {/* Goal Milestones Row */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="relative p-2.5 rounded-2xl bg-white/90 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-700/80 text-center flex flex-col justify-between group shadow-2xs hover:border-brand-300 dark:hover:border-brand-500 transition">
+            <div className="relative p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between group shadow-2xs hover:border-brand-300 dark:hover:border-brand-500 transition">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider">XP Today</span>
+                <span className="text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">XP Today</span>
                 <button
                   onClick={() => {
                     if (!dailyChestClaimed && isDailyGoalMet) {
@@ -275,40 +275,40 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                       ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60'
                       : isDailyGoalMet
                       ? 'text-amber-500 bg-amber-100 dark:bg-amber-950/60 ring-2 ring-amber-400 animate-bounce'
-                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
                   <Gift className={`w-3.5 h-3.5 ${isDailyGoalMet && !dailyChestClaimed ? 'animate-pulse' : ''}`} />
                 </button>
               </div>
 
-              <div className="text-sm font-black text-brand-700 dark:text-brand-300 my-0.5">
+              <div className="text-base font-black text-brand-600 dark:text-sky-300 my-0.5">
                 {dailyXP}/{dailyXPTarget}
               </div>
 
-              <div className="text-[9px] font-extrabold text-amber-800 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/90 border border-amber-300 dark:border-amber-700 rounded-md py-0.5 px-1 truncate flex items-center justify-center gap-0.5">
+              <div className="text-[10px] font-black text-amber-950 dark:text-amber-100 bg-amber-200 dark:bg-amber-900/80 border border-amber-300 dark:border-amber-600 rounded-md py-0.5 px-1 truncate flex items-center justify-center gap-0.5">
                 <span>{multiplierInfo.label}</span>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/90 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-700/80 text-center flex flex-col justify-between shadow-2xs">
-              <div className="text-[10px] font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Fluency CEFR</div>
-              <div className="text-sm font-black text-emerald-700 dark:text-emerald-300 my-0.5">
+            <div className="p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between shadow-2xs">
+              <div className="text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">Fluency CEFR</div>
+              <div className="text-base font-black text-emerald-600 dark:text-emerald-300 my-0.5">
                 Level {progress.level}
               </div>
-              <div className="text-[9px] font-extrabold text-slate-800 dark:text-slate-100 bg-slate-200/80 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-0.5 px-1 truncate">
+              <div className="text-[10px] font-black text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-500 rounded-md py-0.5 px-1 truncate">
                 {currentTierConfig.shortName}
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/90 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-700/80 text-center flex flex-col justify-between shadow-2xs">
-              <div className="text-[10px] font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <div className="p-2.5 rounded-2xl bg-white/95 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center flex flex-col justify-between shadow-2xs">
+              <div className="text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">
                 Pronunciation Avg
               </div>
-              <div className="text-sm font-black text-emerald-700 dark:text-emerald-300 my-0.5">
+              <div className="text-base font-black text-emerald-600 dark:text-emerald-300 my-0.5">
                 {pronunciationAvg}%
               </div>
-              <div className="text-[9px] font-extrabold text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 rounded-md py-0.5 px-1 truncate">
+              <div className="text-[10px] font-black text-emerald-950 dark:text-emerald-100 bg-emerald-200 dark:bg-emerald-900/80 border border-emerald-300 dark:border-emerald-600 rounded-md py-0.5 px-1 truncate">
                 {pronunciationAvg >= 90
                   ? '💎 +25% Bonus'
                   : pronunciationAvg >= 85
@@ -326,17 +326,17 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                   playChime('tap');
                   onOpenFreeTalk();
                 }}
-                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-sky-500/10 via-brand-500/5 to-emerald-500/10 dark:from-sky-950/40 dark:to-emerald-950/40 hover:from-sky-500/20 hover:to-emerald-500/20 dark:hover:from-sky-950/60 dark:hover:to-emerald-950/60 border border-brand-200 dark:border-brand-700 text-slate-900 dark:text-slate-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-sky-500/15 via-brand-500/10 to-emerald-500/15 dark:from-sky-950/60 dark:to-emerald-950/60 hover:from-sky-500/25 hover:to-emerald-500/25 dark:hover:from-sky-950/80 dark:hover:to-emerald-950/80 border border-brand-300 dark:border-brand-600 text-slate-900 dark:text-slate-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
                 <span className="flex items-center gap-2">
                   <span className="w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs text-sm">
                     {coachAvatar}
                   </span>
                   <span className="text-left leading-tight">
-                    <span className="block font-extrabold text-slate-900 dark:text-white">
+                    <span className="block font-black text-slate-900 dark:text-white">
                       Free Talk with {coachName}
                     </span>
-                    <span className="text-[10px] text-brand-700 dark:text-brand-200 font-semibold">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-200 font-bold">
                       Open voice chat · 0 prep
                     </span>
                   </span>
@@ -348,36 +348,36 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             {onOpenWarmup && (
               <button
                 onClick={onOpenWarmup}
-                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-rose-500/10 dark:from-amber-950/40 dark:to-rose-950/40 hover:from-amber-500/20 hover:to-rose-500/20 dark:hover:from-amber-950/60 dark:hover:to-rose-950/60 border border-amber-300/80 dark:border-amber-700 text-amber-950 dark:text-amber-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-rose-500/15 dark:from-amber-950/60 dark:to-rose-950/60 hover:from-amber-500/25 hover:to-rose-500/25 dark:hover:from-amber-950/80 dark:hover:to-rose-950/80 border border-amber-300 dark:border-amber-600 text-amber-950 dark:text-amber-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
                 <span className="flex items-center gap-2">
                   <span className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
                     <Zap className="w-3.5 h-3.5 animate-pulse" />
                   </span>
                   <span className="text-left leading-tight">
-                    <span className="block font-extrabold text-amber-950 dark:text-amber-100">60s Spoken Sprint</span>
-                    <span className="text-[10px] text-amber-800 dark:text-amber-200 font-semibold">Rapid warm-up · +50 XP</span>
+                    <span className="block font-black text-amber-950 dark:text-white">60s Spoken Sprint</span>
+                    <span className="text-[11px] text-amber-900 dark:text-amber-200 font-bold">Rapid warm-up · +50 XP</span>
                   </span>
                 </span>
-                <span className="text-xs text-amber-700 dark:text-amber-300 font-extrabold group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+                <span className="text-xs text-amber-700 dark:text-amber-300 font-black group-hover:translate-x-0.5 transition-transform">&rarr;</span>
               </button>
             )}
 
             {onOpenSRS && (
               <button
                 onClick={onOpenSRS}
-                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-purple-500/10 dark:from-indigo-950/40 dark:to-purple-950/40 hover:from-indigo-500/20 hover:to-purple-500/20 dark:hover:from-indigo-950/60 dark:hover:to-purple-950/60 border border-indigo-200 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-indigo-500/10 to-purple-500/15 dark:from-indigo-950/60 dark:to-purple-950/60 hover:from-indigo-500/25 hover:to-purple-500/25 dark:hover:from-indigo-950/80 dark:hover:to-purple-950/80 border border-indigo-300 dark:border-indigo-600 text-indigo-950 dark:text-indigo-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
               >
                 <span className="flex items-center gap-2">
                   <span className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
                     <Layers className="w-3.5 h-3.5" />
                   </span>
                   <span className="text-left leading-tight">
-                    <span className="block font-extrabold text-indigo-950 dark:text-indigo-100">SRS Flashcards</span>
-                    <span className="text-[10px] text-indigo-800 dark:text-indigo-200 font-semibold">{srsDueCount} cards due for recall</span>
+                    <span className="block font-black text-indigo-950 dark:text-white">SRS Flashcards</span>
+                    <span className="text-[11px] text-indigo-900 dark:text-indigo-200 font-bold">{srsDueCount} cards due for recall</span>
                   </span>
                 </span>
-                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-extrabold group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-black group-hover:translate-x-0.5 transition-transform">&rarr;</span>
               </button>
             )}
           </div>

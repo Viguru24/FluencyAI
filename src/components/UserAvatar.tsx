@@ -13,8 +13,8 @@ interface UserAvatarProps {
 
 const SIZE_MAP = {
   xs: {
-    container: 'w-5.5 h-5.5 rounded-lg text-[10px]',
-    icon: 'w-3.5 h-3.5',
+    container: 'w-7 h-7 rounded-lg text-[10px]',
+    icon: 'w-4 h-4',
     dot: 'w-2 h-2 -bottom-0.5 -right-0.5',
   },
   sm: {

@@ -168,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 via-brand-900 to-brand-700 dark:from-white dark:via-brand-200 dark:to-brand-400 bg-clip-text text-transparent">
                   FluencyAI
                 </span>
-                <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60">
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300/60 dark:border-slate-700">
                   Tutor
                 </span>
               </div>
@@ -207,10 +207,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setShowLevelMenu(!showLevelMenu);
                   setShowLangMenu(false);
                 }}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 text-xs font-bold transition active:scale-95"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95 shadow-2xs"
                 title="Target English Level"
               >
-                <span>{progress.level}</span>
+                <span className="px-1.5 py-0.5 rounded-md bg-brand-500/15 dark:bg-brand-500/25 text-brand-600 dark:text-brand-300 text-[10px] font-black">
+                  CEFR
+                </span>
+                <span className="font-extrabold text-slate-900 dark:text-white">{progress.level}</span>
               </button>
 
               {showLevelMenu && (
@@ -307,12 +310,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {currentTierConfig.badgeAccent.icon}
               </span>
               <div className="flex flex-col text-left">
-                <span className="font-black tracking-tight leading-none text-[11px]">
+                <span className="font-black tracking-tight leading-none text-[11px] text-slate-900 dark:text-white">
                   {currentTierConfig.shortName}
                 </span>
-                <div className="w-10 h-1 rounded-full bg-slate-300/70 overflow-hidden mt-1">
+                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700 overflow-hidden mt-1">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-brand-600 to-indigo-600 transition-all duration-300"
+                    className="h-full rounded-full bg-gradient-to-r from-brand-500 to-indigo-500 transition-all duration-300"
                     style={{ width: `${progressToNextTier}%` }}
                   />
                 </div>
