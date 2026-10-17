@@ -127,18 +127,18 @@ export function App() {
   const reviewCount = Math.max(savedCardsCount, progress.savedMistakes?.length ?? 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       <ToastContainer />
 
       {hasUpdate && (
-        <div className="sticky top-0 z-50 bg-brand-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-md">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-300" />
-            <span>New lesson updates and offline improvements available!</span>
+        <div className="sticky top-0 z-50 bg-brand-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 shadow-md">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Sparkles className="w-4 h-4 text-amber-300 flex-shrink-0" />
+            <span className="truncate">New lesson updates and offline improvements available!</span>
           </div>
           <button
             onClick={handleReloadApp}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-brand-700 font-bold hover:bg-brand-50 transition active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-brand-700 font-bold hover:bg-brand-50 transition active:scale-95 flex-shrink-0"
           >
             <RefreshCw className="w-3 h-3" />
             <span>Reload</span>
@@ -160,17 +160,17 @@ export function App() {
       />
 
       {/* Main App Container */}
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 pb-16 space-y-5">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-3.5 sm:px-6 py-4 pb-16 space-y-5">
         {/* Onboarding CEFR Placement Banner for new users */}
         {!isPlacementCompleted && (
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 text-white p-4 sm:p-5 shadow-soft border border-white/20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
                   🎯
                 </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-black text-sm sm:text-base text-white">Find Your CEFR Starting Level</span>
                     <span className="px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black uppercase tracking-wider">
                       Recommended
@@ -187,7 +187,7 @@ export function App() {
                   playChime('tap');
                   setIsPlacementOpen(true);
                 }}
-                className="py-2.5 px-4 rounded-2xl bg-white hover:bg-brand-50 text-brand-900 font-black text-xs shadow-md transition active:scale-95 flex-shrink-0 flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto py-2.5 px-4 rounded-2xl bg-white hover:bg-brand-50 text-brand-900 font-black text-xs shadow-md transition active:scale-95 flex-shrink-0 flex items-center justify-center gap-1.5"
               >
                 <span>🎙️ Start Placement (2 min)</span>
               </button>
@@ -210,12 +210,12 @@ export function App() {
 
         {/* Review Queue Indicator */}
         {reviewCount > 0 && (
-          <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 shadow-xs">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
                 <BookmarkCheck className="w-5 h-5" />
               </div>
-              <div className="text-xs text-amber-900 dark:text-amber-200">
+              <div className="text-xs text-amber-900 dark:text-amber-200 min-w-0">
                 <div className="font-bold">{reviewCount} saved phrases in your review deck</div>
                 <div className="text-amber-700 dark:text-amber-400">Automatically included in Stage 1 Prep &amp; SRS Flashcards.</div>
               </div>
@@ -225,7 +225,7 @@ export function App() {
                 playChime('tap');
                 setIsSRSOpen(true);
               }}
-              className="px-3 py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 text-xs font-bold transition flex-shrink-0"
+              className="w-full sm:w-auto text-center px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 text-xs font-bold transition flex-shrink-0"
             >
               Review Deck
             </button>

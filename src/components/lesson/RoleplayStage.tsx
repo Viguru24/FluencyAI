@@ -187,7 +187,9 @@ export const RoleplayStage: React.FC<Props> = ({
   const [currentSpeed, setCurrentSpeed] = useState<number>(audioSpeed);
   const [unblurredTurnCount, setUnblurredTurnCount] = useState<number>(0);
   const [usedTargetPhraseIds, setUsedTargetPhraseIds] = useState<Set<string>>(new Set());
-  const [isMissionsCollapsed, setIsMissionsCollapsed] = useState<boolean>(false);
+  const [isMissionsCollapsed, setIsMissionsCollapsed] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.innerWidth < 640
+  );
   const [justMatchedPhraseId, setJustMatchedPhraseId] = useState<string | null>(null);
 
   const { currentTier } = useGamificationStore();
@@ -701,9 +703,9 @@ export const RoleplayStage: React.FC<Props> = ({
     : 'Your turn — hold or tap the mic to speak';
 
   return (
-    <div className="relative flex flex-col h-[85vh] max-h-[85vh] flex-1 min-h-0 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 overflow-hidden">
+    <div className="relative flex flex-col h-full flex-1 min-h-0 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 overflow-hidden">
       {/* Stage tag with Turn Count, Ears-Only Status badge, Speed Selector & reveal toggle */}
-      <div className="flex items-center justify-between px-4 sm:px-6 pt-3 flex-shrink-0 gap-2 flex-wrap">
+      <div className="flex items-center justify-between px-3.5 sm:px-6 pt-2.5 sm:pt-3 flex-shrink-0 gap-1.5 sm:gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-[11px] font-bold border border-brand-200 dark:border-brand-800">
             Stage 2 · Turn {currentTurn}
@@ -1148,7 +1150,7 @@ export const RoleplayStage: React.FC<Props> = ({
               onPointerCancel={onPointerCancel}
               onKeyDown={onKeyDown}
               disabled={isProcessing || isAnalyzingScorecard}
-              className={`relative z-10 w-24 h-24 rounded-full flex flex-col items-center justify-center text-white transition-all duration-200 active:scale-95 touch-none select-none disabled:opacity-40 ${
+              className={`relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center text-white transition-all duration-200 active:scale-95 touch-none select-none disabled:opacity-40 ${
                 isRecording
                   ? 'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 scale-105 shadow-xl shadow-rose-500/35'
                   : 'bg-gradient-to-br from-brand-600 via-brand-500 to-emerald-500 shadow-fab hover:shadow-lg hover:scale-[1.02]'

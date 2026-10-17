@@ -451,32 +451,32 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-        <div className="relative w-full sm:max-w-2xl h-[85vh] max-h-[85vh] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+      <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-fade-in">
+        <div className="relative w-full sm:max-w-2xl h-[100dvh] max-h-[100dvh] sm:h-[88vh] sm:max-h-[88vh] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-none sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-transparent sm:border-slate-200 dark:border-slate-800">
           {/* Header */}
-          <header className="px-4 py-3 bg-gradient-to-r from-brand-700 via-indigo-700 to-sky-700 text-white flex-shrink-0 shadow-md">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-xl shadow-inner flex-shrink-0">
+          <header className="px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-brand-700 via-indigo-700 to-sky-700 text-white flex-shrink-0 shadow-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center text-lg sm:text-xl shadow-inner flex-shrink-0">
                   {coach.avatar || '🧑‍💼'}
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-sm font-black tracking-tight truncate">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <h1 className="text-xs sm:text-sm font-black tracking-tight truncate">
                       Free Talk with {coach.name}
                     </h1>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-400/25 border border-emerald-300/40 text-emerald-200 text-[10px] font-extrabold tracking-wider uppercase">
+                    <span className="hidden xs:inline-block px-2 py-0.5 rounded-full bg-emerald-400/25 border border-emerald-300/40 text-emerald-200 text-[10px] font-extrabold tracking-wider uppercase flex-shrink-0">
                       Live Voice
                     </span>
                   </div>
-                  <p className="text-[11px] text-brand-100/90 truncate">
-                    {coach.role} • Spontaneous conversation &amp; instant coaching
+                  <p className="text-[10px] sm:text-[11px] text-brand-100/90 truncate">
+                    {coach.role} • Spontaneous coaching
                   </p>
                 </div>
               </div>
 
               {/* Action buttons in header */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
                 <button
                   onClick={() => {
                     playChime('tap');
@@ -486,7 +486,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                     const next = currentIndex >= 0 ? speeds[(currentIndex + 1) % speeds.length] : speeds[0];
                     setCurrentSpeed(next);
                   }}
-                  className="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-[11px] font-bold text-white transition flex items-center gap-1.5"
+                  className="px-2 py-1 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-[11px] font-bold text-white transition flex items-center gap-1"
                   title={`Speed: ${currentSpeed}x · Click to toggle speech speed`}
                 >
                   <Sparkles className="w-3 h-3 text-amber-300" />
@@ -541,13 +541,13 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   className="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-white transition"
                   aria-label="Close Free Talk"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Topic Selector Carousel */}
-            <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            {/* Topic Selector Pills (Wrapped cleanly on mobile) */}
+            <div className="mt-2.5 flex items-center flex-wrap gap-1.5 pb-0.5">
               {FREE_TALK_TOPICS.map((sc) => {
                 const isActive = sc.id === selectedScenario.id;
                 return (
@@ -558,7 +558,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                       setSelectedScenario(sc);
                       resetScenario(sc);
                     }}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all active:scale-95 ${
                       isActive
                         ? 'bg-white text-brand-900 shadow-md font-extrabold'
                         : 'bg-white/15 hover:bg-white/25 text-white/90 border border-white/10'
