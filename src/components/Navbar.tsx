@@ -217,8 +217,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {showLevelMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-800 py-2 z-50 animate-slide-up">
-                  <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-800 py-2 z-50 animate-slide-up">
+                  <div className="px-3.5 py-1.5 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Target Proficiency
                   </div>
                   {levels.map((lvl) => (
@@ -229,24 +229,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowLevelMenu(false);
                         playChime('tap');
                       }}
-                      className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-brand-50 dark:hover:bg-slate-800 transition ${
-                        progress.level === lvl ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/50 dark:bg-brand-950/40' : 'text-slate-700 dark:text-slate-300'
+                      className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between transition ${
+                        progress.level === lvl
+                          ? 'text-brand-700 dark:text-white font-black bg-brand-500/15 dark:bg-brand-500/30'
+                          : 'text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <span>
                         Level {lvl} {lvl === 'A1' ? '• Beginner' : lvl === 'B1' ? '• Intermediate' : lvl === 'C1' ? '• Advanced' : ''}
                       </span>
-                      {progress.level === lvl && <Check className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />}
+                      {progress.level === lvl && <Check className="w-4 h-4 text-brand-600 dark:text-brand-300 stroke-[3]" />}
                     </button>
                   ))}
-                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
                   <button
                     onClick={() => {
                       playChime('tap');
                       setShowLevelMenu(false);
                       onOpenPlacement?.();
                     }}
-                    className="w-full px-3 py-2 text-left text-xs font-bold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
+                    className="w-full px-3.5 py-2 text-left text-xs font-black text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     <span>Take Placement Check</span>
@@ -271,7 +273,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {showLangMenu && (
                 <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white dark:bg-slate-900 shadow-soft-lg border border-slate-200 dark:border-slate-800 py-2 z-50 animate-slide-up">
-                  <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <div className="px-3.5 py-1.5 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Translation Helper
                   </div>
                   {languages.map((lang) => (
@@ -282,12 +284,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowLangMenu(false);
                         playChime('tap');
                       }}
-                      className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-brand-50 dark:hover:bg-slate-800 transition ${
-                        progress.nativeLanguage === lang ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/50 dark:bg-brand-950/40' : 'text-slate-700 dark:text-slate-300'
+                      className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between transition ${
+                        progress.nativeLanguage === lang
+                          ? 'text-brand-700 dark:text-white font-black bg-brand-500/15 dark:bg-brand-500/30'
+                          : 'text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <span>{lang}</span>
-                      {progress.nativeLanguage === lang && <Check className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />}
+                      {progress.nativeLanguage === lang && <Check className="w-4 h-4 text-brand-600 dark:text-brand-300 stroke-[3]" />}
                     </button>
                   ))}
                 </div>
