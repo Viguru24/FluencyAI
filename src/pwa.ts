@@ -1,4 +1,5 @@
 // PWA Service Worker Registration & Install Prompt Handler
+import { flushKeyVaultBeforeUpdate } from './services/persistentKeyVault';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -50,7 +51,8 @@ export function registerServiceWorker(onUpdate?: () => void) {
             if (installingWorker) {
               installingWorker.addEventListener('statechange', () => {
                 if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[FluencyAI PWA] New update available');
+                  console.log('[FluencyAI PWA] New update available - securing key vault');
+                  flushKeyVaultBeforeUpdate();
                   if (onUpdate) onUpdate();
                 }
               });

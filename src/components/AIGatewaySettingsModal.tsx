@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Server,
@@ -15,11 +15,13 @@ import {
   AlertTriangle,
   ExternalLink,
   Volume2,
+  ShieldCheck,
 } from 'lucide-react';
 
 import {
   getLLMConfig,
   saveLLMConfig,
+  sanitizeApiKey,
   testGatewayConnection,
   DEFAULT_FREELLM_BASE_URL,
   AVAILABLE_MODELS,
@@ -28,6 +30,11 @@ import {
   type LLMConfig,
   type GatewayTestResult,
 } from '../services/llmConfig';
+
+import {
+  hydratePersistentVaultAsync,
+  requestPersistentStorage,
+} from '../services/persistentKeyVault';
 
 import { toast } from '../services/toast';
 import {
@@ -50,6 +57,9 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
   const [showKey, setShowKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<GatewayTestResult | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [isCustomModel, setIsCustomModel] = useState(() => {
     const current = getLLMConfig();
     return !AVAILABLE_MODELS.some((m) => m.id === current.model);
@@ -59,17 +69,50 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
   const [selectedVoice, setSelectedVoice] = useState<string>(() => getSelectedTTSVoice() || '');
   const [isAuditioning, setIsAuditioning] = useState(false);
 
+  const triggerAutoSave = (updatedConfig: LLMConfig) => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    setSaveStatus('saving');
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveLLMConfig(updatedConfig);
+      setSaveStatus('saved');
+      if (updatedConfig.apiKey && updatedConfig.apiKey.length > 5) {
+        onConnectionStatusChange?.(true);
+      }
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    }, 350);
+  };
+
+  const handleSafeClose = () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    if (config.apiKey && config.apiKey.trim().length > 0) {
+      saveLLMConfig(config);
+    }
+    onClose();
+  };
+
   useEffect(() => {
     if (isOpen) {
-      queueMicrotask(() => {
-        const current = getLLMConfig();
-        if (!current.apiKey && (import.meta as any).env?.VITE_FREELLM_API_KEY) {
-          current.apiKey = (import.meta as any).env.VITE_FREELLM_API_KEY;
+      queueMicrotask(async () => {
+        // Request device persistent storage from mobile OS (Safari iOS / Chrome Android)
+        requestPersistentStorage().catch(() => {});
+
+        // Hydrate from multi-tier persistent vault (IndexedDB + 1-Year Cookie)
+        const initial = getLLMConfig();
+        const healed = await hydratePersistentVaultAsync(initial, (h) => {
+          setConfig(h);
+        });
+
+        if (healed.apiKey.startsWith('freellma')) {
+          healed.provider = 'freellmapi';
+        } else if (healed.apiKey.startsWith('AIza')) {
+          healed.provider = 'direct-gemini';
         }
-        if (current.apiKey.startsWith('freellma')) {
-          current.provider = 'freellmapi';
-        }
-        setConfig(current);
+
+        setConfig(healed);
         setTestResult(null);
       });
 
@@ -184,7 +227,7 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
+      onClick={handleSafeClose}
     >
       <div
         className="w-full max-w-lg bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden animate-slide-up"
@@ -212,7 +255,7 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleSafeClose}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition"
             aria-label="Close settings"
           >
@@ -352,38 +395,71 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
                 value={config.apiKey}
                 onChange={(e) => {
                   const val = e.target.value;
-                  const clean = val.trim();
-                  setConfig((prev) => {
-                    let targetProvider = prev.provider;
-                    if (clean.startsWith('freellma')) {
-                      targetProvider = 'freellmapi';
-                    } else if (clean.startsWith('AIza')) {
-                      targetProvider = 'direct-gemini';
+                  const clean = sanitizeApiKey(val);
+                  let targetProvider = config.provider;
+                  let targetModel = config.model;
+
+                  if (clean.startsWith('freellma')) {
+                    targetProvider = 'freellmapi';
+                  } else if (clean.startsWith('AIza') || (clean.length >= 35 && !clean.startsWith('sk-'))) {
+                    targetProvider = 'direct-gemini';
+                    if (!targetModel || targetModel === 'auto') {
+                      targetModel = 'gemini-2.5-flash';
                     }
-                    return {
-                      ...prev,
-                      apiKey: val,
-                      provider: targetProvider,
-                    };
-                  });
+                  }
+
+                  const updated: LLMConfig = {
+                    ...config,
+                    apiKey: val,
+                    provider: targetProvider,
+                    model: targetModel,
+                  };
+                  setConfig(updated);
+                  triggerAutoSave(updated);
+                }}
+                onBlur={() => {
+                  if (config.apiKey && config.apiKey.trim().length > 0) {
+                    saveLLMConfig(config);
+                    setSaveStatus('saved');
+                  }
                 }}
                 placeholder={config.provider === 'freellmapi' ? 'freellmapi-...' : 'AIzaSy...'}
-                className="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                className="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 aria-label={showKey ? 'Hide key' : 'Show key'}
               >
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-[11px] text-slate-500">
+
+            {/* Persistent Vault & Auto-Save Status */}
+            <div className="flex items-center justify-between text-[11px] pt-0.5">
+              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
+                <span>Protected by Persistent Vault (survives updates &amp; mobile cache clears)</span>
+              </div>
+              {saveStatus === 'saving' && (
+                <span className="text-amber-500 dark:text-amber-400 font-bold text-[10px] animate-pulse">
+                  Saving…
+                </span>
+              )}
+              {saveStatus === 'saved' && (
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  <span>Auto-saved</span>
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {config.provider === 'freellmapi' ? (
-                <>Unified router key starting with <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded font-bold">freellma...</code> (also checked from <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">VITE_FREELLM_API_KEY</code>).</>
+                <>Unified router key starting with <code className="text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-bold">freellma...</code> (also checked from <code className="text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">VITE_FREELLM_API_KEY</code>).</>
               ) : (
-                <>Your Google AI Studio API key starting with <code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded font-bold">AIzaSy...</code> (39 characters).</>
+                <>Your Google AI Studio API key starting with <code className="text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-bold">AIzaSy...</code> (39 characters).</>
               )}
             </p>
 

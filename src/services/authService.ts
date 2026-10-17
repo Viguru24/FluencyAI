@@ -19,6 +19,7 @@
 import type { AuthSession, AuthUser, CEFRLevel, UserProgress } from '../types';
 import { formatDisplayName, normalizeUserAvatar } from '../utils/nameFormatter';
 import { getGamificationState, syncGamificationFromRemote } from '../store/rewardSystem';
+import { getLLMConfig, saveLLMConfig } from './llmConfig';
 
 export type AuthProviderType = 'node-jwt' | 'pocketbase' | 'supabase';
 
@@ -160,6 +161,16 @@ class AuthService {
         setSessionCookie(token);
         if (parsed.progress_data?.gamification) {
           syncGamificationFromRemote(parsed.progress_data.gamification);
+        }
+        if (parsed.progress_data?.llm_config) {
+          const remoteLlm = parsed.progress_data.llm_config;
+          if (remoteLlm?.apiKey && remoteLlm.apiKey.startsWith('AIza')) {
+            const current = getLLMConfig();
+            if (!current.apiKey || !current.apiKey.startsWith('AIza')) {
+              console.log('[AuthService] Restoring Gemini API key from user account cloud backup');
+              saveLLMConfig(remoteLlm);
+            }
+          }
         }
         // Refresh profile in background to get latest server stats
         this.fetchCurrentUser().catch(() => {});
@@ -518,6 +529,16 @@ class AuthService {
         this.saveSession(this.currentSession);
         if (data.user.progress_data?.gamification) {
           syncGamificationFromRemote(data.user.progress_data.gamification);
+        }
+        if (data.user.progress_data?.llm_config) {
+          const remoteLlm = data.user.progress_data.llm_config;
+          if (remoteLlm?.apiKey && remoteLlm.apiKey.startsWith('AIza')) {
+            const current = getLLMConfig();
+            if (!current.apiKey || !current.apiKey.startsWith('AIza')) {
+              console.log('[AuthService] Restoring Gemini API key from VPS cloud profile refresh');
+              saveLLMConfig(remoteLlm);
+            }
+          }
         }
         return this.currentSession.user;
       }

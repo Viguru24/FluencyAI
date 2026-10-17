@@ -27,6 +27,12 @@ import type {
   RoleplayScenario,
 } from './types';
 import { registerServiceWorker } from './pwa';
+import {
+  hydratePersistentVaultAsync,
+  requestPersistentStorage,
+  flushKeyVaultBeforeUpdate,
+} from './services/persistentKeyVault';
+import { getLLMConfig } from './services/llmConfig';
 import { RefreshCw, Sparkles, BookmarkCheck, RotateCcw, X, EyeOff, Eye } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './services/toast';
@@ -86,6 +92,12 @@ export function App() {
   );
 
   useEffect(() => {
+    // 1. Lock in persistent storage with mobile OS (iOS Safari / Android Chrome)
+    requestPersistentStorage().catch(() => {});
+
+    // 2. Hydrate key vault from IndexedDB, SessionStorage, and Cookies if LocalStorage was cleared
+    hydratePersistentVaultAsync(getLLMConfig()).catch(() => {});
+
     registerServiceWorker(() => {
       setHasUpdate(true);
     });
@@ -159,6 +171,8 @@ export function App() {
   };
 
   const handleReloadApp = () => {
+    // Flush active keys to all storage tiers prior to service worker activation & reload
+    flushKeyVaultBeforeUpdate();
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistration().then((reg) => {
         reg?.waiting?.postMessage({ type: 'SKIP_WAITING' });

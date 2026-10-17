@@ -31,6 +31,12 @@ export const AVAILABLE_MODELS_DIRECT = [
 
 export const AVAILABLE_MODELS = AVAILABLE_MODELS_FREELLM;
 
+import {
+  saveToPersistentVault,
+  readFromPersistentVaultSync,
+  STORAGE_KEY_GEMINI,
+} from './persistentKeyVault';
+
 /**
  * Sanitizes an API key by stripping quotes, whitespace, Bearer prefixes,
  * zero-width invisible unicode characters, and line breaks.
@@ -39,9 +45,8 @@ export function sanitizeApiKey(key: string): string {
   if (!key) return '';
   return key
     .trim()
-    .replace(/^Bearer\s+/i, '')
-    .replace(/^key=/i, '')
-    .replace(/^["']|["']$/g, '')
+    .replace(/^(?:Bearer\s+|key=|api_key[:=]\s*)/i, '')
+    .replace(/^["'`“”‘’]|["'`“”‘’]$/g, '')
     .replace(/[^\x21-\x7E]/g, '') // strip invisible unicode, zero-width spaces, newlines, etc.
     .trim();
 }
@@ -59,17 +64,40 @@ export function getLLMConfig(): LLMConfig {
     }
   }
 
+  // Check persistent multi-tier vault (LocalStorage, SessionStorage, 1-Year Cross-Subdomain Cookie)
+  const vaultSync = readFromPersistentVaultSync();
+  if (vaultSync.config) {
+    saved = { ...vaultSync.config, ...saved };
+  }
+
   // Check stored keys and environment variables
-  const fluencyKey = typeof window !== 'undefined' ? localStorage.getItem('fluency_gemini_api_key') || '' : '';
+  const fluencyKey = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_GEMINI) || localStorage.getItem('fluency_gemini_api_key') || '' : '';
   const legacyKey = typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') || '' : '';
+  const vaultKey = vaultSync.apiKey || '';
+
   const envKey =
     (import.meta as any).env?.VITE_FREELLM_API_KEY ||
     (import.meta as any).env?.VITE_GEMINI_API_KEY ||
     (import.meta as any).env?.GEMINI_API_KEY ||
-    DEFAULT_FREELLM_KEY;
+    '';
 
-  const rawKey = saved.apiKey && saved.apiKey.trim().length > 0 ? saved.apiKey : fluencyKey || legacyKey || envKey;
-  const apiKey = sanitizeApiKey(rawKey || DEFAULT_FREELLM_KEY);
+  // Prioritize any explicitly saved user key (especially direct Google Gemini AIza keys)
+  let candidateKey = '';
+  if (saved.apiKey && saved.apiKey.trim().length > 0) {
+    candidateKey = saved.apiKey;
+  } else if (vaultKey && vaultKey.trim().length > 0) {
+    candidateKey = vaultKey;
+  } else if (fluencyKey && fluencyKey.trim().length > 0) {
+    candidateKey = fluencyKey;
+  } else if (legacyKey && legacyKey.trim().length > 0) {
+    candidateKey = legacyKey;
+  } else if (envKey && envKey.trim().length > 0) {
+    candidateKey = envKey;
+  } else {
+    candidateKey = DEFAULT_FREELLM_KEY;
+  }
+
+  const apiKey = sanitizeApiKey(candidateKey || DEFAULT_FREELLM_KEY);
   const envBaseUrl = (import.meta as any).env?.VITE_FREELLM_BASE_URL;
   const baseUrl = (saved.baseUrl || envBaseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
   
@@ -107,7 +135,7 @@ export function saveLLMConfig(config: LLMConfig): void {
   }
 
   const model =
-    provider === 'direct-gemini' && config.model === 'auto'
+    provider === 'direct-gemini' && (config.model === 'auto' || !config.model)
       ? 'gemini-2.5-flash'
       : config.model || (provider === 'direct-gemini' ? 'gemini-2.5-flash' : 'auto');
 
@@ -130,6 +158,11 @@ export function saveLLMConfig(config: LLMConfig): void {
   } catch (e) {
     console.warn('Failed saving fluency_llm_config', e);
   }
+
+  // Persist to Multi-Tier Persistent Vault (IndexedDB, SessionStorage, 1-Year Cookie, Persistent Storage)
+  saveToPersistentVault(normalized).catch((err) => {
+    console.warn('[llmConfig] Persistent vault save warning:', err);
+  });
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('fluency_llm_config_changed', { detail: normalized }));

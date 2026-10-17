@@ -22,6 +22,7 @@ import type {
   PlacementAssessmentResult,
   AIPersona,
 } from '../types';
+import { getLLMConfig } from '../services/llmConfig';
 
 export const USER_STORAGE_KEY = 'fluencyai_user_progress_v1';
 export const PLACEMENT_ASSESSED_KEY = 'fluency_placement_assessed_v1';
@@ -136,6 +137,7 @@ export function useUserStore() {
               nativeLanguage: progress.nativeLanguage,
               hasCompletedPlacement: progress.hasCompletedPlacement,
               placementDetails: progress.placementDetails,
+              llm_config: getLLMConfig(),
             },
           })
           .catch((err) => console.warn('[userStore] Cloud sync error:', err));
