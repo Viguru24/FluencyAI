@@ -16,6 +16,7 @@ export const DEFAULT_MODEL = 'gemini-3.1-flash-lite';
 
 export const AVAILABLE_MODELS_FREELLM = [
   { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite (Blazing Fast ~500ms · Recommended)' },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Latest & Most Capable)' },
   { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (Balanced ~1.4s)' },
   { id: 'auto', label: 'Auto (FreeLLMAPI Default Routing)' },
   { id: 'gemma-4-31b-it', label: 'Gemma 4 31B IT' },
@@ -149,32 +150,47 @@ export function getCandidateGatewayUrls(base?: string): string[] {
     .replace(/\/+$/, '');
   const candidates: string[] = [];
 
+  const addUnique = (url: string) => {
+    const trimmed = url.trim().replace(/\/+$/, '');
+    if (trimmed && !candidates.includes(trimmed)) {
+      candidates.push(trimmed);
+    }
+  };
+
   if (typeof window !== 'undefined' && window.location) {
     const origin = window.location.origin;
-    // Proxies configured on Vite dev server and VPS Nginx (zero-CORS)
-    const directV1Proxy = `${origin}/v1`;
-    const gatewayV1Proxy = `${origin}/freellm-gateway/v1`;
-    candidates.push(directV1Proxy);
-    candidates.push(gatewayV1Proxy);
+    const isHttps = window.location.protocol === 'https:';
 
-    // If hosted under a subpath like /fluency/ on a domain
+    // 1. If hosted under a subpath like /fluency/ on a domain, check subpath proxies first
     const pathParts = window.location.pathname.split('/').filter(Boolean);
-    if (pathParts.length > 0) {
+    if (pathParts.length > 0 && pathParts[0] !== 'index.html') {
       const subpath = `/${pathParts[0]}`;
-      candidates.push(`${origin}${subpath}/v1`);
-      candidates.push(`${origin}${subpath}/freellm-gateway/v1`);
+      addUnique(`${origin}${subpath}/v1`);
+      addUnique(`${origin}${subpath}/freellm-gateway/v1`);
+    }
+
+    // 2. Direct same-origin proxies configured on Vite dev server and VPS Nginx
+    addUnique(`${origin}/v1`);
+    addUnique(`${origin}/freellm-gateway/v1`);
+
+    // 3. Remote HTTPS production fallback if accessed from external origins (e.g. GitHub Pages)
+    if (isHttps && !origin.includes('cosmowhisper.com')) {
+      addUnique('https://api.cosmowhisper.com/v1');
+      addUnique('https://api.cosmowhisper.com/fluency/v1');
+      addUnique('https://api.cosmowhisper.com/freellm-gateway/v1');
     }
   }
-  if (!candidates.includes(primary)) {
-    candidates.push(primary);
-  }
+
+  // 4. Primary configured URL (e.g. http://127.0.0.1:31415/v1)
+  addUnique(primary);
+
+  // 5. Local loopback fallbacks
   if (primary.includes('127.0.0.1:31415')) {
-    const localhostBase = primary.replace('127.0.0.1:31415', 'localhost:31415');
-    if (!candidates.includes(localhostBase)) candidates.push(localhostBase);
+    addUnique(primary.replace('127.0.0.1:31415', 'localhost:31415'));
   } else if (primary.includes('localhost:31415')) {
-    const ipBase = primary.replace('localhost:31415', '127.0.0.1:31415');
-    if (!candidates.includes(ipBase)) candidates.push(ipBase);
+    addUnique(primary.replace('localhost:31415', '127.0.0.1:31415'));
   }
+
   return candidates;
 }
 
@@ -264,6 +280,12 @@ export async function testGatewayConnection(config?: LLMConfig): Promise<Gateway
             status: res.status,
             message: `Authentication error (${res.status}): ${errDetail}. Verify your FreeLLMAPI key.`,
           };
+        }
+
+        // If 404, this base doesn't host this route, skip directly to next candidate
+        if (res.status === 404) {
+          lastNetworkErr = `HTTP 404 on ${modelsUrl}`;
+          continue;
         }
 
         // Fallback: Test 1-token completion on this base

@@ -17,19 +17,29 @@ export interface ChatMessage {
  * Automatically fails over to the Vite same-origin proxy if direct loopback
  * connections are blocked by browser Cross-Origin-Resource-Policy (CORP) or Private Network Access (PNA).
  */
+let cachedWorkingGatewayBase: string | null = null;
+
 export async function fetchFreeLLMWithFallback(
   path: string,
   init: RequestInit,
   primaryBase?: string
 ): Promise<Response> {
-  const candidates = getCandidateGatewayUrls(primaryBase);
+  const allCandidates = getCandidateGatewayUrls(primaryBase);
+  const candidates = cachedWorkingGatewayBase
+    ? [cachedWorkingGatewayBase, ...allCandidates.filter((c) => c !== cachedWorkingGatewayBase)]
+    : allCandidates;
+
   let lastError: unknown = null;
   let lastRes: Response | null = null;
   for (const base of candidates) {
     try {
       const url = `${base}${path.startsWith('/') ? path : '/' + path}`;
       const res = await fetch(url, init);
-      if (res.ok || res.status === 401 || res.status === 403) {
+      if (res.ok) {
+        cachedWorkingGatewayBase = base;
+        return res;
+      }
+      if (res.status === 401 || res.status === 403) {
         return res;
       }
       lastRes = res;
