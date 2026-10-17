@@ -587,55 +587,136 @@ export function stopSpeaking() {
   }
 }
 
-// Gentle audio chimes using Web Audio API (Offline-ready, no network required)
-export function playChime(type: 'success' | 'tap' | 'streak') {
+// Shared Web Audio API context for zero-latency, click-free silky sound synthesis
+let sharedAudioCtx: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+    sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
+// Silky, studio-grade audio chimes using Web Audio API (Offline-ready, zero network latency)
+export function playChime(type: 'success' | 'tap' | 'streak' | 'micStart' | 'micStop') {
   try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getAudioContext();
+    if (!ctx) return;
     const now = ctx.currentTime;
 
-    if (type === 'success') {
-      // Pleasant two-tone chime (C5 -> G5)
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
+    if (type === 'micStart') {
+      // Silky ascending harmonic bloom (warm fifth/ninth shimmer: F4 -> C5 -> G5)
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1800, now);
+      filter.frequency.exponentialRampToValueAtTime(3200, now + 0.22);
+      filter.connect(ctx.destination);
 
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      const partials = [
+        { freqStart: 440, freqEnd: 587.33, delay: 0, dur: 0.28, amp: 0.09, wave: 'sine' as OscillatorType },
+        { freqStart: 659.25, freqEnd: 880, delay: 0.035, dur: 0.32, amp: 0.065, wave: 'sine' as OscillatorType },
+        { freqStart: 880, freqEnd: 1174.66, delay: 0.06, dur: 0.34, amp: 0.03, wave: 'triangle' as OscillatorType },
+      ];
 
-      osc1.frequency.setValueAtTime(523.25, now); // C5
-      osc2.frequency.setValueAtTime(783.99, now + 0.12); // G5
+      partials.forEach(({ freqStart, freqEnd, delay, dur, amp, wave }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(freqStart, now + delay);
+        osc.frequency.exponentialRampToValueAtTime(freqEnd, now + delay + 0.14);
 
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.0001, now + delay);
+        gain.gain.linearRampToValueAtTime(amp, now + delay + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + dur);
 
-      osc1.start(now);
-      osc1.stop(now + 0.2);
-      osc2.start(now + 0.12);
-      osc2.stop(now + 0.6);
+        osc.connect(gain);
+        gain.connect(filter);
+        osc.start(now + delay);
+        osc.stop(now + delay + dur + 0.02);
+      });
+    } else if (type === 'micStop') {
+      // Silky warm resolving cadence (gentle descending harmonic settle)
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2400, now);
+      filter.frequency.exponentialRampToValueAtTime(1100, now + 0.24);
+      filter.connect(ctx.destination);
+
+      const partials = [
+        { freqStart: 783.99, freqEnd: 523.25, delay: 0, dur: 0.24, amp: 0.08, wave: 'sine' as OscillatorType },
+        { freqStart: 1174.66, freqEnd: 783.99, delay: 0.025, dur: 0.26, amp: 0.045, wave: 'sine' as OscillatorType },
+      ];
+
+      partials.forEach(({ freqStart, freqEnd, delay, dur, amp, wave }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(freqStart, now + delay);
+        osc.frequency.exponentialRampToValueAtTime(freqEnd, now + delay + 0.13);
+
+        gain.gain.setValueAtTime(0.0001, now + delay);
+        gain.gain.linearRampToValueAtTime(amp, now + delay + 0.014);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + dur);
+
+        osc.connect(gain);
+        gain.connect(filter);
+        osc.start(now + delay);
+        osc.stop(now + delay + dur + 0.02);
+      });
+    } else if (type === 'success') {
+      // Pleasant warm two-tone harmonic chime (C5 -> G5)
+      const notes = [
+        { freq: 523.25, delay: 0, dur: 0.32, amp: 0.09 },
+        { freq: 783.99, delay: 0.09, dur: 0.48, amp: 0.1 },
+      ];
+      notes.forEach(({ freq, delay, dur, amp }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + delay);
+        gain.gain.setValueAtTime(0.0001, now + delay);
+        gain.gain.linearRampToValueAtTime(amp, now + delay + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + delay);
+        osc.stop(now + delay + dur + 0.02);
+      });
     } else if (type === 'streak') {
       // Celebratory uplifting arpeggio (C5 -> E5 -> G5 -> C6)
       const notes = [523.25, 659.25, 783.99, 1046.5];
       notes.forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.1, now + i * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.35);
-        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+        const start = now + i * 0.075;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.085, start + 0.014);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.36);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(now + i * 0.08);
-        osc.stop(now + i * 0.08 + 0.35);
+        osc.start(start);
+        osc.stop(start + 0.38);
       });
     } else {
-      // Subtle tap sound
+      // Soft, tactile glass droplet tap
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      osc.frequency.setValueAtTime(400, now);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(480, now + 0.065);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.045, now + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(now);

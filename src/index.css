@@ -92,3 +92,67 @@
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid rgba(51, 65, 85, 0.65);
 }
+
+/* Silky luminous voice button animations */
+@keyframes silky-aurora-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.08);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes silky-breathe {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes silky-idle-halo {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.05);
+  }
+}
+
+.silky-orb-idle {
+  animation: silky-idle-halo 4s ease-in-out infinite;
+}
+
+.silky-orb-active-aura {
+  background: conic-gradient(
+    from 0deg,
+    rgba(56, 189, 248, 0.85),
+    rgba(99, 102, 241, 0.9),
+    rgba(168, 85, 247, 0.85),
+    rgba(236, 72, 153, 0.85),
+    rgba(16, 185, 129, 0.85),
+    rgba(56, 189, 248, 0.85)
+  );
+  animation: silky-aurora-spin 4.5s linear infinite;
+}
+
+.silky-orb-active-bloom {
+  background: radial-gradient(
+    circle,
+    rgba(99, 102, 241, 0.55) 0%,
+    rgba(56, 189, 248, 0.35) 45%,
+    rgba(168, 85, 247, 0.15) 70%,
+    transparent 100%
+  );
+  animation: silky-breathe 2.4s ease-in-out infinite;
+}
+

@@ -7,9 +7,6 @@ import {
   Volume2,
   Flag,
   Loader2,
-  Pencil,
-  Check,
-  Send,
   Square,
   ArrowRight,
   Zap,
@@ -32,7 +29,6 @@ import {
 } from '../../services/speechRecognition';
 import { AudioRecorderController, type RecordedAudioClip } from '../../services/audioRecorder';
 import { AudioVisualizerController } from '../../services/audioVisualizer';
-import { WaveformVisualizer } from './WaveformVisualizer';
 import { HowDoISaySheet } from './HowDoISaySheet';
 import {
   generateJamesReply,
@@ -152,7 +148,7 @@ interface Props {
   onEnd: (stats: RoleplayStats) => void;
 }
 
-const HOLD_THRESHOLD_MS = 350;
+const HOLD_THRESHOLD_MS = 280;
 
 export const RoleplayStage: React.FC<Props> = ({
   plan,
@@ -172,8 +168,6 @@ export const RoleplayStage: React.FC<Props> = ({
   const [isAnalyzingScorecard, setIsAnalyzingScorecard] = useState(false);
   const [livePreview, setLivePreview] = useState('');
   const [liveLowConfidenceWords, setLiveLowConfidenceWords] = useState<string[]>([]);
-  const [isEditingBubble, setIsEditingBubble] = useState(false);
-  const [bubbleEditValue, setBubbleEditValue] = useState('');
   const [bands, setBands] = useState<number[]>([]);
   const [revealAll, setRevealAll] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -239,10 +233,10 @@ export const RoleplayStage: React.FC<Props> = ({
   const sessionLowConfidenceWordsRef = useRef<Set<string>>(new Set());
   const userTurnCount = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isEditingBubbleRef = useRef(false);
-  isEditingBubbleRef.current = isEditingBubble;
 
-  // Push-To-Talk tracking refs
+  // Synchronous Push-To-Talk / Tap-To-Talk tracking refs
+  const isRecordingRef = useRef(false);
+  const livePreviewRef = useRef('');
   const pressStartTimeRef = useRef(0);
   const isPressingRef = useRef(false);
   const isHoldingRef = useRef(false);
@@ -252,7 +246,6 @@ export const RoleplayStage: React.FC<Props> = ({
   const userTurnsCount = turns.filter((t) => t.speaker === 'user').length;
   const currentTurn = userTurnsCount + 1;
 
-
   const handleStopSpeaking = useCallback(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -261,7 +254,7 @@ export const RoleplayStage: React.FC<Props> = ({
     setIsAiSpeaking(false);
   }, []);
 
-  // Monitor active speech synthesis state to gracefully reset visualizer/button
+  // Monitor active speech synthesis state to gracefully reset indicator
   useEffect(() => {
     if (!isAiSpeaking) return;
     const interval = window.setInterval(() => {
@@ -276,7 +269,6 @@ export const RoleplayStage: React.FC<Props> = ({
 
   const speakAi = useCallback(
     (text: string) => {
-      // Clean any accidental thinking tags, system markers, or brackets before sending to TTS
       const cleaned = cleanTextForTTS(text, plan.persona.name);
       if (!cleaned) return;
 
@@ -326,42 +318,48 @@ export const RoleplayStage: React.FC<Props> = ({
   }, [turns, livePreview]);
 
   const startRecording = async () => {
-    if (isRecording || isProcessing) return;
+    if (isRecordingRef.current || isProcessing) return;
     pendingStopRef.current = false;
     stopSpeaking();
     setIsAiSpeaking(false);
 
+    // Instant silky glow + warm acoustic chime on touch
+    isRecordingRef.current = true;
+    setIsRecording(true);
+    livePreviewRef.current = '';
+    setLivePreview('');
+    setLiveLowConfidenceWords([]);
+    playChime('micStart');
+
     const ok = await vizRef.current.startMicrophone(setBands);
     if (!ok) {
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      setIsHolding(false);
       onMicDenied();
       return;
     }
 
-    // Simultaneously start MediaRecorder using the active microphone stream
+    if (pendingStopRef.current || !isRecordingRef.current) {
+      pendingStopRef.current = false;
+      vizRef.current.stopMicrophone();
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      return;
+    }
+
     const activeStream = vizRef.current.getStream();
     await recorderRef.current.start(activeStream);
 
-    playChime('tap');
-    setIsRecording(true);
-    setLivePreview('');
-    setLiveLowConfidenceWords([]);
-    setIsEditingBubble(false);
-    setBubbleEditValue('');
-
-    // Push-To-Talk Speaking Mode (Zero VAD / No auto-cutoff):
-    // Continuous = true, interimResults = true, silenceTimeoutMs = 0
-    // The mic stays wide open so the learner can pause for as long as they need to think
     recRef.current = isRecognitionSupported()
       ? startRecognition({
           lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
           silenceTimeoutMs: 0,
           onInterim: (text) => {
-            if (!isEditingBubbleRef.current) {
-              setLivePreview(text);
-            }
+            livePreviewRef.current = text;
+            setLivePreview(text);
           },
           onSpeechResults: (eventResults) => {
-            // Extract the confidence score for each word from the SpeechRecognitionResult array
             const extracted = extractWordsFromSpeechResults(eventResults);
             const lowConfWords = extracted
               .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
@@ -380,18 +378,19 @@ export const RoleplayStage: React.FC<Props> = ({
   };
 
   const stopRecording = async () => {
-    if (!isRecording) {
+    if (!isRecordingRef.current) {
       pendingStopRef.current = true;
       return;
     }
+    isRecordingRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
     isHoldingRef.current = false;
     isPressingRef.current = false;
+    setBands([]);
     setIsProcessing(true);
-    setIsEditingBubble(false);
+    playChime('micStop');
 
-    // Stop MediaRecorder and capture audio clip for Gemini 2.5 Flash / FreeLLMAPI
     let audioClip: RecordedAudioClip | null = null;
     try {
       audioClip = await recorderRef.current.stop();
@@ -399,7 +398,6 @@ export const RoleplayStage: React.FC<Props> = ({
       console.warn('[RoleplayStage] Failed to stop audio recorder:', e);
     }
 
-    // Stop audio visualizer
     vizRef.current.stopMicrophone();
 
     let heard: string | null = null;
@@ -412,7 +410,6 @@ export const RoleplayStage: React.FC<Props> = ({
       if (details) {
         heard = details.transcript;
 
-        // 1. Extract the confidence score for each word from the SpeechRecognitionResult array
         const extractedWords = details.rawResults
           ? extractWordsFromSpeechResults(details.rawResults)
           : details.allWords && details.allWords.length > 0
@@ -421,7 +418,6 @@ export const RoleplayStage: React.FC<Props> = ({
 
         turnWordConfidences = extractedWords;
 
-        // 2. If any recognized word has a confidence score below 0.75, flag it in the transcript state
         const lowConfWordsFromResult = extractedWords
           .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
           .map((w) => w.word.toLowerCase());
@@ -430,7 +426,6 @@ export const RoleplayStage: React.FC<Props> = ({
           .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
           .map((w) => w.word.toLowerCase());
 
-        // Accumulate segments with lower confidence (< 0.75) or phonetic ambiguity
         const flaggedSegments = details.segments.filter(
           (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.75) || s.alternatives.length > 0
         );
@@ -442,18 +437,15 @@ export const RoleplayStage: React.FC<Props> = ({
           new Set([...lowConfWordsFromResult, ...lowConfWordsFromDetails, ...liveLowConfidenceWords])
         );
 
-        // Record in session low-confidence set
         turnLowConfidenceWords.forEach((word) => sessionLowConfidenceWordsRef.current.add(word));
       }
     }
 
-    // If learner manually edited text via the pencil icon, prioritize their edit
-    const finalTranscript = bubbleEditValue.trim() || livePreview.trim() || heard?.trim() || '';
+    const finalTranscript = livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '';
+    livePreviewRef.current = '';
     setLivePreview('');
     setLiveLowConfidenceWords([]);
-    setBubbleEditValue('');
 
-    // Store audio attachment for multimodal Gemini analysis
     let audioAttachment: AudioAttachment | null = null;
     if (audioClip && audioClip.base64) {
       audioAttachment = {
@@ -468,7 +460,6 @@ export const RoleplayStage: React.FC<Props> = ({
     const userSpokeReal = Boolean(finalTranscript.length > 0);
     const text = userSpokeReal ? finalTranscript : fallback;
 
-    // Live Target Phrase & SRS Matcher
     if (userSpokeReal) {
       const phrasesToCheck = [...plan.phrases];
       if (dueSRSCard) {
@@ -519,8 +510,6 @@ export const RoleplayStage: React.FC<Props> = ({
     try {
       const historyForGemini = newTurns.map((t) => ({ speaker: t.speaker, text: t.text }));
 
-      // Dynamic conversational turn without hard turn cutoffs:
-      // James listens, riffs, and asks relevant follow-up questions for as many turns as the user wants
       const aiReply = await generateJamesReply(
         historyForGemini,
         plan.title,
@@ -550,13 +539,13 @@ export const RoleplayStage: React.FC<Props> = ({
     }
   };
 
-  // Push-To-Talk Handlers (supports both Tap-to-Toggle and Press-and-Hold)
+  // Supports both Hold-and-Release AND Quick-Tap-to-Start / Tap-Again-to-End
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     if (isProcessing || isAnalyzingScorecard) return;
 
-    if (isRecording) {
-      // If already recording, tapping acts as "Done / Send"
+    if (isRecordingRef.current) {
+      isPressingRef.current = false;
       stopRecording();
       return;
     }
@@ -602,11 +591,8 @@ export const RoleplayStage: React.FC<Props> = ({
     }
 
     if (wasHolding) {
-      // Press-and-Hold: releasing immediately stops and sends the turn
       stopRecording();
     }
-    // If duration < HOLD_THRESHOLD_MS: Tap-to-Talk!
-    // Mic stays wide open hands-free so the user can speak without holding.
   };
 
   const onPointerCancel = (e: React.PointerEvent) => {
@@ -616,7 +602,7 @@ export const RoleplayStage: React.FC<Props> = ({
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      if (isRecording) stopRecording();
+      if (isRecordingRef.current) stopRecording();
       else startRecording();
     }
   };
@@ -640,7 +626,6 @@ export const RoleplayStage: React.FC<Props> = ({
 
     try {
       const sessionLowConf = Array.from(sessionLowConfidenceWordsRef.current);
-      // Fast timeout safeguard: 6 seconds max
       const scorecardPromise = generateGeminiScorecard({
         plan,
         userTurns: userTurnsList,
@@ -689,36 +674,27 @@ export const RoleplayStage: React.FC<Props> = ({
     }
   };
 
-  const mode = isRecording ? 'user' : isAiSpeaking ? 'ai' : 'idle';
-  const statusText = isRecording
-    ? isHolding
-      ? 'Speaking (Hold-to-Talk) · Release button when finished to send'
-      : 'Speaking (Tap-to-Talk) · Mic wide open · Tap "Done / Send" when ready'
-    : isProcessing
-    ? `${plan.persona.name} is listening & thinking…`
-    : isAiSpeaking
-    ? `${plan.persona.name} is speaking — listen carefully`
-    : userTurnsCount >= 3
-    ? 'Keep chatting freely, or click "Finish & Get Scorecard"'
-    : 'Your turn — hold or tap the mic to speak';
+  // Subtle dynamic voice amplitude scale for the silky orb (1.0 -> 1.35)
+  const avgBandAmp =
+    bands.length > 0 ? bands.reduce((acc, v) => acc + v, 0) / bands.length : 0;
+  const voiceBloomScale = isRecording ? 1 + Math.min(0.4, avgBandAmp * 0.75) : 1;
 
   return (
     <div className="relative flex flex-col h-full flex-1 min-h-0 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 overflow-hidden">
-      {/* Stage tag with Turn Count, Ears-Only Status badge, Speed Selector & reveal toggle */}
-      <div className="flex items-center justify-between px-3.5 sm:px-6 pt-2.5 sm:pt-3 flex-shrink-0 gap-1.5 sm:gap-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Compact Top Status & Audio Controls Row */}
+      <div className="flex items-center justify-between px-3.5 sm:px-6 pt-2.5 flex-shrink-0 gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-[11px] font-bold border border-brand-200 dark:border-brand-800">
-            Stage 2 · Turn {currentTurn}
+            Turn {currentTurn}
           </span>
 
-          {/* Ears-Only Bonus Status Badge */}
           {unblurredTurnCount === 0 ? (
             <span
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-50 to-sky-50 dark:from-emerald-950/40 dark:to-sky-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[11px] font-extrabold shadow-2xs animate-fade-in"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold"
               title="Keep transcripts blurred and listen with your ears to earn +15 XP bonus!"
             >
               <Headphones className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-              <span>🎧 Ears-Only Bonus Active (+15 XP)</span>
+              <span>Ears-Only (+15 XP)</span>
             </span>
           ) : (
             <span
@@ -726,16 +702,15 @@ export const RoleplayStage: React.FC<Props> = ({
               title="Transcript was unblurred · Ears-Only bonus used"
             >
               <Eye className="w-3 h-3 text-slate-400" />
-              <span>👁️ Transcript Peeked (Bonus Used)</span>
+              <span>Peeked</span>
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Active Tier Audio Speed Selector Pills */}
+        <div className="flex items-center gap-1.5">
           <div
-            className="flex items-center bg-slate-100/90 dark:bg-slate-850 p-0.5 rounded-xl border border-slate-200 dark:border-slate-750 shadow-2xs"
-            title="Speaking playback speed (unlocked via Tiers)"
+            className="flex items-center bg-slate-100/90 dark:bg-slate-850 p-0.5 rounded-xl border border-slate-200 dark:border-slate-750"
+            title="Speaking playback speed"
           >
             {availableSpeeds.map((opt) => {
               const isSelected = currentSpeed === opt.speed;
@@ -775,7 +750,7 @@ export const RoleplayStage: React.FC<Props> = ({
                 return next;
               });
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition ${
               revealAll
                 ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -784,433 +759,375 @@ export const RoleplayStage: React.FC<Props> = ({
             title="Toggle blurred transcript for auditory ear training"
           >
             {revealAll ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{revealAll ? 'Transcript: Revealed' : 'Transcript: Blurred'}</span>
+            <span className="hidden sm:inline">{revealAll ? 'Revealed' : 'Blurred'}</span>
           </button>
         </div>
       </div>
 
-      {/* Live "Target Phrase Tracker" Mission HUD Bar */}
-      <div className="px-4 sm:px-6 pt-2 flex-shrink-0">
-        <div className="rounded-2xl bg-gradient-to-r from-amber-50/80 via-emerald-50/60 to-sky-50/70 dark:from-amber-950/30 dark:via-emerald-950/20 dark:to-sky-950/20 border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
-          {/* HUD Summary Bar */}
-          <div
-            onClick={() => setIsMissionsCollapsed((c) => !c)}
-            className="flex items-center justify-between px-3.5 py-1.5 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition"
-          >
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="flex items-center gap-1 text-xs font-extrabold text-slate-900 dark:text-white">
-                <Target className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-                <span>Mission Phrases ({usedTargetPhraseIds.size}/{plan.phrases.length})</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black">
-                +{usedTargetPhraseIds.size * 10} XP Bonus
-              </span>
-              {dueSRSCard && (
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 text-[10px] font-bold border border-amber-300 dark:border-amber-700">
-                  ⚡ 1 Due SRS Phrase Added for Bonus XP
-                </span>
+      {/* Compact Persona & Mission Phrases Header */}
+      <div className="px-3.5 sm:px-6 pt-2 flex-shrink-0 space-y-2">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative flex-shrink-0">
+              <span className="text-2xl block leading-none">{plan.persona.avatar}</span>
+              {isAiSpeaking && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
               )}
             </div>
-
-            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-              <span className="hidden sm:inline">{isMissionsCollapsed ? 'Show targets' : 'Hide'}</span>
-              {isMissionsCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                  {plan.persona.name}
+                </span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">·</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  {plan.persona.role}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                {isAiSpeaking
+                  ? `${plan.persona.name} is speaking…`
+                  : isProcessing
+                  ? `${plan.persona.name} is thinking…`
+                  : plan.persona.accent === 'UK'
+                  ? '🇬🇧 British English'
+                  : '🇺🇸 American English'}
+              </div>
             </div>
           </div>
 
-          {/* Collapsible phrase pill chips */}
-          {!isMissionsCollapsed && (
-            <div className="px-3 pb-2 pt-0.5 flex flex-wrap gap-1.5 border-t border-slate-200/50 dark:border-slate-800/50 animate-fade-in">
-              {plan.phrases.map((phrase) => {
-                const isUsed = usedTargetPhraseIds.has(phrase.id);
-                const isJustMatched = justMatchedPhraseId === phrase.id;
-                return (
-                  <div
-                    key={phrase.id}
-                    onClick={() => {
-                      playChime('tap');
-                      speakEnglish(phrase.phrase, {
-                        rate: currentSpeed,
-                        accent: plan.persona.accent,
-                        personaName: plan.persona.name,
-                      });
-                    }}
-                    title="Speak this phrase aloud in conversation for +10 Bonus XP! Tap to hear pronunciation."
-                    className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 ${
-                      isUsed
-                        ? 'bg-emerald-500 text-white shadow-xs font-bold ring-2 ring-emerald-300 dark:ring-emerald-600'
-                        : 'bg-white/95 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-brand-300'
-                    } ${isJustMatched ? 'scale-105 ring-4 ring-emerald-400 animate-pulse' : ''}`}
-                  >
-                    {isUsed ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-white flex-shrink-0" />
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                    )}
-                    <span className="truncate max-w-[200px] sm:max-w-[280px]">“{phrase.phrase}”</span>
-                    <span className={`text-[10px] font-black ${isUsed ? 'text-emerald-100' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                      {isUsed ? '+10 XP ✓' : '+10 XP'}
-                    </span>
-                  </div>
-                );
-              })}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isAiSpeaking && (
+              <button
+                onClick={handleStopSpeaking}
+                type="button"
+                className="flex items-center gap-1 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-300 text-[11px] font-bold rounded-xl border border-rose-200 dark:border-rose-800 transition active:scale-95"
+                title="Stop speaking"
+              >
+                <Square className="w-2.5 h-2.5 fill-current" />
+                <span>Stop</span>
+              </button>
+            )}
 
-              {dueSRSCard && (
+            {dueSRSCard && (
+              <span 
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 text-[11px] font-bold"
+                title="We added 1 phrase from an earlier lesson so you can lock it into memory."
+              >
+                🔄 Past Phrase Refresher (+15 XP)
+              </span>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsMissionsCollapsed((c) => !c)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/70 text-[11px] font-bold text-slate-800 dark:text-slate-200 hover:bg-amber-100/70 transition"
+            >
+              <Target className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+              <span>Phrases ({usedTargetPhraseIds.size}/{plan.phrases.length})</span>
+              {isMissionsCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible phrase pill chips */}
+        {!isMissionsCollapsed && (
+          <div className="px-3 py-2 rounded-2xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 flex flex-wrap gap-1.5 animate-fade-in">
+            {plan.phrases.map((phrase) => {
+              const isUsed = usedTargetPhraseIds.has(phrase.id);
+              const isJustMatched = justMatchedPhraseId === phrase.id;
+              return (
                 <div
-                  key={dueSRSCard.id}
+                  key={phrase.id}
                   onClick={() => {
                     playChime('tap');
-                    speakEnglish(dueSRSCard.phrase, {
+                    speakEnglish(phrase.phrase, {
                       rate: currentSpeed,
                       accent: plan.persona.accent,
                       personaName: plan.persona.name,
                     });
                   }}
-                  title="Past mistake due for review — say it aloud for bonus practice!"
-                  className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
-                    usedTargetPhraseIds.has(dueSRSCard.id)
-                      ? 'bg-amber-500 text-slate-950 font-bold ring-2 ring-amber-300 shadow-xs'
-                      : 'bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-100'
-                  }`}
+                  title="Speak this phrase aloud in conversation for +10 Bonus XP! Tap to hear pronunciation."
+                  className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 ${
+                    isUsed
+                      ? 'bg-emerald-500 text-white shadow-xs font-bold ring-2 ring-emerald-300 dark:ring-emerald-600'
+                      : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-2xs'
+                  } ${isJustMatched ? 'scale-105 ring-4 ring-emerald-400 animate-pulse' : ''}`}
                 >
-                  {usedTargetPhraseIds.has(dueSRSCard.id) ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-slate-950 flex-shrink-0" />
+                  {isUsed ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-white flex-shrink-0" />
                   ) : (
-                    <span className="text-[11px]">⚡</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
                   )}
-                  <span className="truncate max-w-[180px]">“{dueSRSCard.phrase}”</span>
-                  <span className="text-[10px] font-extrabold text-amber-800">SRS +10 XP</span>
+                  <span className="truncate max-w-[200px] sm:max-w-[280px]">“{phrase.phrase}”</span>
+                  <span className={`text-[10px] font-black ${isUsed ? 'text-emerald-100' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {isUsed ? '+10 XP ✓' : '+10 XP'}
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+              );
+            })}
 
-      {/* Persona + waveform */}
-      <div className="flex flex-col items-center pt-1.5 px-4 sm:px-6 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{plan.persona.avatar}</span>
-          <div className="text-left">
-            <div className="text-sm font-extrabold text-slate-900 dark:text-white">{plan.persona.name}</div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              {plan.persona.role} · {plan.persona.accent === 'UK' ? '🇬🇧 British' : '🇺🇸 American'}
-            </div>
-          </div>
-        </div>
-        {/* Active Audio Waveform Visualizer + Instant Stop Speaking Kill-Switch */}
-        <div className="relative flex items-center justify-center w-full max-w-2xl px-4 mt-0.5">
-          <WaveformVisualizer mode={mode} bands={bands} />
-
-          {/* Instant "Stop Speaking" kill-switch button */}
-          {isAiSpeaking && (
-            <button
-              onClick={handleStopSpeaking}
-              type="button"
-              className="absolute right-3 sm:right-6 md:right-8 flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs sm:text-sm font-black rounded-xl shadow-xl shadow-rose-600/35 border border-rose-400 transition-all duration-150 animate-pulse z-20 cursor-pointer"
-              title="Stop speaking immediately"
-              aria-label="Stop Speaking"
-            >
-              <Square className="w-3.5 h-3.5 fill-white flex-shrink-0" />
-              <span>Stop Speaking</span>
-            </button>
-          )}
-        </div>
-        <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 px-6 text-center" aria-live="polite">
-          {statusText}
-        </p>
-      </div>
-
-      {/* Live transcript with internal scrolling: flex-1 overflow-y-auto */}
-      <div
-        ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 pb-6 space-y-2.5 scrollbar-none no-scrollbar"
-      >
-        <div className="max-w-3xl mx-auto space-y-2.5">
-        {turns.map((t) => {
-          const hidden = t.speaker === 'ai' && !t.revealed && !revealAll;
-          return (
-            <div key={t.id} className={`flex ${t.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {dueSRSCard && (
               <div
-                className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                  t.speaker === 'user'
-                    ? 'bg-brand-600 text-white rounded-br-md'
-                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-md shadow-sm'
+                key={dueSRSCard.id}
+                onClick={() => {
+                  playChime('tap');
+                  speakEnglish(dueSRSCard.phrase, {
+                    rate: currentSpeed,
+                    accent: plan.persona.accent,
+                    personaName: plan.persona.name,
+                  });
+                }}
+                title="We added 1 phrase from an earlier lesson so you can lock it into memory."
+                className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                  usedTargetPhraseIds.has(dueSRSCard.id)
+                    ? 'bg-amber-500 text-slate-950 font-bold ring-2 ring-amber-300 shadow-xs'
+                    : 'bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs hover:bg-amber-100 dark:hover:bg-amber-900/60'
                 }`}
               >
-                {t.speaker === 'ai' ? (
-                  <div>
-                    {hidden ? (
-                      <button
-                        onClick={() => revealTurn(t.id)}
-                        className="text-left w-full"
-                        aria-label="Hidden text. Tap to reveal."
-                      >
-                        <span className="block py-0.5 blur-[5px] select-none transition-all duration-300">
-                          {t.text}
-                        </span>
-                        <span className="block mt-1 text-[11px] font-bold text-brand-600 dark:text-brand-400">
-                          Listen first · tap to reveal
-                        </span>
-                      </button>
-                    ) : (
-                      <div className="py-0.5">
-                        <InteractiveTranscriptText
-                          text={t.text}
-                          onSelectWord={(w, s) => setLookupWord({ word: w, sentence: s })}
-                        />
-                      </div>
-                    )}
-                  </div>
+                {usedTargetPhraseIds.has(dueSRSCard.id) ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-950 flex-shrink-0" />
                 ) : (
-                  <>
-                    {(() => {
-                      if (!t.lowConfidenceWords || t.lowConfidenceWords.length === 0) {
-                        return <span>{t.text}</span>;
-                      }
-                      const lowConfSet = new Set(t.lowConfidenceWords.map((w) => w.toLowerCase()));
-                      const tokens = t.text.split(/(\s+)/);
-                      return (
-                        <span>
-                          {tokens.map((token, idx) => {
-                            const clean = token.toLowerCase().replace(/[^a-z']/g, '');
-                            const isFlagged = clean && lowConfSet.has(clean);
-                            if (isFlagged) {
-                              return (
-                                <span
-                                  key={idx}
-                                  className="inline-block relative underline decoration-amber-300 decoration-wavy underline-offset-4 font-bold text-amber-200 bg-amber-400/20 px-1 rounded-sm cursor-help"
-                                  title="Acoustic speech confidence < 75% · Flagged for British pronunciation coaching"
-                                >
-                                  {token}
-                                </span>
-                              );
-                            }
-                            return <span key={idx}>{token}</span>;
-                          })}
+                  <span className="text-[11px]">🔄</span>
+                )}
+                <span className="truncate max-w-[180px]">“{dueSRSCard.phrase}”</span>
+                <span className="text-[10px] font-extrabold text-amber-800 dark:text-amber-300">📌 From Your Saved Phrases</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Spacious Conversation Transcript */}
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 pb-4 space-y-2.5 scrollbar-none no-scrollbar"
+      >
+        <div className="max-w-3xl mx-auto space-y-2.5">
+          {turns.map((t) => {
+            const hidden = t.speaker === 'ai' && !t.revealed && !revealAll;
+            return (
+              <div key={t.id} className={`flex ${t.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    t.speaker === 'user'
+                      ? 'bg-brand-600 text-white rounded-br-md'
+                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-md shadow-sm'
+                  }`}
+                >
+                  {t.speaker === 'ai' ? (
+                    <div>
+                      {hidden ? (
+                        <button
+                          onClick={() => revealTurn(t.id)}
+                          className="text-left w-full"
+                          aria-label="Hidden text. Tap to reveal."
+                        >
+                          <span className="block py-0.5 blur-[5px] select-none transition-all duration-300">
+                            {t.text}
+                          </span>
+                          <span className="block mt-1 text-[11px] font-bold text-brand-600 dark:text-brand-400">
+                            Listen first · tap to reveal
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="py-0.5">
+                          <InteractiveTranscriptText
+                            text={t.text}
+                            onSelectWord={(w, s) => setLookupWord({ word: w, sentence: s })}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {(() => {
+                        if (!t.lowConfidenceWords || t.lowConfidenceWords.length === 0) {
+                          return <span>{t.text}</span>;
+                        }
+                        const lowConfSet = new Set(t.lowConfidenceWords.map((w) => w.toLowerCase()));
+                        const tokens = t.text.split(/(\s+)/);
+                        return (
+                          <span>
+                            {tokens.map((token, idx) => {
+                              const clean = token.toLowerCase().replace(/[^a-z']/g, '');
+                              const isFlagged = clean && lowConfSet.has(clean);
+                              if (isFlagged) {
+                                return (
+                                  <span
+                                    key={idx}
+                                    className="inline-block relative underline decoration-amber-300 decoration-wavy underline-offset-4 font-bold text-amber-200 bg-amber-400/20 px-1 rounded-sm cursor-help"
+                                    title="Acoustic speech confidence < 75% · Flagged for British pronunciation coaching"
+                                  >
+                                    {token}
+                                  </span>
+                                );
+                              }
+                              return <span key={idx}>{token}</span>;
+                            })}
+                          </span>
+                        );
+                      })()}
+                      {t.lowConfidenceWords && t.lowConfidenceWords.length > 0 && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[10px] font-bold text-amber-200 bg-black/20 px-2 py-0.5 rounded-md border border-amber-300/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+                          <span>Flagged pronunciation (&lt;75%): {t.lowConfidenceWords.join(', ')}</span>
+                        </div>
+                      )}
+                      {t.isMock && (
+                        <span className="block mt-1 text-[10px] text-brand-100">
+                          Demo transcript (speech-to-text unavailable)
                         </span>
-                      );
-                    })()}
-                    {t.lowConfidenceWords && t.lowConfidenceWords.length > 0 && (
-                      <div className="mt-1.5 flex items-center gap-1.5 text-[10px] font-bold text-amber-200 bg-black/20 px-2 py-0.5 rounded-md border border-amber-300/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
-                        <span>Flagged pronunciation (&lt;75%): {t.lowConfidenceWords.join(', ')}</span>
-                      </div>
-                    )}
-                    {t.isMock && (
-                      <span className="block mt-1 text-[10px] text-brand-100">
-                        Demo transcript (speech-to-text unavailable)
-                      </span>
-                    )}
-                  </>
-                )}
-                {t.speaker === 'ai' && (
-                  <button
-                    onClick={() => speakAi(t.text)}
-                    className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-brand-600 dark:text-brand-400"
-                  >
-                    <Volume2 className="w-3 h-3" /> Replay
-                  </button>
-                )}
+                      )}
+                    </>
+                  )}
+                  {t.speaker === 'ai' && (
+                    <button
+                      onClick={() => speakAi(t.text)}
+                      className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-brand-600 dark:text-brand-400"
+                    >
+                      <Volume2 className="w-3 h-3" /> Replay
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Subtle inline live speech preview inside the chat flow (no floating popup clutter) */}
+          {isRecording && livePreview && (
+            <div className="flex justify-end animate-fade-in">
+              <div className="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-sm bg-indigo-600/85 text-white/95 shadow-sm backdrop-blur-xs">
+                <span>{livePreview}</span>
+                <span className="inline-block w-1 h-3.5 ml-1 bg-white/80 animate-pulse align-middle rounded-full" />
               </div>
             </div>
-          );
-        })}
+          )}
         </div>
       </div>
 
-      {/* Controls Container with Push-to-Talk Interface & Live Transcription (Permanently Docked & Sticky) */}
-      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-4 sm:pb-5 pt-3 border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg">
-        {/* Real-time live transcription bubble floating above the PTT button */}
-        {isRecording && (
-          <div className="absolute bottom-[calc(100%+12px)] left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-xl z-20 animate-slide-up">
-            <div className="relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl p-3.5 border border-rose-200/90 dark:border-rose-900/80 shadow-2xl text-slate-800 dark:text-slate-100">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
-                  </span>
-                  <span className="text-[11px] font-extrabold text-rose-600 dark:text-rose-400 tracking-wide uppercase">
-                    Live Transcription
-                  </span>
-                  <span className="text-[11px] text-slate-400 hidden sm:inline">
-                    · Mic open (no cutoff)
-                  </span>
-                  {liveLowConfidenceWords.length > 0 && (
-                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                      Flagged (&lt;75%): {liveLowConfidenceWords.join(', ')}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => {
-                      if (isEditingBubble) {
-                        setIsEditingBubble(false);
-                      } else {
-                        setBubbleEditValue(livePreview || '');
-                        setIsEditingBubble(true);
-                      }
-                    }}
-                    className="px-2 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-medium flex items-center gap-1 transition"
-                    title="Edit misheard words"
-                  >
-                    <Pencil className="w-3 h-3" />
-                    <span>{isEditingBubble ? 'Cancel' : 'Edit'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => stopRecording()}
-                    className="px-3 py-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95 transition"
-                    title="Send audio and transcript to James"
-                  >
-                    <Send className="w-3 h-3" />
-                    <span>Done / Send</span>
-                  </button>
-                </div>
-              </div>
-
-              {isEditingBubble ? (
-                <div className="flex items-center gap-2 py-1">
-                  <input
-                    type="text"
-                    value={bubbleEditValue}
-                    onChange={(e) => setBubbleEditValue(e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-brand-300 dark:border-brand-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 dark:text-white shadow-inner"
-                    placeholder="Correct misheard word..."
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => {
-                      setLivePreview(bubbleEditValue);
-                      setIsEditingBubble(false);
-                    }}
-                    className="px-3 py-1.5 bg-brand-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-brand-700 active:scale-95 transition flex items-center gap-1"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Apply
-                  </button>
-                </div>
-              ) : (
-                <div className="min-h-[28px] flex items-center">
-                  {livePreview ? (
-                    <div className="text-sm font-semibold text-slate-900 dark:text-white leading-relaxed max-h-28 overflow-y-auto pr-1">
-                      “{livePreview}”
-                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-rose-500 animate-pulse align-middle rounded-xs" />
-                    </div>
-                  ) : (
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 italic flex items-center gap-2 py-0.5">
-                      <span className="text-sm">🎙️</span>
-                      <span>Listening… Speak freely at your own pace. Pauses will not cut you off.</span>
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Downward pointer to mic */}
-              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white dark:bg-slate-900 rotate-45 border-r border-b border-rose-200/90 dark:border-rose-900/80 shadow-xs" />
-            </div>
-          </div>
-        )}
-
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+      {/* Minimalist Bottom Bar with the Little Silky Glowing Voice Button */}
+      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-3.5 pt-2.5 border-t border-slate-200/70 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+        <div className="max-w-xl mx-auto flex items-center justify-between">
+          {/* Left: Subtle Help Button */}
           <button
             onClick={() => {
               stopSpeaking();
               setHelpOpen(true);
               setHelpRequests((n) => n + 1);
             }}
-            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 transition active:scale-95"
+            className="flex flex-col items-center gap-0.5 w-20 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition active:scale-95"
+            title="Need a phrase hint?"
           >
-            <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 flex items-center justify-center transition shadow-2xs">
-              <LifeBuoy className="w-5 h-5" />
+            <span className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/90 hover:bg-amber-50 dark:hover:bg-amber-950/50 flex items-center justify-center transition">
+              <LifeBuoy className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             </span>
-            <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">How do I say…?</span>
+            <span className="text-[10px] font-semibold">Hints</span>
           </button>
 
-          {/* Robust Push-To-Talk / Hold-to-Talk / Tap-to-Talk Mic Interface */}
-          <div className="flex flex-col items-center relative">
-            {/* Glowing animated recording ring when active */}
-            {isRecording && (
-              <>
-                {/* Outermost expanding ping aura */}
-                <span className="absolute -inset-3.5 rounded-full bg-rose-500/25 animate-ping pointer-events-none" />
-                {/* Soft ambient radial bloom */}
-                <span className="absolute -inset-5 rounded-full bg-rose-500/20 blur-xl animate-pulse pointer-events-none" />
-                {/* Active glowing ring boundary */}
-                <span className="absolute -inset-1 rounded-full ring-4 ring-rose-400 ring-offset-2 ring-offset-white shadow-[0_0_28px_rgba(244,63,94,0.6)] pointer-events-none animate-pulse" />
-              </>
-            )}
+          {/* Center: The Little Silky Glowing Voice Button */}
+          <div className="flex flex-col items-center">
+            <div className="relative flex items-center justify-center">
+              {/* Layer 1: Ambient breathing radial bloom */}
+              <span
+                className={`absolute -inset-5 rounded-full pointer-events-none transition-all duration-500 ease-out ${
+                  isRecording
+                    ? 'silky-orb-active-bloom opacity-100'
+                    : 'bg-indigo-500/15 dark:bg-indigo-400/15 blur-xl silky-orb-idle'
+                }`}
+                style={
+                  isRecording
+                    ? { transform: `scale(${voiceBloomScale})` }
+                    : undefined
+                }
+              />
 
-            <button
-              onPointerDown={onPointerDown}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerCancel}
-              onKeyDown={onKeyDown}
-              disabled={isProcessing || isAnalyzingScorecard}
-              className={`relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center text-white transition-all duration-200 active:scale-95 touch-none select-none disabled:opacity-40 ${
-                isRecording
-                  ? 'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 scale-105 shadow-xl shadow-rose-500/35'
-                  : 'bg-gradient-to-br from-brand-600 via-brand-500 to-emerald-500 shadow-fab hover:shadow-lg hover:scale-[1.02]'
-              }`}
-              aria-label={isRecording ? 'Tap or release to send spoken turn' : 'Push to talk: hold or tap to speak'}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-8 h-8 animate-spin mb-0.5" />
-                  <span className="text-[9px] font-black uppercase tracking-wider text-white/90">Thinking</span>
-                </>
-              ) : isRecording ? (
-                <>
-                  <Send className="w-7 h-7 text-white fill-white/20 translate-x-0.5 mb-0.5" />
-                  <span className="text-[9px] font-black uppercase tracking-wider text-rose-100">Done · Send</span>
-                </>
-              ) : (
-                <>
-                  <Mic className="w-9 h-9 mb-0.5" />
-                  <span className="text-[9px] font-black uppercase tracking-wider text-white/90">Push to Talk</span>
-                </>
-              )}
-            </button>
+              {/* Layer 2: Silky rotating multi-hue aurora halo when recording */}
+              <span
+                className={`absolute -inset-2 rounded-full blur-md pointer-events-none transition-all duration-500 ease-out ${
+                  isRecording
+                    ? 'silky-orb-active-aura opacity-95'
+                    : 'opacity-0 scale-75'
+                }`}
+                style={
+                  isRecording
+                    ? { transform: `scale(${voiceBloomScale * 0.98})` }
+                    : undefined
+                }
+              />
 
-            {/* Clear contextual instruction below the button */}
-            <div className="h-5 flex items-center justify-center mt-1.5">
-              {isRecording ? (
-                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  {isHolding ? 'Release to Send' : 'Tap to Finish & Send'}
-                </span>
-              ) : (
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                  Hold or tap to speak
-                </span>
-              )}
+              {/* Layer 3: Soft inner luminous rim */}
+              <span
+                className={`absolute -inset-0.5 rounded-full pointer-events-none transition-all duration-500 ${
+                  isRecording
+                    ? 'bg-gradient-to-tr from-sky-400 via-indigo-400 to-fuchsia-400 opacity-90 blur-[2px]'
+                    : 'bg-gradient-to-tr from-brand-400/40 to-indigo-400/40 opacity-50'
+                }`}
+              />
+
+              {/* The Little Button itself */}
+              <button
+                type="button"
+                onPointerDown={onPointerDown}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerCancel}
+                onKeyDown={onKeyDown}
+                onContextMenu={(e) => e.preventDefault()}
+                disabled={isProcessing || isAnalyzingScorecard}
+                className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-white transition-all duration-500 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
+                  isRecording
+                    ? 'bg-gradient-to-tr from-indigo-600 via-violet-500 to-sky-400 scale-105 shadow-[0_0_30px_rgba(99,102,241,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
+                    : 'bg-gradient-to-tr from-brand-600 via-indigo-500 to-sky-500 hover:scale-[1.04] active:scale-95 shadow-[0_6px_20px_rgba(59,130,246,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)]'
+                }`}
+                aria-label={
+                  isRecording
+                    ? 'Release or tap to finish speaking'
+                    : 'Hold to talk, or tap to start and tap again to end'
+                }
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-white/95" />
+                ) : (
+                  <Mic
+                    className={`w-6 h-6 transition-transform duration-300 ${
+                      isRecording ? 'scale-110 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'text-white'
+                    }`}
+                  />
+                )}
+              </button>
             </div>
+
+            <span className="mt-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 select-none">
+              {isProcessing
+                ? 'Thinking…'
+                : isRecording
+                ? isHolding
+                  ? 'Release to finish'
+                  : 'Tap again to finish'
+                : 'Hold or tap to speak'}
+            </span>
           </div>
 
+          {/* Right: Finish Roleplay Button */}
           <button
             onClick={endRoleplay}
             disabled={isAnalyzingScorecard || isProcessing || userTurnsCount === 0}
-            className="flex flex-col items-center gap-1 w-20 sm:w-28 text-slate-700 dark:text-slate-300 disabled:opacity-40 transition-all active:scale-95"
+            className="flex flex-col items-center gap-0.5 w-20 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-35 transition active:scale-95"
+            title={userTurnsCount >= 1 ? 'Finish & view scorecard' : 'Speak at least once to finish'}
           >
             <span
-              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all ${
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
                 userTurnsCount >= 3
-                  ? 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-soft shadow-emerald-500/20 animate-pulse-subtle'
+                  ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
                   : userTurnsCount >= 1
-                  ? 'bg-brand-100 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 hover:bg-brand-200'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-slate-100 dark:bg-slate-800/90 text-slate-400 dark:text-slate-500'
               }`}
             >
-              <Flag className="w-5 h-5" />
+              <Flag className="w-4 h-4" />
             </span>
-            <span className="text-[10px] sm:text-xs font-extrabold text-center leading-tight">
-              {userTurnsCount >= 1 ? 'Finish & Get Scorecard' : 'Speak first'}
-            </span>
+            <span className="text-[10px] font-semibold">Finish</span>
           </button>
-
         </div>
       </div>
 

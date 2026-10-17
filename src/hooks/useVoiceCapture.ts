@@ -10,7 +10,7 @@ import { AudioRecorderController, type RecordedAudioClip } from '../services/aud
 import { AudioVisualizerController } from '../services/audioVisualizer';
 import type { AudioAttachment } from '../services/geminiService';
 
-const HOLD_THRESHOLD_MS = 350;
+const HOLD_THRESHOLD_MS = 280;
 
 export interface UseVoiceCaptureOptions {
   lang?: 'en-GB' | 'en-US';
@@ -36,6 +36,7 @@ export function useVoiceCapture({
   const recordedClipsRef = useRef<AudioAttachment[]>([]);
   const pronunciationMetadataRef = useRef<SpokenSegmentAnalysis[]>([]);
 
+  const isRecordingRef = useRef(false);
   const pressStartTimeRef = useRef(0);
   const isPressingRef = useRef(false);
   const isHoldingRef = useRef(false);
@@ -53,6 +54,7 @@ export function useVoiceCapture({
     vizRef.current.stopMicrophone();
     recorderRef.current.stop().catch(() => {});
     recRef.current?.stop();
+    isRecordingRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
     updateLivePreview('');
@@ -65,15 +67,18 @@ export function useVoiceCapture({
   }, [cleanupAudio]);
 
   const stopRecording = useCallback(async () => {
-    if (!isRecording) {
+    if (!isRecordingRef.current) {
       pendingStopRef.current = true;
       return;
     }
 
+    isRecordingRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
     isHoldingRef.current = false;
     isPressingRef.current = false;
+    setBands([]);
+    playChime('micStop');
 
     let audioClip: RecordedAudioClip | null = null;
     try {
@@ -108,16 +113,25 @@ export function useVoiceCapture({
     if (finalSpoken) {
       onCompleteCapture(finalSpoken, audioClip);
     }
-  }, [isRecording, onCompleteCapture, updateLivePreview]);
+  }, [onCompleteCapture, updateLivePreview]);
 
   const startRecording = useCallback(async () => {
-    if (isRecording) return;
+    if (isRecordingRef.current) return;
     pendingStopRef.current = false;
     stopSpeaking();
     onBeforeStart?.();
 
+    // Instant visual & audio feedback on touch
+    isRecordingRef.current = true;
+    setIsRecording(true);
+    updateLivePreview('');
+    playChime('micStart');
+
     const ok = await vizRef.current.startMicrophone(setBands);
     if (!ok) {
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      setIsHolding(false);
       if (onMicDenied) {
         onMicDenied();
       } else {
@@ -126,12 +140,16 @@ export function useVoiceCapture({
       return;
     }
 
+    if (pendingStopRef.current || !isRecordingRef.current) {
+      pendingStopRef.current = false;
+      vizRef.current.stopMicrophone();
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      return;
+    }
+
     const stream = vizRef.current.getStream();
     await recorderRef.current.start(stream);
-
-    playChime('tap');
-    setIsRecording(true);
-    updateLivePreview('');
 
     recRef.current = isRecognitionSupported()
       ? startRecognition({
@@ -145,14 +163,15 @@ export function useVoiceCapture({
       pendingStopRef.current = false;
       stopRecording();
     }
-  }, [isRecording, lang, onBeforeStart, onMicDenied, stopRecording, updateLivePreview]);
+  }, [lang, onBeforeStart, onMicDenied, stopRecording, updateLivePreview]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent, disabled?: boolean) => {
       e.preventDefault();
       if (disabled) return;
 
-      if (isRecording) {
+      if (isRecordingRef.current) {
+        isPressingRef.current = false;
         stopRecording();
         return;
       }
@@ -175,7 +194,7 @@ export function useVoiceCapture({
         }
       }, HOLD_THRESHOLD_MS);
     },
-    [isRecording, startRecording, stopRecording]
+    [startRecording, stopRecording]
   );
 
   const onPointerUp = useCallback(
