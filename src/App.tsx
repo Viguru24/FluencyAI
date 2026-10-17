@@ -37,6 +37,7 @@ import { RefreshCw, Sparkles, BookmarkCheck, RotateCcw, X, EyeOff, Eye } from 'l
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './services/toast';
 import { playChime } from './services/speech';
+import { isDevMode } from './utils/devMode';
 
 export function App() {
   const {
@@ -245,9 +246,10 @@ export function App() {
   }, [isAnyModalOpen, isPullRefreshing]);
 
   const reviewCount = Math.max(savedCardsCount, progress.savedMistakes?.length ?? 0);
+  const devMode = isDevMode();
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       <ToastContainer />
 
       {/* Mobile Pull-to-Refresh Indicator */}
@@ -309,48 +311,50 @@ export function App() {
 
       {/* Main App Container */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-3.5 sm:px-6 py-4 pb-16 space-y-5">
-        {/* Quick Testing Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
-            <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[10px] font-black uppercase tracking-wider">
-              🛠️ Testing Controls
-            </span>
-            <span className="hidden sm:inline text-slate-500 dark:text-slate-400 font-medium">
-              Quickly test onboarding or toggle the CEFR starting level prompt
-            </span>
-          </div>
+        {/* Quick Testing Controls Bar (Dev Mode Only) */}
+        {devMode && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+              <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[10px] font-black uppercase tracking-wider">
+                🛠️ Testing Controls
+              </span>
+              <span className="hidden sm:inline text-slate-500 dark:text-slate-400 font-medium">
+                Quickly test onboarding or toggle the CEFR starting level prompt
+              </span>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleRestartOnboarding}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-2xs transition active:scale-95"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restart Onboarding</span>
-            </button>
-
-            {!isPlacementCompleted ? (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={handleDismissPlacement}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-2xs transition active:scale-95"
+                onClick={handleRestartOnboarding}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-2xs transition active:scale-95"
               >
-                <EyeOff className="w-3.5 h-3.5" />
-                <span>Remove CEFR Starting Level</span>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Restart Onboarding</span>
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleRestorePlacementBanner}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95"
-              >
-                <Eye className="w-3.5 h-3.5 text-brand-500" />
-                <span>Restore CEFR Level Banner</span>
-              </button>
-            )}
+
+              {!isPlacementCompleted ? (
+                <button
+                  type="button"
+                  onClick={handleDismissPlacement}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-2xs transition active:scale-95"
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>Remove CEFR Starting Level</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleRestorePlacementBanner}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95"
+                >
+                  <Eye className="w-3.5 h-3.5 text-brand-500" />
+                  <span>Restore CEFR Level Banner</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Onboarding CEFR Placement Banner for new users */}
         {!isPlacementCompleted && (
@@ -429,7 +433,7 @@ export function App() {
               }}
               className="w-full sm:w-auto text-center px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 text-xs font-bold transition flex-shrink-0"
             >
-              My Phrasebook
+              📌 My Saved Phrasebook
             </button>
           </div>
         )}

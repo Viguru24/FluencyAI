@@ -18,6 +18,7 @@ import {
   useGamificationStore,
 } from '../store/rewardSystem';
 import { playChime } from '../services/speech';
+import { isDevMode } from '../utils/devMode';
 
 interface TierRoadmapModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
   if (!isOpen) return null;
 
   const currentTierIndex = ORDERED_TIERS.indexOf(currentTier);
+  const devMode = isDevMode();
 
   const handleClaimChest = () => {
     playChime('success');
@@ -66,17 +68,17 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-3xl max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-3xl sm:rounded-3xl pb-safe bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl flex flex-col">
         {/* Modal Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between border-b border-slate-800 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl shadow-inner">
+        <div className="sticky top-0 z-10 px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl shadow-inner shrink-0">
               <Trophy className="w-6 h-6 text-amber-400" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black tracking-tight text-white">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
                   My Fluency Journey &amp; Rewards
                 </h2>
                 <span
@@ -85,7 +87,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
                   {currentTierConfig.badgeAccent.icon} {currentTierConfig.name}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-xs text-slate-300 mt-0.5 truncate">
                 Earn XP, build speaking streaks, and unlock British fluency perks
               </p>
             </div>
@@ -93,7 +95,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition active:scale-95"
+            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition active:scale-95 shrink-0"
             aria-label="Close roadmap modal"
           >
             <X className="w-5 h-5" />
@@ -101,7 +103,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
         </div>
 
         {/* Scrollable Modal Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6">
           {/* Top Summary & Multipliers Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Total Cumulative XP & Next Rank Progress */}
@@ -403,84 +405,86 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
             </div>
           </div>
 
-          {/* Dev Test Sandbox Controls */}
-          <div className="rounded-3xl bg-slate-900 text-white p-4 sm:p-5 border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Developer Gamification Sandbox
-                </span>
+          {/* Dev Test Sandbox Controls (Dev Mode Only) */}
+          {devMode && (
+            <div className="rounded-3xl bg-slate-900 text-white p-4 sm:p-5 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+                    Developer Gamification Sandbox
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400">Instant Testing Controls</span>
               </div>
-              <span className="text-[10px] text-slate-400">Instant Testing Controls</span>
+
+              <p className="text-xs text-slate-300">
+                Simulate actions instantly to verify floating XP toasts, tier promotion modals, and perks:
+              </p>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devAddXP(100);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition active:scale-95 shadow-sm"
+                >
+                  +100 XP (Trigger Toast)
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('silver');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs transition active:scale-95"
+                >
+                  🥈 Silver (1k XP)
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('gold');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition active:scale-95"
+                >
+                  🥇 Gold (3.5k XP)
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('platinum');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs transition active:scale-95"
+                >
+                  💠 Platinum (8k XP)
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devSetTier('diamond');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition active:scale-95"
+                >
+                  💎 Diamond (15k XP)
+                </button>
+
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    devReset();
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/50 font-bold text-xs transition active:scale-95"
+                >
+                  Reset Demo
+                </button>
+              </div>
             </div>
-
-            <p className="text-xs text-slate-300">
-              Simulate actions instantly to verify floating XP toasts, tier promotion modals, and perks:
-            </p>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  devAddXP(100);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition active:scale-95 shadow-sm"
-              >
-                +100 XP (Trigger Toast)
-              </button>
-
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  devSetTier('silver');
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs transition active:scale-95"
-              >
-                🥈 Silver (1k XP)
-              </button>
-
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  devSetTier('gold');
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition active:scale-95"
-              >
-                🥇 Gold (3.5k XP)
-              </button>
-
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  devSetTier('platinum');
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs transition active:scale-95"
-              >
-                💠 Platinum (8k XP)
-              </button>
-
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  devSetTier('diamond');
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition active:scale-95"
-              >
-                💎 Diamond (15k XP)
-              </button>
-
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  devReset();
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/50 font-bold text-xs transition active:scale-95"
-              >
-                Reset Demo
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Modal Footer */}

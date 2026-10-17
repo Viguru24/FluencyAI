@@ -280,16 +280,16 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col my-auto transition-all">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-xl max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-3xl sm:rounded-3xl pb-safe bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col transition-all">
         {/* Header with British Coach branding */}
-        <div className="relative px-5 py-4 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+        <div className="sticky top-0 z-10 px-4 sm:px-5 py-4 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-2xl shadow-inner shrink-0">
               🧑‍💼
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base font-black tracking-tight text-white">
                   CEFR Spoken Placement Check
                 </h3>
@@ -297,7 +297,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
                   James • UK Coach
                 </span>
               </div>
-              <p className="text-xs text-brand-100/80">
+              <p className="text-xs text-brand-100/80 truncate">
                 Quick 3-question evaluation to calibrate James’s vocabulary & pace
               </p>
             </div>
@@ -308,7 +308,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
               stopSpeaking();
               onClose();
             }}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -316,7 +316,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
 
         {/* Progress Bar (if not on results view) */}
         {!result && !isAnalyzing && (
-          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 flex">
+          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 flex shrink-0">
             {[0, 1, 2].map((stepIdx) => (
               <div
                 key={stepIdx}
@@ -329,7 +329,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
         )}
 
         {/* Main Body */}
-        <div className="p-5 sm:p-6 space-y-5">
+        <div className="p-4 sm:p-6 md:p-8 space-y-5">
           {/* STATE 1: Question in Progress */}
           {!result && !isAnalyzing && (
             <div className="space-y-4">

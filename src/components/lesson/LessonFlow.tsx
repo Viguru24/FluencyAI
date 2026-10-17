@@ -60,10 +60,10 @@ export const LessonFlow: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 md:p-6 animate-fade-in">
-      <div className="relative w-full max-w-5xl h-[100dvh] max-h-[100dvh] sm:h-[88vh] sm:max-h-[88vh] bg-white dark:bg-slate-900 rounded-none sm:rounded-3xl shadow-2xl border border-transparent sm:border-slate-200/80 dark:border-slate-800 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-fade-in">
+      <div className="relative w-full max-w-5xl h-[100dvh] max-h-[100dvh] sm:h-[88dvh] sm:max-h-[88dvh] bg-white dark:bg-slate-900 rounded-none sm:rounded-3xl shadow-2xl border border-transparent sm:border-slate-200/80 dark:border-slate-800 flex flex-col overflow-hidden">
         {/* Header with interactive stage stepper */}
-        <header className="px-3.5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-brand-600 via-sky-600 to-emerald-600 text-white flex-shrink-0">
+        <header className="px-3.5 sm:px-6 pt-safe pb-2.5 sm:py-3 bg-gradient-to-r from-brand-600 via-sky-600 to-emerald-600 text-white flex-shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100 truncate">

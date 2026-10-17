@@ -51,6 +51,7 @@ import { toast } from '../services/toast';
 import { UserAvatar } from './UserAvatar';
 import { formatDisplayName, normalizeUserAvatar } from '../utils/nameFormatter';
 import { ThemeToggle } from './ThemeToggle';
+import { isDevMode } from '../utils/devMode';
 
 interface Props {
   isOpen: boolean;
@@ -527,40 +528,41 @@ export const UserProfileModal: React.FC<Props> = ({
   };
 
   const currentUser = session?.user;
+  const devMode = isDevMode();
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/65 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-white/95 dark:bg-slate-900/95 dark:border-slate-800 text-slate-900 dark:text-slate-100 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[88vh]"
+        className="w-full max-w-xl max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-3xl sm:rounded-3xl pb-safe bg-white/95 dark:bg-slate-900/95 dark:border-slate-800 text-slate-900 dark:text-slate-100 backdrop-blur-md border border-slate-200/90 shadow-2xl animate-slide-up flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="user-profile-title"
       >
         {/* Modal Top Header */}
-        <div className="relative px-6 py-5 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="sticky top-0 z-10 px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-slate-900 via-brand-950 to-indigo-950 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <UserAvatar
               picture={currentUser?.picture || progress.avatar}
               name={formatDisplayName(currentUser?.name || progress.name)}
               size="lg"
               showOnlineDot={Boolean(session)}
             />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h3 id="user-profile-title" className="text-base font-extrabold tracking-tight text-white">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h3 id="user-profile-title" className="text-base font-extrabold tracking-tight text-white truncate">
                   {currentUser ? formatDisplayName(currentUser.name) : 'Account & Sync'}
                 </h3>
                 {session ? (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                    VPS Synced
+                    Cloud Synced
                   </span>
                 ) : (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                    Local Only
+                    Local Profile
                   </span>
                 )}
                 {subscription.planTier !== 'free' && (
@@ -569,14 +571,14 @@ export const UserProfileModal: React.FC<Props> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-300">
-                {currentUser?.email || 'Self-Hosted VPS Cloud Authentication & Stripe Wallet'}
+              <p className="text-xs text-slate-300 truncate">
+                {currentUser?.email || 'Account Preferences, Progress & Billing'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition shrink-0"
             aria-label="Close profile modal"
           >
             <X className="w-5 h-5" />
@@ -584,7 +586,7 @@ export const UserProfileModal: React.FC<Props> = ({
         </div>
 
         {/* Top Sub-Navigation Tabs */}
-        <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-xs font-bold flex-shrink-0">
+        <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-xs font-bold shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -597,7 +599,7 @@ export const UserProfileModal: React.FC<Props> = ({
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <User className="w-3.5 h-3.5" />
+            <User className="w-3.5 h-3.5 shrink-0" />
             <span>Profile &amp; Cloud Sync</span>
           </button>
 
@@ -613,7 +615,7 @@ export const UserProfileModal: React.FC<Props> = ({
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <CreditCard className="w-3.5 h-3.5" />
+            <CreditCard className="w-3.5 h-3.5 shrink-0" />
             <span>Stripe Billing &amp; Cards</span>
             {subscription.planTier !== 'free' ? (
               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-400" />
@@ -626,7 +628,7 @@ export const UserProfileModal: React.FC<Props> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto no-scrollbar">
+        <div className="p-4 sm:p-6 md:p-8 space-y-5 overflow-y-auto no-scrollbar">
           {/* Error Banner */}
           {errorMessage && (
             <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2 animate-slide-down">
@@ -1204,8 +1206,8 @@ export const UserProfileModal: React.FC<Props> = ({
             <ThemeToggle variant="switch" />
           </div>
 
-          {/* AI Gateway & Model Settings Row */}
-          {onOpenGatewaySettings && (
+          {/* AI Gateway & Model Settings Row (Dev Mode Only) */}
+          {devMode && onOpenGatewaySettings && (
             <div className="pt-1">
               <button
                 type="button"

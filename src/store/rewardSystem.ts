@@ -198,8 +198,8 @@ export const TIERS_CONFIG: Record<GamificationTier, TierDefinition> = {
     perks: [
       {
         id: 'james-direct-mode',
-        title: 'James AI Test Lab (Direct Mode)',
-        description: 'Direct unscripted voice sandbox with idioms & phrasal verb challenges',
+        title: 'Open Office & Pub Chat with James',
+        description: 'Unscripted free-talk, British idioms & instant pronunciation feedback',
         icon: '🧑‍💼',
         tier: 'gold',
       },

@@ -1,6 +1,8 @@
 // Post-Lesson Scorecard & Acoustic Pronunciation Grader
 import type {
+  HelpPhrase,
   LessonPlan,
+  NativeLanguage,
   PhrasingUpgrade,
   PronunciationCoachingPoint,
   PronunciationFeedbackWord,
@@ -25,6 +27,191 @@ export interface DynamicScorecardResult {
   pronunciationFeedback?: PronunciationFeedbackWord[];
   acousticFeedback?: string;
   lowConfidenceWords?: string[];
+}
+
+export interface WrittenFollowUpPolishResult {
+  polishedVersion: string;
+  keyUpgradeTip: string;
+}
+
+/**
+ * Instant "Polite British Polish" for Stage 3 "Write & Say" Follow-Up Challenge.
+ * Uses gemini-3.1-flash-lite with a deterministic offline fallback.
+ */
+export async function polishWrittenFollowUp(
+  scenarioTitle: string,
+  userDraft: string,
+  personaName: string = 'James'
+): Promise<WrittenFollowUpPolishResult> {
+  const cleanDraft = (userDraft || '').trim();
+  const buildDeterministicFallback = (): WrittenFollowUpPolishResult => {
+    if (!cleanDraft) {
+      return {
+        polishedVersion: `Hi ${personaName}, thanks so much for catching up earlier — I'll get those next steps sorted and keep you posted.`,
+        keyUpgradeTip:
+          'Uses warm British sign-offs ("catching up", "get those sorted", "keep you posted") for natural workplace rapport.',
+      };
+    }
+
+    // Apply polite British workplace transformations deterministically
+    let polished = cleanDraft
+      .replace(/\bI want to\b/gi, "I'd love to")
+      .replace(/\bplease send me\b/gi, 'could you possibly pop over')
+      .replace(/\bsend me\b/gi, 'pop over')
+      .replace(/\bcan you\b/gi, 'would you mind')
+      .replace(/\bI will\b/gi, "I'll")
+      .replace(/\bfix\b/gi, 'get that sorted');
+
+    if (!/^(hi|hello|dear|thanks|cheers|just)/i.test(polished)) {
+      polished = `Hi ${personaName}, thanks for our chat earlier — ${polished.charAt(0).toLowerCase()}${polished.slice(1)}`;
+    }
+    if (!/[.!?]$/.test(polished)) {
+      polished += '.';
+    }
+    if (!/(cheers|best|thanks|posted|know)/i.test(polished) && polished.length < 180) {
+      polished += ' Let me know if that sounds alright!';
+    }
+
+    return {
+      polishedVersion: polished,
+      keyUpgradeTip:
+        'Softened direct phrasing with warm, diplomatic British workplace idioms ("thanks for our chat", "sounds alright") so your follow-up reads naturally.',
+    };
+  };
+
+  const config = getLLMConfig();
+  if (!config.apiKey || !cleanDraft) {
+    return buildDeterministicFallback();
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const prompt = `You are a British English workplace & everyday communication coach.
+Scenario just completed: "${scenarioTitle}" (speaking with ${personaName}).
+Learner's draft follow-up note (Slack, email, or handover message):
+"${cleanDraft}"
+
+Rewrite their draft into natural, diplomatic British workplace/everyday English (1–2 concise sentences, max 35 words) that preserves their exact meaning while sounding warm and authentic in the UK.
+Also provide a 1-sentence coaching tip explaining the key tone or phrasing upgrade.
+
+Return strictly valid JSON:
+{
+  "polishedVersion": "<1-2 sentence natural British English follow-up note>",
+  "keyUpgradeTip": "<1 concise sentence explaining the British tone/phrasing upgrade>"
+}`;
+
+    const parsed = await requestStructuredJSON<{
+      polishedVersion?: string;
+      keyUpgradeTip?: string;
+    }>({
+      systemInstruction:
+        'You are a British English communication coach (gemini-3.1-flash-lite). Return strictly valid JSON matching the schema.',
+      prompt,
+      temperature: 0.3,
+      maxTokens: 260,
+      signal: controller.signal,
+    });
+
+    if (parsed && typeof parsed.polishedVersion === 'string' && parsed.polishedVersion.trim().length > 5) {
+      return {
+        polishedVersion: parsed.polishedVersion.trim().replace(/^["']|["']$/g, ''),
+        keyUpgradeTip:
+          (parsed.keyUpgradeTip || '').trim() ||
+          'Polished with natural British softening and diplomatic workplace tone.',
+      };
+    }
+  } catch (err) {
+    console.warn('[scorecardGrader] polishWrittenFollowUp fallback:', err);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  return buildDeterministicFallback();
+}
+
+/**
+ * Translates a learner's native language question or phrase into 2-3 natural British English options
+ * for the "How Do I Say...?" sheet, with deterministic fallback.
+ */
+export async function translateHowDoISay(
+  nativeQuery: string,
+  nativeLanguage: NativeLanguage,
+  scenarioTitle: string = 'Everyday British Conversation'
+): Promise<HelpPhrase[]> {
+  const clean = (nativeQuery || '').trim();
+  const fallbackList = (): HelpPhrase[] => [
+    {
+      id: `h-dyn-1-${Date.now()}`,
+      keywords: [clean.toLowerCase()],
+      english: 'Could you possibly run that by me one more time, please?',
+      ipa: '/kʊd juː ˈpɒsəbli rʌn ðæt baɪ miː wʌn mɔː taɪm pliːz/',
+      note: `Polite British way to ask someone to repeat or clarify (${nativeLanguage}: "${clean || 'Question'}")`,
+    },
+    {
+      id: `h-dyn-2-${Date.now()}`,
+      keywords: [clean.toLowerCase()],
+      english: 'How does that sound to you as a next step?',
+      ipa: '/haʊ dʌz ðæt saʊnd tuː juː æz ə nɛkst stɛp/',
+      note: 'Warm, collaborative British phrasing to check agreement.',
+    },
+  ];
+
+  const config = getLLMConfig();
+  if (!config.apiKey || !clean) {
+    return fallbackList();
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const prompt = `The learner is in a British English roleplay ("${scenarioTitle}") and asked in ${nativeLanguage}:
+"${clean}"
+
+Provide 2 natural, polite British English ways to express this in conversation.
+Return strictly valid JSON:
+{
+  "options": [
+    {
+      "english": "<natural British English phrase>",
+      "ipa": "<British RP IPA transcription>",
+      "note": "<short 1-sentence tip in English explaining the tone and meaning>"
+    }
+  ]
+}`;
+
+    const parsed = await requestStructuredJSON<{
+      options?: Array<{ english?: string; ipa?: string; note?: string }>;
+    }>({
+      systemInstruction:
+        'You are a helpful British English coach. Return strictly valid JSON with natural UK phrasing options.',
+      prompt,
+      temperature: 0.25,
+      maxTokens: 320,
+      signal: controller.signal,
+    });
+
+    if (parsed && Array.isArray(parsed.options) && parsed.options.length > 0) {
+      const valid = parsed.options
+        .filter((o) => typeof o.english === 'string' && o.english.trim().length > 0)
+        .map((o, idx) => ({
+          id: `ai-help-${Date.now()}-${idx}`,
+          keywords: [clean.toLowerCase()],
+          english: String(o.english).trim().replace(/^["']|["']$/g, ''),
+          ipa: String(o.ipa || '/.../').trim(),
+          note: String(o.note || `Natural British phrasing for "${clean}"`).trim(),
+        }));
+      if (valid.length > 0) return valid;
+    }
+  } catch (err) {
+    console.warn('[scorecardGrader] translateHowDoISay fallback:', err);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  return fallbackList();
 }
 
 export async function generateGeminiScorecard(params: {

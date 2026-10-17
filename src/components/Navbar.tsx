@@ -24,6 +24,7 @@ import { authService } from '../services/authService';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { useGamificationStore, getAvailableAudioSpeeds } from '../store/rewardSystem';
 import { FluencyLogo } from './FluencyLogo';
+import { isDevMode } from '../utils/devMode';
 
 interface NavbarProps {
   progress: UserProgress;
@@ -175,38 +176,63 @@ export const Navbar: React.FC<NavbarProps> = ({
   const buttonLabel = formattedName || 'Profile';
   const pictureUrl = authSession?.user?.picture || progress.avatar;
 
+  const devMode = isDevMode();
+
   return (
     <>
-      <header className="sticky top-0 z-40 w-full glass-card border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm transition-all">
-        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 min-w-0">
+      <header className="sticky top-0 z-40 w-full glass-card border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm transition-all pt-safe">
+        <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-2 flex items-center justify-between gap-1.5 sm:gap-3 min-w-0">
           {/* Official Brand Logo */}
-          <div className="min-w-0 flex-shrink">
+          <div className="min-w-0 shrink">
             <FluencyLogo size="sm" />
           </div>
 
           {/* Desktop Controls (lg and up: >= 1024px) */}
-          <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
+          <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+            {/* Clean Status Pill for Production Users / Dev Gateway Pill in Dev Mode */}
+            {devMode ? (
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  setShowGatewayModal(true);
+                }}
+                title={`AI Gateway (${llmConfig.model})`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95"
+              >
+                <span className="shrink-0">{isGatewayConnected ? '🟢' : '🔴'}</span>
+                <span className="truncate max-w-[130px]">{llmConfig.model}</span>
+              </button>
+            ) : (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/70 text-xs font-bold shrink-0"
+                title="AI English Coach is online and ready"
+              >
+                <span className="text-[10px] leading-none shrink-0">🟢</span>
+                <span>Coach Online</span>
+              </span>
+            )}
+
             {/* Coach Selector Pill */}
             {onOpenPersonaSelector && (
               <button
                 onClick={onOpenPersonaSelector}
                 title="Switch English Coach"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition active:scale-95 shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition active:scale-95 shadow-2xs shrink-0"
               >
-                <span className="text-sm">{activePersona?.avatar || '🧑‍💼'}</span>
+                <span className="text-sm shrink-0">{activePersona?.avatar || '🧑‍💼'}</span>
                 <span className="font-bold">{activePersona?.name || 'James'}</span>
               </button>
             )}
 
             {/* CEFR Level & Audio Speed Menu */}
-            <div className="relative flex items-center gap-1">
+            <div className="relative flex items-center gap-1 shrink-0">
               <button
                 onClick={handleSpeedToggle}
                 title="Adjust listening playback speed"
                 aria-label="Toggle speech speed"
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition active:scale-95"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition active:scale-95 shrink-0"
               >
-                <Volume2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                <Volume2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
                 <span>{progress.audioSpeed}x</span>
               </button>
 
@@ -215,7 +241,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setShowLevelMenu(!showLevelMenu);
                   setShowLangMenu(false);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95 shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95 shadow-2xs shrink-0"
                 title="Target English Level"
               >
                 <span className="px-1.5 py-0.5 rounded-md bg-brand-500/15 dark:bg-brand-500/25 text-brand-600 dark:text-brand-300 text-[10px] font-black">
@@ -246,7 +272,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>
                         Level {lvl} {lvl === 'A1' ? '• Beginner' : lvl === 'B1' ? '• Intermediate' : lvl === 'C1' ? '• Advanced' : ''}
                       </span>
-                      {progress.level === lvl && <Check className="w-4 h-4 text-brand-600 dark:text-brand-300 stroke-[3]" />}
+                      {progress.level === lvl && <Check className="w-4 h-4 text-brand-600 dark:text-brand-300 stroke-[3] shrink-0" />}
                     </button>
                   ))}
                   <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
@@ -258,7 +284,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }}
                     className="w-full px-3.5 py-2 text-left text-xs font-black text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                     <span>Take Placement Check</span>
                   </button>
                 </div>
@@ -266,7 +292,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Native Language Translator Helper */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => {
                   setShowLangMenu(!showLangMenu);
@@ -276,7 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title={`Translations shown in ${progress.nativeLanguage}`}
                 aria-label="Select native language for translations"
               >
-                <Globe className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <Globe className="w-4 h-4 text-slate-700 dark:text-slate-300 shrink-0" />
               </button>
 
               {showLangMenu && (
@@ -299,7 +325,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }`}
                     >
                       <span>{lang}</span>
-                      {progress.nativeLanguage === lang && <Check className="w-4 h-4 text-brand-600 dark:text-brand-300 stroke-[3]" />}
+                      {progress.nativeLanguage === lang && <Check className="w-4 h-4 text-brand-600 dark:text-brand-300 stroke-[3] shrink-0" />}
                     </button>
                   ))}
                 </div>
@@ -315,10 +341,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 playChime('tap');
                 onOpenRoadmap?.();
               }}
-              className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs hover:shadow-xs ${currentTierConfig.badgeAccent.pillBg}`}
+              className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs hover:shadow-xs shrink-0 ${currentTierConfig.badgeAccent.pillBg}`}
               title={`Fluency Tier: ${currentTierConfig.name} (${totalXP.toLocaleString()} Lifetime XP) • Click to open Rewards Roadmap`}
             >
-              <span className="text-sm leading-none group-hover:scale-110 transition-transform">
+              <span className="text-sm leading-none group-hover:scale-110 transition-transform shrink-0">
                 {currentTierConfig.badgeAccent.icon}
               </span>
               <div className="flex flex-col text-left">
@@ -341,10 +367,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   playChime('tap');
                   onOpenPricing();
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-indigo-500/15 hover:from-amber-500/25 hover:to-indigo-500/25 text-amber-700 dark:text-amber-300 border border-amber-300/40 dark:border-amber-500/30 text-xs font-black transition active:scale-95 shadow-2xs group"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-indigo-500/15 hover:from-amber-500/25 hover:to-indigo-500/25 text-amber-700 dark:text-amber-300 border border-amber-300/40 dark:border-amber-500/30 text-xs font-black transition active:scale-95 shadow-2xs group shrink-0"
                 title="View Plans & Pricing"
               >
-                <Crown className="w-3.5 h-3.5 text-amber-500 group-hover:rotate-12 transition-transform" />
+                <Crown className="w-3.5 h-3.5 text-amber-500 group-hover:rotate-12 transition-transform shrink-0" />
                 <span>Pricing</span>
                 <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-500 text-white leading-none">
                   Pro
@@ -352,21 +378,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* User Profile, Cloud Sync & Subtle AI Gateway Status Dot */}
+            {/* User Profile & Cloud Sync */}
             <button
               onClick={() => {
                 playChime('tap');
                 setShowProfileModal(true);
               }}
-              className={`relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs ${
+              className={`relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 shadow-2xs shrink-0 ${
                 authSession
                   ? 'bg-gradient-to-r from-brand-50 to-emerald-50/80 dark:from-brand-950/60 dark:to-emerald-950/60 text-brand-900 dark:text-brand-200 border-brand-200 dark:border-brand-800 hover:bg-brand-100'
                   : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
               }`}
               title={
-                isGatewayConnected
-                  ? `${buttonLabel} • AI Connected (${llmConfig.model})`
-                  : `${buttonLabel} • AI in Mock Mode (Click to configure)`
+                devMode
+                  ? isGatewayConnected
+                    ? `${buttonLabel} • AI Connected (${llmConfig.model})`
+                    : `${buttonLabel} • AI in Mock Mode (Click to configure)`
+                  : `${buttonLabel} • Account & Preferences`
               }
             >
               <UserAvatar
@@ -376,48 +404,57 @@ export const Navbar: React.FC<NavbarProps> = ({
                 showOnlineDot={Boolean(authSession)}
                 hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
               />
-              <span className="max-w-[180px] truncate font-extrabold text-slate-900 dark:text-slate-100">
+              <span className="max-w-[140px] truncate font-extrabold text-slate-900 dark:text-slate-100">
                 {buttonLabel}
               </span>
-              <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  isGatewayConnected
-                    ? 'bg-emerald-500 shadow-xs shadow-emerald-400'
-                    : 'bg-rose-500 animate-pulse'
-                }`}
-                title={isGatewayConnected ? 'AI Gateway Connected' : 'AI Gateway Offline'}
-              />
+              {devMode && (
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    isGatewayConnected
+                      ? 'bg-emerald-500 shadow-xs shadow-emerald-400'
+                      : 'bg-rose-500 animate-pulse'
+                  }`}
+                  title={isGatewayConnected ? 'AI Gateway Connected' : 'AI Gateway Offline'}
+                />
+              )}
             </button>
 
             {/* PWA Install Button */}
             <button
               onClick={handleInstallClick}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 text-white text-xs font-semibold shadow-sm hover:shadow transition active:scale-95"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 text-white text-xs font-semibold shadow-sm hover:shadow transition active:scale-95 shrink-0"
               title="Install app to your home screen"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5 shrink-0" />
               <span>Install</span>
             </button>
           </div>
 
-          {/* Mobile & Tablet Controls (< lg): Ultra-Clean Avatar + Prominent Pull-Down Menu Button */}
-          <div className="flex lg:hidden items-center gap-2 flex-shrink-0">
-            {/* Quick Coach Pill on wider phones/tablets (sm to lg) */}
-            {onOpenPersonaSelector && (
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  onOpenPersonaSelector();
-                }}
-                title="Switch English Coach"
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition active:scale-95"
-              >
-                <span className="text-sm leading-none">{activePersona?.avatar || '🧑‍💼'}</span>
-                <span className="text-xs font-black text-indigo-900 dark:text-indigo-200">
-                  {activePersona?.name || 'James'}
-                </span>
-              </button>
-            )}
+          {/* Mobile & Tablet Controls (< lg): Un-Squashed on 360px Android Screens */}
+          <div className="flex lg:hidden items-center gap-1.5 sm:gap-3 min-w-0 shrink-0">
+            {/* Compact Streak Badge (< 640px: 🔥 5d, >= 640px: 🔥 5 Days) */}
+            <span
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/70 text-[11px] font-black shrink-0"
+              title={`${progress.streakDays} Day Practice Streak`}
+            >
+              <span className="shrink-0 leading-none">🔥</span>
+              <span className="sm:hidden">{progress.streakDays}d</span>
+              <span className="hidden sm:inline">{progress.streakDays} Days</span>
+            </span>
+
+            {/* Compact Tier Pill (< 640px: 🥈 Silver, >= 640px: full tier name) */}
+            <button
+              onClick={() => {
+                playChime('tap');
+                onOpenRoadmap?.();
+              }}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border text-[11px] font-black transition active:scale-95 shrink-0 ${currentTierConfig.badgeAccent.pillBg}`}
+              title={`Fluency Tier: ${currentTierConfig.name}`}
+            >
+              <span className="shrink-0 leading-none">{currentTierConfig.badgeAccent.icon}</span>
+              <span className="sm:hidden text-slate-900 dark:text-white">{currentTierConfig.shortName}</span>
+              <span className="hidden sm:inline text-slate-900 dark:text-white">{currentTierConfig.name}</span>
+            </button>
 
             {/* Quick Profile Avatar Button */}
             <button
@@ -427,7 +464,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setShowProfileModal(true);
               }}
               aria-label="Open User Profile"
-              className={`relative flex items-center gap-1 p-1 rounded-xl border transition active:scale-95 ${
+              className={`relative flex items-center gap-1 p-1 rounded-xl border transition active:scale-95 shrink-0 ${
                 authSession
                   ? 'bg-brand-50/90 dark:bg-brand-950/60 border-brand-200 dark:border-brand-800'
                   : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
@@ -440,14 +477,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 showOnlineDot={Boolean(authSession)}
                 hasDiamondBorder={currentTier === 'diamond' || unlockedPerks.includes('diamond-avatar-border')}
               />
-              <span
-                className={`w-1.5 h-1.5 rounded-full mr-0.5 ${
-                  isGatewayConnected ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
-                }`}
-              />
             </button>
 
-            {/* High-Contrast Pull-Down Menu Button — Always Clearly Visible on Every Mobile Device */}
+            {/* High-Contrast Pull-Down Menu Button — Un-squashed on 360px */}
             <button
               onClick={() => {
                 playChime('tap');
@@ -455,7 +487,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               aria-expanded={showMobileMenu}
               aria-label="Toggle quick settings pull-down menu"
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black transition active:scale-95 shadow-sm ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-black transition active:scale-95 shadow-sm shrink-0 ${
                 showMobileMenu
                   ? 'bg-rose-600 text-white border-rose-500 shadow-rose-500/25'
                   : 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white border-brand-400/40 shadow-brand-600/20 hover:from-brand-500 hover:to-indigo-500'
@@ -463,14 +495,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               {showMobileMenu ? (
                 <>
-                  <X className="w-4 h-4 stroke-[2.5]" />
-                  <span>Close</span>
+                  <X className="w-4 h-4 stroke-[2.5] shrink-0" />
+                  <span className="hidden xs:inline sm:inline">Close</span>
                 </>
               ) : (
                 <>
-                  <Menu className="w-4 h-4 stroke-[2.5]" />
-                  <span>Menu</span>
-                  <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <Menu className="w-4 h-4 stroke-[2.5] shrink-0" />
+                  <span className="hidden sm:inline">Menu</span>
+                  <ChevronDown className="w-3.5 h-3.5 stroke-[2.5] shrink-0" />
                 </>
               )}
             </button>
@@ -481,7 +513,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         {showMobileMenu && (
           <div className="lg:hidden border-t border-slate-200/80 dark:border-slate-800/80 bg-white/98 dark:bg-slate-900/98 backdrop-blur-xl px-4 py-4 shadow-soft-lg animate-slide-up max-h-[82dvh] overflow-y-auto">
             <div className="space-y-4 max-w-lg mx-auto">
-              {/* Top Row: User Profile, Fluency Tier & Pro Upgrade */}
+              {/* Top Row: User Profile, Fluency Tier & Coach Online Status */}
+              <div className="flex items-center justify-between px-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-black">
+                  <span>🟢</span>
+                  <span>Coach Online</span>
+                </span>
+                <span className="text-[11px] font-black text-amber-700 dark:text-amber-300">
+                  🔥 {progress.streakDays}d Streak • {totalXP.toLocaleString()} XP
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   onClick={() => {
@@ -503,13 +545,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {buttonLabel}
                     </div>
                     <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          isGatewayConnected ? 'bg-emerald-500' : 'bg-rose-500'
-                        }`}
-                      />
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500" />
                       <span className="truncate">
-                        {authSession ? 'Cloud Synced' : 'Account & AI'}
+                        {authSession ? 'Cloud Synced' : 'My Profile'}
                       </span>
                     </div>
                   </div>
@@ -523,10 +561,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                   className={`flex items-center gap-2.5 p-2.5 rounded-2xl border text-left transition active:scale-98 ${currentTierConfig.badgeAccent.pillBg}`}
                 >
-                  <span className="text-xl leading-none">{currentTierConfig.badgeAccent.icon}</span>
+                  <span className="text-xl leading-none shrink-0">{currentTierConfig.badgeAccent.icon}</span>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-black text-slate-900 dark:text-white truncate">
-                      {currentTierConfig.name}
+                      {currentTierConfig.shortName}
                     </div>
                     <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
                       {totalXP.toLocaleString()} XP • Roadmap

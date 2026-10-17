@@ -3,7 +3,24 @@
 // silence detection (6s timeout), and word-level acoustic confidence & phonetic alternative scoring.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { NativeLanguage } from '../types';
+
 type AnyRecognition = any;
+
+export const NATIVE_LANG_TO_BCP47: Record<NativeLanguage, string> = {
+  German: 'de-DE',
+  Spanish: 'es-ES',
+  French: 'fr-FR',
+  Portuguese: 'pt-BR',
+  Mandarin: 'zh-CN',
+  Japanese: 'ja-JP',
+  Arabic: 'ar-SA',
+  Vietnamese: 'vi-VN',
+};
+
+export function getBcp47ForNativeLanguage(lang: NativeLanguage): string {
+  return NATIVE_LANG_TO_BCP47[lang] || 'en-GB';
+}
 
 export function isRecognitionSupported(): boolean {
   if (typeof window === 'undefined') return false;
@@ -36,7 +53,7 @@ export interface RecognitionDetails {
 }
 
 export interface RecognitionOptions {
-  lang?: 'en-GB' | 'en-US';
+  lang?: string;
   onInterim?: (text: string) => void;
   onStatusChange?: (status: 'listening' | 'heard' | 'error' | 'stopped', details?: string) => void;
   silenceTimeoutMs?: number; // Defaults to 6000ms (6s pause tolerance for ESL learners)
@@ -62,7 +79,7 @@ export interface RecognitionHandle {
  * - Captures confidence scores (< 0.80) and phonetic alternatives for pronunciation coaching
  */
 export function startRecognition(
-  options: RecognitionOptions | ('en-GB' | 'en-US') = 'en-GB',
+  options: RecognitionOptions | string = 'en-GB',
   legacyOnInterim?: (text: string) => void
 ): RecognitionHandle {
   const opts: RecognitionOptions =

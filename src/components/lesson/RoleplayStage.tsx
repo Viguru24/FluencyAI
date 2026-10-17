@@ -841,9 +841,9 @@ export const RoleplayStage: React.FC<Props> = ({
             {dueSRSCard && (
               <span 
                 className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 text-[11px] font-bold"
-                title="We added 1 phrase from an earlier lesson so you can lock it into memory."
+                title="Includes 1 phrase you saved earlier to help lock it into memory."
               >
-                🔄 Past Phrase Refresher (+15 XP)
+                🔄 Past Phrase Refresher (+15 Bonus XP)
               </span>
             )}
 
@@ -907,7 +907,7 @@ export const RoleplayStage: React.FC<Props> = ({
                     personaName: plan.persona.name,
                   });
                 }}
-                title="We added 1 phrase from an earlier lesson so you can lock it into memory."
+                title="Includes 1 phrase you saved earlier to help lock it into memory."
                 className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
                   usedTargetPhraseIds.has(dueSRSCard.id)
                     ? 'bg-amber-500 text-slate-950 font-bold ring-2 ring-amber-300 shadow-xs'
@@ -1036,12 +1036,26 @@ export const RoleplayStage: React.FC<Props> = ({
       </div>
 
       {/* Minimalist Bottom Bar with the Little Silky Glowing Voice Button */}
-      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-3.5 pt-2.5 border-t border-slate-200/70 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-safe pt-2.5 border-t border-slate-200/70 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
         <div className="max-w-xl mx-auto flex items-center justify-between">
           {/* Left: Subtle Help Button */}
           <button
             onClick={() => {
-              stopSpeaking();
+              handleStopSpeaking();
+              if (isRecordingRef.current) {
+                isRecordingRef.current = false;
+                setIsRecording(false);
+                setIsHolding(false);
+                isHoldingRef.current = false;
+                isPressingRef.current = false;
+                setBands([]);
+                livePreviewRef.current = '';
+                setLivePreview('');
+                vizRef.current.stopMicrophone();
+                recorderRef.current.stop().catch(() => {});
+                recRef.current?.stop().catch(() => {});
+                recRef.current = null;
+              }
               setHelpOpen(true);
               setHelpRequests((n) => n + 1);
             }}
@@ -1166,6 +1180,7 @@ export const RoleplayStage: React.FC<Props> = ({
           nativeLanguage={nativeLanguage}
           accent={plan.persona.accent}
           audioSpeed={audioSpeed}
+          scenarioTitle={plan.title}
           onClose={() => setHelpOpen(false)}
           onUsed={() => {}}
         />

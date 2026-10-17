@@ -57,7 +57,7 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
         case 'silver':
           return `Brilliant effort today, ${name}! You've hit Silver Conversationalist—fancy trying Stage 2 Roleplay at 1.0x natural British speed?`;
         case 'gold':
-          return `Spot on, ${name}! You've unlocked Gold Fluent! The James AI Direct Test Lab and Career & Tech Roleplay Pack are now officially at your disposal.`;
+          return `Spot on, ${name}! You've unlocked Gold Fluent! Open Office & Pub Chat with James and the Career & Tech Roleplay Pack are now officially at your disposal.`;
         case 'platinum':
           return `Tremendous dedication, ${name}! You've achieved Platinum Native Peer! Ready to challenge yourself with 1.15x Fast-Talker London Commute Mode?`;
         case 'diamond':
@@ -180,11 +180,11 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto animate-scale-up">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto overscroll-contain bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-t-3xl sm:rounded-3xl pb-safe shadow-2xl flex flex-col my-auto animate-scale-up">
         {/* Top Header Banner with Dynamic Accent */}
         <div
-          className={`relative px-6 py-6 text-white text-center overflow-hidden bg-gradient-to-br ${
+          className={`relative px-6 py-6 text-white text-center overflow-hidden bg-gradient-to-br shrink-0 ${
             isTierUp && tierConfig
               ? tierConfig.badgeAccent.gradient
               : 'from-emerald-600 via-teal-600 to-sky-700'
@@ -197,7 +197,7 @@ export const TierUpCelebrationModal: React.FC<TierUpCelebrationModalProps> = ({
           {/* Close button */}
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 p-2 rounded-2xl bg-white/15 hover:bg-white/25 text-white transition active:scale-95"
+            className="sticky top-4 right-4 z-10 float-right p-2 rounded-2xl bg-white/15 hover:bg-white/25 text-white transition active:scale-95"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />

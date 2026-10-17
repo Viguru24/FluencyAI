@@ -195,15 +195,15 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             </div>
           </div>
 
-          {/* Primary Hero Action: Start Today's Lesson */}
+          {/* Single Primary Hero CTA: Start Today's 3-Min Lesson • +45 XP */}
           {onStartLesson && (
-            <div className="rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-sky-600 p-3.5 sm:p-4 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-sky-600 p-4 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-extrabold uppercase tracking-wider">
                     Today&apos;s Guided Session
                   </span>
-                  <span className="text-[11px] font-bold text-amber-300">5 min • +35 XP</span>
+                  <span className="text-[11px] font-bold text-amber-300">3 min • +45 XP</span>
                 </div>
                 <h3 className="text-sm sm:text-base font-black">
                   {progress.hasCompletedDailyLessonToday
@@ -212,21 +212,21 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 </h3>
                 <p className="text-xs text-brand-100/90">
                   {savedReviewCount > 0
-                    ? `Includes ${Math.min(2, savedReviewCount)} saved review phrases + live roleplay & scorecard`
+                    ? `Includes ${Math.min(2, savedReviewCount)} saved phrase${savedReviewCount === 1 ? '' : 's'} + live roleplay & scorecard`
                     : 'Phrase warm-up → Live voice roleplay → AI fluency scorecard'}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                 <button
                   onClick={() => {
                     playChime('tap');
                     onStartLesson();
                   }}
-                  className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-black text-xs shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95"
+                  className="flex-1 sm:flex-initial py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-black text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95"
                 >
-                  <Play className="w-3.5 h-3.5 fill-slate-950 text-slate-950 flex-shrink-0" />
-                  <span className="text-slate-950 font-black">Start Daily Lesson</span>
+                  <Play className="w-3.5 h-3.5 fill-slate-950 text-slate-950 shrink-0" />
+                  <span className="text-slate-950 font-black">Start Today&apos;s 3-Min Lesson • +45 XP</span>
                 </button>
                 {onStartDirectRoleplay && (
                   <button
@@ -234,7 +234,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                       playChime('tap');
                       onStartDirectRoleplay();
                     }}
-                    className="py-2.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-black text-xs transition active:scale-95 flex-shrink-0"
+                    className="py-3 px-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-black text-xs transition active:scale-95 shrink-0"
                     title="Skip warm-up phrases and jump straight into Stage 2 Roleplay"
                   >
                     ⚡ Skip Prep
@@ -242,6 +242,79 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 )}
               </div>
             </div>
+          )}
+
+          {/* Secondary Quick-Practice Row (Side-by-Side) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+            {onOpenWarmup && (
+              <button
+                onClick={onOpenWarmup}
+                className="py-3 px-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-rose-500/15 dark:from-amber-950/60 dark:to-rose-950/60 hover:from-amber-500/25 hover:to-rose-500/25 dark:hover:from-amber-950/80 dark:hover:to-rose-950/80 border border-amber-300 dark:border-amber-600 text-amber-950 dark:text-amber-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+              >
+                <span className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Zap className="w-4 h-4 animate-pulse" />
+                  </span>
+                  <span className="text-left leading-tight min-w-0">
+                    <span className="block font-black text-amber-950 dark:text-white truncate">
+                      ⚡ 60s Spoken Warmup (+50 XP)
+                    </span>
+                    <span className="text-[11px] text-amber-900 dark:text-amber-200 font-bold block truncate">
+                      Rapid-fire British reflexes
+                    </span>
+                  </span>
+                </span>
+                <span className="text-xs text-amber-700 dark:text-amber-300 font-black group-hover:translate-x-0.5 transition-transform shrink-0">&rarr;</span>
+              </button>
+            )}
+
+            {onOpenSRS && (
+              <button
+                onClick={onOpenSRS}
+                className="py-3 px-3.5 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-indigo-500/10 to-purple-500/15 dark:from-indigo-950/60 dark:to-purple-950/60 hover:from-indigo-500/25 hover:to-purple-500/25 dark:hover:from-indigo-950/80 dark:hover:to-purple-950/80 border border-indigo-300 dark:border-indigo-600 text-indigo-950 dark:text-indigo-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
+              >
+                <span className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Layers className="w-4 h-4" />
+                  </span>
+                  <span className="text-left leading-tight min-w-0">
+                    <span className="block font-black text-indigo-950 dark:text-white truncate">
+                      📌 My Saved Phrasebook
+                    </span>
+                    <span className="text-[11px] text-indigo-900 dark:text-indigo-200 font-bold block truncate">
+                      {srsDueCount} due for practice
+                    </span>
+                  </span>
+                </span>
+                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-black group-hover:translate-x-0.5 transition-transform shrink-0">&rarr;</span>
+              </button>
+            )}
+          </div>
+
+          {/* Open Office & Pub Chat with James Card */}
+          {onOpenFreeTalk && (
+            <button
+              onClick={() => {
+                playChime('tap');
+                onOpenFreeTalk();
+              }}
+              className="w-full py-3 px-3.5 rounded-2xl bg-gradient-to-r from-sky-500/15 via-brand-500/10 to-emerald-500/15 dark:from-sky-950/60 dark:to-emerald-950/60 hover:from-sky-500/25 hover:to-emerald-500/25 dark:hover:from-sky-950/80 dark:hover:to-emerald-950/80 border border-brand-300 dark:border-brand-600 text-slate-900 dark:text-slate-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-2.5 min-w-0">
+                <span className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs text-base shrink-0">
+                  {coachAvatar}
+                </span>
+                <span className="text-left leading-tight min-w-0">
+                  <span className="block font-black text-slate-900 dark:text-white truncate">
+                    Open Office &amp; Pub Chat with {coachName}
+                  </span>
+                  <span className="text-[11px] text-slate-600 dark:text-slate-200 font-bold block truncate">
+                    Unscripted free-talk, British idioms &amp; instant pronunciation feedback
+                  </span>
+                </span>
+              </span>
+              <MessageCircle className="w-4 h-4 text-brand-600 dark:text-brand-300 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </button>
           )}
 
           {/* Goal Milestones Row */}
@@ -269,7 +342,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                       ? '🎁 Daily Milestone Chest Ready! Tap to claim +50 XP bonus'
                       : `🎁 Daily Chest: reach ${dailyXPTarget} XP & ${speakingMinutesTarget} mins to unlock`
                   }
-                  className={`p-0.5 sm:p-1 rounded-lg transition active:scale-95 flex-shrink-0 ${
+                  className={`p-0.5 sm:p-1 rounded-lg transition active:scale-95 shrink-0 ${
                     dailyChestClaimed
                       ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60'
                       : isDailyGoalMet
@@ -318,70 +391,6 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                   : 'Standard'}
               </div>
             </div>
-          </div>
-
-          {/* 3-Card Quick Practice Modes: Free Talk, 60s Sprint, Saved Phrases & Flashcards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-0.5">
-            {onOpenFreeTalk && (
-              <button
-                onClick={() => {
-                  playChime('tap');
-                  onOpenFreeTalk();
-                }}
-                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-sky-500/15 via-brand-500/10 to-emerald-500/15 dark:from-sky-950/60 dark:to-emerald-950/60 hover:from-sky-500/25 hover:to-emerald-500/25 dark:hover:from-sky-950/80 dark:hover:to-emerald-950/80 border border-brand-300 dark:border-brand-600 text-slate-900 dark:text-slate-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <span className="w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs text-sm flex-shrink-0">
-                    {coachAvatar}
-                  </span>
-                  <span className="text-left leading-tight min-w-0">
-                    <span className="block font-black text-slate-900 dark:text-white truncate">
-                      Free Talk with {coachName}
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-200 font-bold block truncate">
-                      Open voice chat · 0 prep
-                    </span>
-                  </span>
-                </span>
-                <MessageCircle className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-              </button>
-            )}
-
-            {onOpenWarmup && (
-              <button
-                onClick={onOpenWarmup}
-                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-rose-500/15 dark:from-amber-950/60 dark:to-rose-950/60 hover:from-amber-500/25 hover:to-rose-500/25 dark:hover:from-amber-950/80 dark:hover:to-rose-950/80 border border-amber-300 dark:border-amber-600 text-amber-950 dark:text-amber-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <span className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-                    <Zap className="w-3.5 h-3.5 animate-pulse" />
-                  </span>
-                  <span className="text-left leading-tight min-w-0">
-                    <span className="block font-black text-amber-950 dark:text-white truncate">60s Spoken Sprint</span>
-                    <span className="text-[11px] text-amber-900 dark:text-amber-200 font-bold block truncate">Rapid warm-up · +50 XP</span>
-                  </span>
-                </span>
-                <span className="text-xs text-amber-700 dark:text-amber-300 font-black group-hover:translate-x-0.5 transition-transform flex-shrink-0">&rarr;</span>
-              </button>
-            )}
-
-            {onOpenSRS && (
-              <button
-                onClick={onOpenSRS}
-                className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-indigo-500/10 to-purple-500/15 dark:from-indigo-950/60 dark:to-purple-950/60 hover:from-indigo-500/25 hover:to-purple-500/25 dark:hover:from-indigo-950/80 dark:hover:to-purple-950/80 border border-indigo-300 dark:border-indigo-600 text-indigo-950 dark:text-indigo-100 text-xs font-bold flex items-center justify-between transition shadow-2xs group active:scale-95"
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <span className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-                    <Layers className="w-3.5 h-3.5" />
-                  </span>
-                  <span className="text-left leading-tight min-w-0">
-                    <span className="block font-black text-indigo-950 dark:text-white truncate">Saved Phrases &amp; Flashcards</span>
-                    <span className="text-[11px] text-indigo-900 dark:text-indigo-200 font-bold block truncate">{srsDueCount} due for practice</span>
-                  </span>
-                </span>
-                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-black group-hover:translate-x-0.5 transition-transform flex-shrink-0">&rarr;</span>
-              </button>
-            )}
           </div>
 
           {/* Toggle 365-Day Fluency Heatmap */}

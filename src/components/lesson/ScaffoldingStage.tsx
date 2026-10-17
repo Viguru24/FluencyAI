@@ -212,21 +212,21 @@ export const ScaffoldingStage: React.FC<Props> = ({
           {dueSRSCard && (
             <div 
               className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/50 to-orange-50 dark:from-amber-950/40 dark:via-amber-900/30 dark:to-orange-950/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-between gap-3 shadow-2xs animate-fade-in"
-              title="We added 1 phrase from an earlier lesson so you can lock it into memory."
+              title="Includes 1 phrase you saved earlier to help lock it into memory."
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="w-8 h-8 rounded-xl bg-amber-400 dark:bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-xs">
                   🔄
                 </span>
                 <div className="min-w-0">
-                  <div className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1.5 truncate">
-                    <span>🔄 Past Phrase Refresher (+15 XP)</span>
+                  <div className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1.5 flex-wrap">
+                    <span>🔄 Past Phrase Refresher (+15 Bonus XP)</span>
                     <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.2 rounded-md">
                       📌 From Your Saved Phrases
                     </span>
                   </div>
                   <div className="text-[11px] text-amber-900 dark:text-amber-300 truncate">
-                    We added 1 phrase from an earlier lesson so you can lock it into memory. (<em>"{dueSRSCard.phrase}"</em>)
+                    Includes 1 phrase you saved earlier to help lock it into memory. (<em>"{dueSRSCard.phrase}"</em>)
                   </div>
                 </div>
               </div>
@@ -519,7 +519,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
       </div>
 
       {/* Unlock footer: permanently docked and sticky */}
-      <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg">
+      <div className="flex-shrink-0 sticky bottom-0 z-10 px-4 sm:px-6 pt-3 pb-safe border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg">
         <div className="max-w-4xl mx-auto w-full space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>{practicedCount} of {plan.phrases.length} phrases practised</span>
