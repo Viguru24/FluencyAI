@@ -122,8 +122,8 @@ export const TIERS_CONFIG: Record<GamificationTier, TierDefinition> = {
       },
       {
         id: 'basic-srs',
-        title: 'Basic SRS Flashcards',
-        description: 'Leitner 5-box spaced repetition memory deck',
+        title: 'Saved Phrases & Flashcards',
+        description: '5-stage phrasebook memory practice to lock in phrases',
         icon: '🗂️',
         tier: 'bronze',
       },
@@ -517,7 +517,7 @@ export function calculateEarnedXP(
         break;
       case 'srs-session':
         computedBase = 20;
-        label = 'SRS Flashcard Session';
+        label = 'Phrasebook Practice Session';
         break;
       case 'full-lesson':
         computedBase = 45;

@@ -79,7 +79,7 @@ const FAQS = [
   },
   {
     q: 'Does FluencyAI work offline?',
-    a: 'Yes! Pro users have full offline access to cached roleplay scenarios, pronunciation drills, and SRS review decks.',
+    a: 'Yes! Pro users have full offline access to cached roleplay scenarios, pronunciation drills, and saved phrasebook review decks.',
   },
 ];
 
@@ -327,7 +327,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    <span>Basic SRS Flashcards (up to 30)</span>
+                    <span>Basic Saved Phrases &amp; Flashcards (up to 30)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
@@ -392,7 +392,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-brand-600 dark:text-brand-400 flex-shrink-0" />
-                    <span>Unlimited SRS Flashcards & Audio Review</span>
+                    <span>Unlimited Saved Phrases &amp; Audio Practice</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-brand-600 dark:text-brand-400 flex-shrink-0" />

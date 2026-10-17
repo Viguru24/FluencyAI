@@ -208,22 +208,25 @@ export const ScaffoldingStage: React.FC<Props> = ({
             </p>
           </div>
 
-          {/* Due SRS Mistake Integration Badge */}
+          {/* Past Phrase Refresher Badge */}
           {dueSRSCard && (
-            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/50 to-orange-50 dark:from-amber-950/40 dark:via-amber-900/30 dark:to-orange-950/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-between gap-3 shadow-2xs animate-fade-in">
+            <div 
+              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/50 to-orange-50 dark:from-amber-950/40 dark:via-amber-900/30 dark:to-orange-950/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-between gap-3 shadow-2xs animate-fade-in"
+              title="We added 1 phrase from an earlier lesson so you can lock it into memory."
+            >
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="w-8 h-8 rounded-xl bg-amber-400 dark:bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-xs">
-                  ⚡
+                  🔄
                 </span>
                 <div className="min-w-0">
                   <div className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1.5 truncate">
-                    <span>⚡ 1 Due SRS Phrase Added for Bonus XP</span>
+                    <span>🔄 Past Phrase Refresher (+15 XP)</span>
                     <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.2 rounded-md">
-                      Box {dueSRSCard.box} Review
+                      📌 From Your Saved Phrases
                     </span>
                   </div>
                   <div className="text-[11px] text-amber-900 dark:text-amber-300 truncate">
-                    From past mistake: <em>"{dueSRSCard.phrase}"</em> · Use it in Stage 2 roleplay for bonus points!
+                    We added 1 phrase from an earlier lesson so you can lock it into memory. (<em>"{dueSRSCard.phrase}"</em>)
                   </div>
                 </div>
               </div>
@@ -232,7 +235,7 @@ export const ScaffoldingStage: React.FC<Props> = ({
                 type="button"
                 onClick={() => speakEnglish(dueSRSCard.phrase, { rate: audioSpeed, accent: plan.persona.accent, personaName: plan.persona.name })}
                 className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-amber-900 dark:text-amber-300 text-xs font-bold border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-slate-700 active:scale-95 transition flex items-center gap-1 flex-shrink-0 shadow-2xs"
-                title="Listen to this review phrase"
+                title="Listen to this refresher phrase"
               >
                 <Volume2 className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Listen</span>
@@ -349,8 +352,11 @@ export const ScaffoldingStage: React.FC<Props> = ({
                       Phrase {idx + 1}
                     </span>
                     {p.isSpacedRepetition && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-extrabold border border-amber-300 dark:border-amber-700">
-                        🔁 Spaced Repetition Review
+                      <span 
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-extrabold border border-amber-300 dark:border-amber-700"
+                        title="We added 1 phrase from an earlier lesson so you can lock it into memory."
+                      >
+                        📌 From Your Saved Phrases
                       </span>
                     )}
                   </div>

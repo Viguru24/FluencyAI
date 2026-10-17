@@ -799,7 +799,7 @@ export const ScorecardStage: React.FC<Props> = ({ plan, result, audioSpeed, alre
             }`}
           >
             {saved ? <BookmarkCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <BookmarkPlus className="w-4 h-4" />}
-            {saved ? '✓ Saved to Tomorrow’s Warm-up!' : 'Save Mistakes to Tomorrow’s Review'}
+            {saved ? '✓ Saved to Phrasebook' : '📌 Save to My Phrasebook'}
           </button>
           <button
             onClick={() => onFinish(xpCalc)}

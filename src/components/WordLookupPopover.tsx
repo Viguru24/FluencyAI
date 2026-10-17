@@ -198,7 +198,7 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
     );
 
     setIsSaved(true);
-    toast.success(`"${entry.word}" added to your SRS Flashcard deck!`, 'Saved to SRS');
+    toast.success(`"${entry.word}" added to your phrasebook!`, 'Saved to Phrasebook');
   };
 
   return (
@@ -299,7 +299,7 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
                 </div>
               )}
 
-              {/* Actions: Save to SRS + YouGlish UK */}
+              {/* Actions: Save to Phrasebook + YouGlish UK */}
               <div className="flex items-center gap-2 pt-1">
                 <button
                   onClick={handleSaveToSRS}
@@ -313,12 +313,12 @@ export const WordLookupModal: React.FC<WordLookupModalProps> = ({
                   {isSaved ? (
                     <>
                       <BookmarkCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>Saved in SRS Deck</span>
+                      <span>✓ Saved to Phrasebook</span>
                     </>
                   ) : (
                     <>
                       <BookmarkPlus className="w-4 h-4" />
-                      <span>Save to SRS Deck</span>
+                      <span>📌 Save to My Phrasebook</span>
                     </>
                   )}
                 </button>

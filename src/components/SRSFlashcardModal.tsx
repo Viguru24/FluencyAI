@@ -26,6 +26,14 @@ interface SRSFlashcardModalProps {
   persona?: AIPersona;
 }
 
+const STAGE_CONFIG: Record<number, { label: string; name: string; icon: string }> = {
+  1: { label: '🌱 New', name: 'New', icon: '🌱' },
+  2: { label: '🔨 Practicing', name: 'Practicing', icon: '🔨' },
+  3: { label: '📈 Getting Familiar', name: 'Getting Familiar', icon: '📈' },
+  4: { label: '💪 Confident', name: 'Confident', icon: '💪' },
+  5: { label: '⭐ Mastered', name: 'Mastered', icon: '⭐' },
+};
+
 export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
   isOpen,
   onClose,
@@ -160,13 +168,13 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                Spaced Repetition (SRS) Studio
+                My Saved Phrasebook
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold">
-                  Leitner 5-Box
+                  Saved Phrases &amp; Flashcards
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Daily memory calibration with voice recall verification
+                Practice phrases and upgrades saved from your past conversations.
               </p>
             </div>
           </div>
@@ -220,26 +228,32 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
         <div className="p-5 space-y-4">
           {!isFinished && currentCard ? (
             <>
-              {/* Progress & Box Indicator */}
+              {/* Progress & Stage Indicator */}
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span className="font-semibold">
-                  Card {currentIndex + 1} of {cards.length}
+                  Phrase {currentIndex + 1} of {cards.length}
                 </span>
-                <div className="flex items-center gap-1.5">
-                  {[1, 2, 3, 4, 5].map((b) => (
-                    <span
-                      key={b}
-                      className={`w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center border transition-all ${
-                        b === currentCard.box
-                          ? 'bg-amber-500 text-slate-950 border-amber-400 scale-110 shadow-md shadow-amber-500/30'
-                          : b < currentCard.box
-                          ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
-                          : 'bg-slate-800/60 text-slate-500 border-slate-700/60'
-                      }`}
-                    >
-                      B{b}
-                    </span>
-                  ))}
+                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end">
+                  {[1, 2, 3, 4, 5].map((b) => {
+                    const stage = STAGE_CONFIG[b];
+                    const isCurrent = b === currentCard.box;
+                    return (
+                      <span
+                        key={b}
+                        title={stage.label}
+                        className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] font-black flex items-center justify-center gap-1 border transition-all ${
+                          isCurrent
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 scale-105 shadow-md shadow-amber-500/30'
+                            : b < currentCard.box
+                            ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
+                            : 'bg-slate-800/60 text-slate-500 border-slate-700/60'
+                        }`}
+                      >
+                        <span>{stage.icon}</span>
+                        <span className="hidden sm:inline">{stage.name}</span>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -310,7 +324,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                 )}
 
                 <div className="pt-4 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/80 mt-2">
-                  <span>Box {currentCard.box} • Interval: {currentCard.box === 1 ? '1 day' : `${currentCard.box * 3} days`}</span>
+                  <span>Stage: {STAGE_CONFIG[currentCard.box]?.label || '🌱 New'} • Review interval: {currentCard.box === 1 ? '1 day' : `${currentCard.box * 3} days`}</span>
                   <span className="text-amber-400/90 font-medium">Click card to flip</span>
                 </div>
               </div>
@@ -335,21 +349,21 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                 )}
               </div>
 
-              {/* Leitner Action Buttons */}
+              {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   onClick={() => handleReviewResult(false)}
                   className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-rose-300 hover:text-rose-200 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition"
                 >
                   <Repeat className="w-4 h-4" />
-                  Still Practicing (Keep in Box 1)
+                  Still Practicing (Keep in 🌱 New)
                 </button>
                 <button
                   onClick={() => handleReviewResult(true)}
                   className="py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 active:scale-95 transition"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  Mastered! Advance to Box {Math.min(5, currentCard.box + 1)} (+15 XP)
+                  {currentCard.box >= 4 ? '⭐ Mastered!' : `Advance to ${STAGE_CONFIG[Math.min(5, currentCard.box + 1)]?.label}`} (+15 XP)
                 </button>
               </div>
             </>
@@ -362,7 +376,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
               <div>
                 <h4 className="text-xl font-black text-white">Daily Review Complete!</h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                  You reviewed {reviewedCount} phrase{reviewedCount === 1 ? '' : 's'}. Spaced repetition strengthens your memory and ensures phrases come effortlessly when speaking.
+                  You reviewed {reviewedCount} phrase{reviewedCount === 1 ? '' : 's'}. Practicing your saved phrases strengthens your memory and ensures they come effortlessly when speaking.
                 </p>
               </div>
 
@@ -375,7 +389,7 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                 <div className="w-px bg-slate-700" />
                 <div>
                   <div className="text-lg font-black text-emerald-400">{allCardsStats.length}</div>
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Total In Deck</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">In Phrasebook</div>
                 </div>
               </div>
 
@@ -384,9 +398,9 @@ export const SRSFlashcardModal: React.FC<SRSFlashcardModalProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                     <Download className="w-3.5 h-3.5 text-amber-400" />
-                    Export Flashcards
+                    Export Saved Phrases
                   </span>
-                  <span className="text-[10px] text-slate-400">{allCardsStats.length} Total Cards</span>
+                  <span className="text-[10px] text-slate-400">{allCardsStats.length} Total Phrases</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button

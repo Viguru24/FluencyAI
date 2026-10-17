@@ -320,7 +320,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
             </div>
           </div>
 
-          {/* 3-Card Quick Practice Modes: Free Talk, 60s Sprint, SRS Flashcards */}
+          {/* 3-Card Quick Practice Modes: Free Talk, 60s Sprint, Saved Phrases & Flashcards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-0.5">
             {onOpenFreeTalk && (
               <button
@@ -375,8 +375,8 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                     <Layers className="w-3.5 h-3.5" />
                   </span>
                   <span className="text-left leading-tight min-w-0">
-                    <span className="block font-black text-indigo-950 dark:text-white truncate">SRS Flashcards</span>
-                    <span className="text-[11px] text-indigo-900 dark:text-indigo-200 font-bold block truncate">{srsDueCount} cards due for recall</span>
+                    <span className="block font-black text-indigo-950 dark:text-white truncate">Saved Phrases &amp; Flashcards</span>
+                    <span className="text-[11px] text-indigo-900 dark:text-indigo-200 font-bold block truncate">{srsDueCount} due for practice</span>
                   </span>
                 </span>
                 <span className="text-xs text-indigo-700 dark:text-indigo-300 font-black group-hover:translate-x-0.5 transition-transform flex-shrink-0">&rarr;</span>

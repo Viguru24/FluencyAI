@@ -227,7 +227,7 @@ export function getWarmupReviewPhrases(maxCount: number = 2): ScaffoldingTargetP
       card.meaning ||
       (card.whatYouSaid
         ? `From your review deck: upgrades "${card.whatYouSaid}"`
-        : 'Spaced repetition review phrase'),
+        : 'Saved review phrase'),
     originalMistake: card.whatYouSaid,
     isSpacedRepetition: true,
     translations: card.translations || {

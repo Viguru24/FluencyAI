@@ -404,8 +404,8 @@ export function App() {
                 <BookmarkCheck className="w-5 h-5" />
               </div>
               <div className="text-xs text-amber-900 dark:text-amber-200 min-w-0">
-                <div className="font-bold">{reviewCount} saved phrases in your review deck</div>
-                <div className="text-amber-700 dark:text-amber-400">Automatically included in Stage 1 Prep &amp; SRS Flashcards.</div>
+                <div className="font-bold">{reviewCount} saved phrases in your phrasebook</div>
+                <div className="text-amber-700 dark:text-amber-400">Automatically included in Stage 1 Prep &amp; Saved Phrases.</div>
               </div>
             </div>
             <button
@@ -415,7 +415,7 @@ export function App() {
               }}
               className="w-full sm:w-auto text-center px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 text-xs font-bold transition flex-shrink-0"
             >
-              Review Deck
+              My Phrasebook
             </button>
           </div>
         )}
@@ -455,7 +455,7 @@ export function App() {
         />
       )}
 
-      {/* Spaced Repetition (SRS) Flashcard Drill Studio */}
+      {/* Saved Phrases & Flashcards Drill Studio */}
       {isSRSOpen && (
         <SRSFlashcardModal
           isOpen={isSRSOpen}

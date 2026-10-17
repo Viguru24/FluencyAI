@@ -114,7 +114,7 @@ export async function lookupWordDefinition(rawWord: string): Promise<DictionaryE
       meanings: [
         {
           partOfSpeech: 'conversational term',
-          definition: `Tap "Listen" to hear British pronunciation or save "${word}" to your SRS Flashcard deck for spaced repetition practice.`,
+          definition: `Tap "Listen" to hear British pronunciation or save "${word}" to your phrasebook for memory practice.`,
           synonyms: [],
         },
       ],
