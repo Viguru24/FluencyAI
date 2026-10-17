@@ -61,7 +61,7 @@ const PACES = [
   {
     minutes: 5,
     title: 'Casual Pace',
-    subtitle: '5 minutes / day',
+    subtitle: '5 mins / day',
     xp: 50,
     desc: 'Quick habit-builder. 1 spoken scenario per day.',
     icon: '🌱',
@@ -69,7 +69,7 @@ const PACES = [
   {
     minutes: 15,
     title: 'Recommended Pace',
-    subtitle: '15 minutes / day',
+    subtitle: '15 mins / day',
     xp: 150,
     desc: 'Optimal fluency curve. Prep, live roleplay, and review deck.',
     icon: '🔥',
@@ -78,7 +78,7 @@ const PACES = [
   {
     minutes: 30,
     title: 'Intensive Immersion',
-    subtitle: '30 minutes / day',
+    subtitle: '30 mins / day',
     xp: 300,
     desc: 'Rapid transformation. Deep free talk and multiple roleplays.',
     icon: '⚡',
@@ -189,16 +189,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-md animate-fade-in">
       <div className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden transition-all">
         {/* Top Progress Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-md flex items-center justify-center overflow-hidden flex-shrink-0">
               <img src={logoMark} alt="Fluency AI" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400">
+            <div className="min-w-0">
+              <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 block whitespace-nowrap">
                 Quick Setup • Step {step} of 4
               </span>
-              <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+              <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate">
                 {step === 1 && 'Your English Speaking Goal'}
                 {step === 2 && 'Choose Your Coach & Language'}
                 {step === 3 && 'Your Daily Commitment'}
@@ -208,7 +208,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </div>
 
           {/* Stepper dots */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
@@ -225,7 +225,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4">
           {/* STEP 1: GOAL SELECTION */}
           {step === 1 && (
             <div className="space-y-4 animate-fade-in">
@@ -254,17 +254,17 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                           : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
                       }`}
                     >
-                      <div className="flex items-center gap-3.5">
-                        <span className="text-2xl p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                        <span className="text-2xl p-2 rounded-xl bg-slate-100 dark:bg-slate-800 flex-shrink-0">
                           {goal.icon}
                         </span>
-                        <div>
-                          <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center flex-wrap gap-1.5">
                             <span className="font-bold text-sm text-slate-900 dark:text-white">
                               {goal.title}
                             </span>
                             {goal.badge && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 whitespace-nowrap">
                                 {goal.badge}
                               </span>
                             )}
@@ -276,7 +276,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       </div>
 
                       <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition flex-shrink-0 ${
                           isSelected
                             ? 'border-brand-600 bg-brand-600 text-white'
                             : 'border-slate-300 dark:border-slate-600'
@@ -399,9 +399,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
           {/* STEP 3: DAILY COMMITMENT */}
           {step === 3 && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="space-y-3.5 animate-fade-in">
               <div className="text-center max-w-md mx-auto space-y-1">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
                   Choose Your Daily Habit Pace
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -409,7 +409,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 </p>
               </div>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2.5 pt-1">
                 {PACES.map((pace) => {
                   const isSelected = selectedMinutes === pace.minutes;
                   return (
@@ -419,41 +419,43 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         playChime('tap');
                         setSelectedMinutes(pace.minutes);
                       }}
-                      className={`w-full p-4 rounded-2xl border text-left transition-all active:scale-[0.99] flex items-center justify-between gap-3 ${
+                      className={`relative w-full p-3.5 sm:p-4 rounded-2xl border text-left transition-all active:scale-[0.99] flex items-start gap-3 sm:gap-3.5 ${
                         isSelected
                           ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-950/40 ring-2 ring-brand-500/20 shadow-sm'
                           : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
                       }`}
                     >
-                      <div className="flex items-center gap-3.5">
-                        <span className="text-2xl p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
-                          {pace.icon}
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl flex-shrink-0 mt-0.5">
+                        {pace.icon}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+                            <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
                               {pace.title}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 whitespace-nowrap">
                               {pace.subtitle}
                             </span>
                             {pace.isRecommended && (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-400 text-amber-950">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-400 text-amber-950 whitespace-nowrap shadow-2xs">
                                 Recommended
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            {pace.desc}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center justify-end gap-1">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>+{pace.xp} XP</span>
+                          <div className="flex-shrink-0 pt-0.5">
+                            <div className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1 whitespace-nowrap">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>+{pace.xp} XP</span>
+                            </div>
+                          </div>
                         </div>
+
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                          {pace.desc}
+                        </p>
                       </div>
                     </button>
                   );
@@ -506,7 +508,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         </div>
 
         {/* Footer Navigation Bar */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
           {step > 1 ? (
             <button
               onClick={handleBack}
