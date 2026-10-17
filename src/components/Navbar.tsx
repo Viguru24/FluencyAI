@@ -180,12 +180,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       <header className="sticky top-0 z-40 w-full glass-card border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm transition-all">
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 min-w-0">
           {/* Official Brand Logo */}
-          <div className="flex-shrink-0 min-w-0">
+          <div className="min-w-0 flex-shrink">
             <FluencyLogo size="sm" />
           </div>
 
-          {/* Desktop Controls (md and up) */}
-          <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
+          {/* Desktop Controls (lg and up: >= 1024px) */}
+          <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
             {/* Coach Selector Pill */}
             {onOpenPersonaSelector && (
               <button
@@ -400,9 +400,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Streamlined Mobile Controls (< md): Compact Essentials + Pull-Down Menu Trigger */}
-          <div className="flex md:hidden items-center gap-1.5 flex-shrink-0">
-            {/* Quick Coach + Level Pill */}
+          {/* Mobile & Tablet Controls (< lg): Ultra-Clean Avatar + Prominent Pull-Down Menu Button */}
+          <div className="flex lg:hidden items-center gap-2 flex-shrink-0">
+            {/* Quick Coach Pill on wider phones/tablets (sm to lg) */}
             {onOpenPersonaSelector && (
               <button
                 onClick={() => {
@@ -410,10 +410,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onOpenPersonaSelector();
                 }}
                 title="Switch English Coach"
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-800/80 text-xs font-bold transition active:scale-95"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition active:scale-95"
               >
                 <span className="text-sm leading-none">{activePersona?.avatar || '🧑‍💼'}</span>
-                <span className="text-[11px] font-black text-indigo-900 dark:text-indigo-200">
+                <span className="text-xs font-black text-indigo-900 dark:text-indigo-200">
                   {activePersona?.name || 'James'}
                 </span>
               </button>
@@ -447,7 +447,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               />
             </button>
 
-            {/* Mobile Pull-Down Menu Button */}
+            {/* High-Contrast Pull-Down Menu Button — Always Clearly Visible on Every Mobile Device */}
             <button
               onClick={() => {
                 playChime('tap');
@@ -455,28 +455,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               aria-expanded={showMobileMenu}
               aria-label="Toggle quick settings pull-down menu"
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-black transition active:scale-95 shadow-2xs ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black transition active:scale-95 shadow-sm ${
                 showMobileMenu
-                  ? 'bg-brand-600 text-white border-brand-500 shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-rose-600 text-white border-rose-500 shadow-rose-500/25'
+                  : 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white border-brand-400/40 shadow-brand-600/20 hover:from-brand-500 hover:to-indigo-500'
               }`}
             >
               {showMobileMenu ? (
-                <X className="w-4 h-4" />
+                <>
+                  <X className="w-4 h-4 stroke-[2.5]" />
+                  <span>Close</span>
+                </>
               ) : (
                 <>
-                  <Menu className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                  <span className="text-[11px] font-extrabold">{progress.level}</span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-75" />
+                  <Menu className="w-4 h-4 stroke-[2.5]" />
+                  <span>Menu</span>
+                  <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Pull-Down Drawer Menu (< md) */}
+        {/* Mobile & Tablet Pull-Down Drawer Menu (< lg) */}
         {showMobileMenu && (
-          <div className="md:hidden border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl px-4 py-4 shadow-soft-lg animate-slide-up max-h-[82dvh] overflow-y-auto">
+          <div className="lg:hidden border-t border-slate-200/80 dark:border-slate-800/80 bg-white/98 dark:bg-slate-900/98 backdrop-blur-xl px-4 py-4 shadow-soft-lg animate-slide-up max-h-[82dvh] overflow-y-auto">
             <div className="space-y-4 max-w-lg mx-auto">
               {/* Top Row: User Profile, Fluency Tier & Pro Upgrade */}
               <div className="grid grid-cols-2 gap-2.5">
@@ -684,7 +687,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Backdrop for Mobile Pull-Down Menu */}
       {showMobileMenu && (
         <div
-          className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[2px] md:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[2px] lg:hidden"
           onClick={() => setShowMobileMenu(false)}
         />
       )}

@@ -11,11 +11,11 @@ interface FluencyLogoProps {
 
 const sizeConfig = {
   sm: {
-    iconSize: 'w-9 h-9',
+    iconSize: 'w-8 h-8 sm:w-9 sm:h-9',
     rounded: 'rounded-xl',
-    textSize: 'text-lg',
+    textSize: 'text-base sm:text-lg',
     subSize: 'text-[10px]',
-    badgeGap: 'gap-2.5',
+    badgeGap: 'gap-2 sm:gap-2.5',
     tagPadding: 'px-1.5 py-0.5 text-[9px]',
   },
   md: {
@@ -57,13 +57,13 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`inline-flex items-center ${cfg.badgeGap} select-none ${
+      className={`inline-flex items-center ${cfg.badgeGap} select-none min-w-0 ${
         onClick ? 'cursor-pointer group' : ''
       } ${className}`}
     >
       {/* 3D App Emblem Badge */}
       <div
-        className={`relative ${cfg.iconSize} ${cfg.rounded} bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-lg shadow-cyan-950/20 overflow-hidden flex items-center justify-center transition-transform duration-200 group-hover:scale-105`}
+        className={`relative ${cfg.iconSize} ${cfg.rounded} bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-lg shadow-cyan-950/20 overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105`}
       >
         {/* Subtle Ambient Glow Behind Emblem */}
         <div className="absolute inset-0 bg-radial from-cyan-500/20 via-emerald-500/10 to-transparent pointer-events-none" />
@@ -77,27 +77,27 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
         />
 
         {/* Live Active Pill Indicator */}
-        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center z-20">
-          <span className="text-[8px] font-black text-white leading-none">✓</span>
+        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center z-20">
+          <span className="text-[7px] sm:text-[8px] font-black text-white leading-none">✓</span>
         </div>
       </div>
 
       {/* Typography: FLUENCY AI */}
       {showText && (
-        <div className="flex flex-col justify-center">
-          <div className="flex items-center gap-1.5 leading-none">
+        <div className="flex flex-col justify-center min-w-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 leading-none">
             <span
-              className={`font-black tracking-tight ${cfg.textSize} text-slate-900 dark:text-white transition-colors`}
+              className={`font-black tracking-tight ${cfg.textSize} text-slate-900 dark:text-white transition-colors truncate`}
             >
               FLUENCY
             </span>
             <span
-              className={`font-black tracking-tight ${cfg.textSize} bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 bg-clip-text text-transparent`}
+              className={`font-black tracking-tight ${cfg.textSize} bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 bg-clip-text text-transparent flex-shrink-0`}
             >
               AI
             </span>
             <span
-              className={`hidden sm:inline-flex items-center font-black uppercase tracking-wider rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/60 dark:border-slate-700 ${cfg.tagPadding}`}
+              className={`hidden sm:inline-flex items-center font-black uppercase tracking-wider rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/60 dark:border-slate-700 flex-shrink-0 ${cfg.tagPadding}`}
             >
               Tutor
             </span>
@@ -105,7 +105,7 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
 
           {showSubtitle && (
             <p
-              className={`font-medium text-slate-500 dark:text-slate-400 hidden sm:block mt-1 ${cfg.subSize}`}
+              className={`font-medium text-slate-500 dark:text-slate-400 hidden sm:block mt-1 truncate ${cfg.subSize}`}
             >
               {subtitleText}
             </p>

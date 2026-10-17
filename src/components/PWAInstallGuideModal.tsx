@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Download, Share, PlusSquare, Smartphone } from 'lucide-react';
 import { promptPWAInstall } from '../pwa';
 import { playChime } from '../services/speech';
+import logoMark from '../assets/logo-mark.png';
 
 interface PWAInstallGuideModalProps {
   onClose: () => void;
@@ -38,7 +39,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({ onCl
         <div className="p-5 space-y-4">
           <div className="text-center space-y-1">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1.5 border border-slate-700/60 shadow-xl mx-auto overflow-hidden flex items-center justify-center">
-              <img src="/icon-192.png" alt="Fluency AI App Icon" className="w-full h-full object-contain drop-shadow" />
+              <img src={logoMark} alt="Fluency AI App Icon" className="w-full h-full object-contain drop-shadow" />
             </div>
             <h4 className="font-extrabold text-base text-slate-900 dark:text-white pt-2">
               Practice English Anytime, Offline & Fullscreen

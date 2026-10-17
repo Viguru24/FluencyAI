@@ -12,6 +12,7 @@ import {
 import { ALL_PERSONAS, setActivePersona } from '../data/personas';
 import { speakEnglish, playChime, stopSpeaking } from '../services/speech';
 import type { AIPersona, PersonaId, NativeLanguage, UserProgress } from '../types';
+import logoMark from '../assets/logo-mark.png';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -185,7 +186,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-md flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src="/icon-192.png" alt="Fluency AI" className="w-full h-full object-contain" />
+              <img src={logoMark} alt="Fluency AI" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400">

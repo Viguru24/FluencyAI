@@ -20,6 +20,7 @@ import {
   formatCardNumberInput,
   formatExpiryInput,
 } from '../services/stripeService';
+import logoMark from '../assets/logo-mark.png';
 import type {
   SubscriptionPlanTier,
   SubscriptionBillingCycle,
@@ -191,7 +192,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-850">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#2a323d] to-[#151a22] p-1 border border-slate-700/60 shadow-md flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src="/icon-192.png" alt="Fluency AI" className="w-full h-full object-contain" />
+              <img src={logoMark} alt="Fluency AI" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-extrabold text-sm text-slate-900 dark:text-white">
