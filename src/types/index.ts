@@ -62,6 +62,10 @@ export interface UserProgress {
   hasCompletedPlacement?: boolean;
   placementDetails?: PlacementAssessmentResult;
   activePersonaId?: PersonaId;
+  hasCompletedOnboarding?: boolean;
+  onboardingGoal?: 'career' | 'travel' | 'exams' | 'confidence';
+  subscription?: SubscriptionDetails;
+  paymentMethods?: StripePaymentMethod[];
 }
 
 export interface PlacementAssessmentResult {
@@ -278,3 +282,47 @@ export interface DailyLessonData {
     coachingTip: string;
   };
 }
+
+export type SubscriptionPlanTier = 'free' | 'pro' | 'lifetime';
+export type SubscriptionBillingCycle = 'monthly' | 'yearly' | 'lifetime';
+
+export type CardBrand = 'visa' | 'mastercard' | 'amex' | 'discover' | 'diners' | 'jcb' | 'unknown';
+
+export interface StripePaymentMethod {
+  id: string;
+  brand: CardBrand;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+  cardholderName: string;
+  country?: string;
+  funding?: 'credit' | 'debit' | 'prepaid';
+  createdAt: string;
+}
+
+export interface StripeInvoice {
+  id: string;
+  number: string;
+  date: string;
+  amountPaid: number;
+  currency: string;
+  status: 'paid' | 'open' | 'void';
+  description: string;
+  planTier: SubscriptionPlanTier;
+  pdfUrl?: string;
+  hostedInvoiceUrl?: string;
+}
+
+export interface SubscriptionDetails {
+  planTier: SubscriptionPlanTier;
+  billingCycle: SubscriptionBillingCycle;
+  status: 'active' | 'trialing' | 'canceled' | 'past_due' | 'free';
+  renewsAt?: string;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodStart?: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  defaultPaymentMethodId?: string;
+}
+

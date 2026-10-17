@@ -79,7 +79,11 @@ export function registerServiceWorker(onUpdate?: () => void) {
 
 export function subscribeToInstallPrompt(callback: (canInstall: boolean) => void) {
   installListeners.add(callback);
-  callback(deferredPrompt !== null);
+  queueMicrotask(() => {
+    if (installListeners.has(callback)) {
+      callback(deferredPrompt !== null);
+    }
+  });
   return () => {
     installListeners.delete(callback);
   };

@@ -204,8 +204,12 @@ class AuthService {
   /** Subscribe to authentication state updates */
   public onAuthStateChange(listener: AuthListener): () => void {
     listeners.add(listener);
-    // Fire immediately with current state
-    listener(this.currentSession);
+    // Fire asynchronously with current state to avoid React concurrent render warning
+    queueMicrotask(() => {
+      if (listeners.has(listener)) {
+        listener(this.currentSession);
+      }
+    });
     return () => {
       listeners.delete(listener);
     };

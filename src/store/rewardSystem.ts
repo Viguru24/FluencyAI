@@ -90,13 +90,13 @@ export const TIERS_CONFIG: Record<GamificationTier, TierDefinition> = {
     badgeAccent: {
       name: 'Warm Bronze',
       gradient: 'from-amber-700 via-amber-600 to-amber-800',
-      border: 'border-amber-600/40',
-      text: 'text-amber-800',
-      pillBg: 'bg-amber-100 text-amber-900 border-amber-300',
+      border: 'border-amber-600/40 dark:border-amber-500/60',
+      text: 'text-amber-800 dark:text-amber-200',
+      pillBg: 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700',
       icon: '🥉',
       glow: 'shadow-amber-500/20',
       ringColor: 'ring-amber-500/40',
-      tagBg: 'bg-amber-50 text-amber-900 border-amber-200',
+      tagBg: 'bg-amber-50 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800',
     },
     perks: [
       {
@@ -142,13 +142,13 @@ export const TIERS_CONFIG: Record<GamificationTier, TierDefinition> = {
     badgeAccent: {
       name: 'Sleek Silver',
       gradient: 'from-slate-400 via-slate-500 to-slate-700',
-      border: 'border-slate-400/40',
-      text: 'text-slate-800',
-      pillBg: 'bg-slate-100 text-slate-800 border-slate-300',
+      border: 'border-slate-400/40 dark:border-slate-600',
+      text: 'text-slate-800 dark:text-slate-100',
+      pillBg: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700',
       icon: '🥈',
       glow: 'shadow-slate-400/25',
       ringColor: 'ring-slate-400/50',
-      tagBg: 'bg-slate-100 text-slate-800 border-slate-300',
+      tagBg: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700',
     },
     perks: [
       {
@@ -187,13 +187,13 @@ export const TIERS_CONFIG: Record<GamificationTier, TierDefinition> = {
     badgeAccent: {
       name: 'Vibrant Gold',
       gradient: 'from-amber-400 via-yellow-500 to-amber-600',
-      border: 'border-amber-400/50',
-      text: 'text-amber-900',
-      pillBg: 'bg-amber-100/90 text-amber-950 border-amber-300',
+      border: 'border-amber-400/50 dark:border-amber-500/60',
+      text: 'text-amber-900 dark:text-amber-100',
+      pillBg: 'bg-amber-100/90 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700',
       icon: '🥇',
       glow: 'shadow-amber-400/30',
       ringColor: 'ring-amber-400/60',
-      tagBg: 'bg-amber-50 text-amber-950 border-amber-300',
+      tagBg: 'bg-amber-50 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-800',
     },
     perks: [
       {
@@ -225,13 +225,13 @@ export const TIERS_CONFIG: Record<GamificationTier, TierDefinition> = {
     badgeAccent: {
       name: 'Cyan Platinum',
       gradient: 'from-cyan-400 via-teal-500 to-sky-600',
-      border: 'border-cyan-400/50',
-      text: 'text-cyan-900',
-      pillBg: 'bg-cyan-50 text-cyan-900 border-cyan-300',
+      border: 'border-cyan-400/50 dark:border-cyan-500/60',
+      text: 'text-cyan-900 dark:text-cyan-100',
+      pillBg: 'bg-cyan-50 dark:bg-cyan-950/80 text-cyan-900 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700',
       icon: '💠',
       glow: 'shadow-cyan-400/30',
       ringColor: 'ring-cyan-400/60',
-      tagBg: 'bg-cyan-50 text-cyan-950 border-cyan-300',
+      tagBg: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-950 dark:text-cyan-200 border-cyan-300 dark:border-cyan-800',
     },
     perks: [
       {
@@ -263,13 +263,13 @@ export const TIERS_CONFIG: Record<GamificationTier, TierDefinition> = {
     badgeAccent: {
       name: 'Iridescent Diamond',
       gradient: 'from-indigo-500 via-purple-500 to-pink-500',
-      border: 'border-indigo-400/50',
-      text: 'text-indigo-950',
-      pillBg: 'bg-indigo-50 text-indigo-950 border-indigo-300',
+      border: 'border-indigo-400/50 dark:border-indigo-500/60',
+      text: 'text-indigo-950 dark:text-indigo-100',
+      pillBg: 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-950 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700',
       icon: '💎',
       glow: 'shadow-indigo-500/40',
       ringColor: 'ring-indigo-400/70',
-      tagBg: 'bg-gradient-to-r from-indigo-50 to-pink-50 text-indigo-950 border-indigo-300',
+      tagBg: 'bg-gradient-to-r from-indigo-50 to-pink-50 dark:from-indigo-950/80 dark:to-purple-950/80 text-indigo-950 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700',
     },
     perks: [
       {

@@ -206,7 +206,7 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                     {scenario.title}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
                     {scenario.tagline}
                   </p>
                 </div>
@@ -219,7 +219,7 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                       playChime('tap');
                       setExpandedVocabId(isVocabOpen ? null : scenario.id);
                     }}
-                    className="w-full flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition"
+                    className="w-full flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-brand-600 dark:hover:text-brand-400 transition"
                   >
                     <span className="flex items-center gap-1.5">
                       <BookOpen className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
@@ -241,31 +241,31 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold text-slate-900 dark:text-white">{vocab.word}</span>
-                              <span className="text-[11px] font-mono text-slate-400">{vocab.ipa}</span>
-                              <span className="text-[10px] px-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">{vocab.ipa}</span>
+                              <span className="text-[10px] px-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium">
                                 {vocab.partOfSpeech}
                               </span>
                             </div>
-                            <div className="text-[11px] text-brand-700 dark:text-brand-400 font-medium">
+                            <div className="text-[11px] text-brand-700 dark:text-brand-400 font-semibold">
                               {progress.nativeLanguage}:{' '}
-                              <span className="text-slate-700 dark:text-slate-300 font-normal">
+                              <span className="text-slate-700 dark:text-slate-200 font-normal">
                                 {vocab.translations[progress.nativeLanguage] || 'Translation ready'}
                               </span>
                             </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                            <div className="text-[11px] text-slate-600 dark:text-slate-300 italic">
                               "{vocab.example}"
                             </div>
                           </div>
 
                           <button
                             onClick={(e) => handleSpeakWord(vocab.word, e)}
-                            className="p-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600 transition active:scale-95 flex-shrink-0"
+                            className="p-2 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/60 dark:hover:bg-brand-900/80 text-brand-600 dark:text-brand-300 transition active:scale-95 flex-shrink-0"
                             title="Listen to native pronunciation"
                             aria-label={`Pronounce ${vocab.word}`}
                           >
                             <Volume2
                               className={`w-3.5 h-3.5 ${
-                                playingWord === vocab.word ? 'animate-bounce text-brand-700' : ''
+                                playingWord === vocab.word ? 'animate-bounce text-brand-700 dark:text-brand-200' : ''
                               }`}
                             />
                           </button>
@@ -277,8 +277,8 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
 
                 {/* Action Row */}
                 <div className="flex items-center justify-between pt-1">
-                  <div className="text-[11px] font-medium text-slate-400">
-                    Focus: <span className="text-slate-600 dark:text-slate-300">{scenario.learningGoals[0]}</span>
+                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-300">
+                    Focus: <span className="text-slate-800 dark:text-slate-100 font-semibold">{scenario.learningGoals[0]}</span>
                   </div>
 
                   <button
