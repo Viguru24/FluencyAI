@@ -618,9 +618,6 @@ export const RoleplayStage: React.FC<Props> = ({
     playChime('micStop');
 
     try {
-      // Short 180ms acoustic tail buffer so the final syllable is never clipped
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-
       const activeRec = recRef.current;
       recRef.current = null;
 

@@ -132,9 +132,6 @@ export function useVoiceCapture({
     playChime('micStop');
 
     try {
-      // Short 180ms acoustic tail buffer so the final syllable of the user's last word is never clipped
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-
       const activeRec = recRef.current;
       recRef.current = null;
 

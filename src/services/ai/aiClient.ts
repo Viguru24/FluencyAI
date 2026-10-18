@@ -166,14 +166,15 @@ export async function requestStructuredJSON<T = any>(params: {
     const preferredModel =
       config.model &&
       config.model !== 'auto' &&
+      config.model !== 'gemini-3.5-flash-lite' &&
+      config.model !== 'gemini-3.8-flash' &&
       config.model !== 'gemini-2.5-flash' &&
-      config.model !== 'gemini-2.0-flash' &&
-      config.model !== 'gemini-3.1-flash-lite'
+      config.model !== 'gemini-2.0-flash'
         ? config.model
-        : 'gemini-3.5-flash-lite';
+        : 'gemini-flash-lite';
 
     const candidateModels = Array.from(
-      new Set([preferredModel, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash'])
+      new Set([preferredModel, 'gemini-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'])
     );
 
     let response: Response | null = null;

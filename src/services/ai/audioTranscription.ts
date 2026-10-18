@@ -230,12 +230,13 @@ export async function transcribeAudioWithAI(params: TranscribeAudioParams): Prom
     new Set([
       config.model &&
       config.model !== 'auto' &&
-      config.model !== 'gemini-3.1-flash-lite' &&
+      config.model !== 'gemini-3.5-flash-lite' &&
+      config.model !== 'gemini-3.8-flash' &&
       config.model.includes('gemini')
         ? config.model
-        : 'gemini-3.5-flash-lite',
-      'gemini-3.5-flash-lite',
-      'gemini-3.8-flash',
+        : 'gemini-flash-lite',
+      'gemini-flash-lite',
+      'gemini-3.1-flash-lite',
       'gemini-3.5-flash',
     ])
   );

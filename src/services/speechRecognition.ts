@@ -574,8 +574,11 @@ export function startRecognition(
         };
 
         onEndFlushResolver = finish;
-        // Wait up to 1400ms for browser SpeechRecognition to finish network roundtrip and flush final words after rec.stop()
-        window.setTimeout(finish, 1400);
+        // If transcript was already captured live while speaking, only wait 100ms for any final syllable
+        // If no speech heard yet, wait up to 450ms for pending network packet
+        const hasExistingSpeech = Boolean((latestTranscript || peakTranscript).trim());
+        const maxWaitMs = hasExistingSpeech ? 100 : 450;
+        window.setTimeout(finish, maxWaitMs);
 
         try {
           rec.stop();
