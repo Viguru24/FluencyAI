@@ -6,12 +6,31 @@ export class AudioVisualizerController {
   private analyser: AnalyserNode | null = null;
   private mediaStream: MediaStream | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private sourceStream: MediaStream | null = null;
   private isListening: boolean = false;
   private animationFrameId: number | null = null;
 
+  /**
+   * Synchronously enables any pre-existing microphone audio tracks at tick 0
+   * before SpeechRecognition is invoked, preventing muted-track startup lag.
+   */
+  enableTracksSync(): void {
+    if (this.mediaStream && this.mediaStream.active) {
+      this.mediaStream.getAudioTracks().forEach((track) => {
+        if (track.readyState === 'live') {
+          track.enabled = true;
+        }
+      });
+    }
+  }
+
   async prewarm(): Promise<MediaStream | null> {
     try {
-      if (this.mediaStream && this.mediaStream.active && this.mediaStream.getAudioTracks().some((t) => t.readyState === 'live')) {
+      if (
+        this.mediaStream &&
+        this.mediaStream.active &&
+        this.mediaStream.getAudioTracks().some((t) => t.readyState === 'live')
+      ) {
         return this.mediaStream;
       }
       if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
@@ -40,7 +59,9 @@ export class AudioVisualizerController {
 
   private initAudioGraph(stream: MediaStream) {
     if (!this.audioContext || this.audioContext.state === 'closed') {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.audioContext = new AudioCtx();
     }
     if (this.audioContext.state === 'suspended') {
@@ -49,11 +70,20 @@ export class AudioVisualizerController {
     if (!this.analyser) {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 64;
-      this.analyser.smoothingTimeConstant = 0.8;
+      this.analyser.smoothingTimeConstant = 0.75;
     }
-    if (!this.sourceNode) {
+    if (!this.sourceNode || this.sourceStream !== stream) {
+      if (this.sourceNode) {
+        try {
+          this.sourceNode.disconnect();
+        } catch {
+          /* ignore */
+        }
+        this.sourceNode = null;
+      }
       try {
         this.sourceNode = this.audioContext.createMediaStreamSource(stream);
+        this.sourceStream = stream;
         this.sourceNode.connect(this.analyser);
       } catch (e) {
         diagnosticLogger.warn('MIC', 'Could not create MediaStreamSource', e);
@@ -118,7 +148,9 @@ export class AudioVisualizerController {
           const step = Math.max(1, Math.floor(bufferLength / 16));
           for (let i = 0; i < 16; i++) {
             const val = dataArray[i * step] || 0;
-            bands.push(Math.min(1, Math.max(0.08, val / 255)));
+            // Report true normalized vocal energy (0.0 -> 1.0) without artificial floor
+            // so voice activity detection can accurately distinguish speech from silence
+            bands.push(Math.min(1, val / 255));
           }
           onAudioData(bands);
         }
@@ -164,6 +196,7 @@ export class AudioVisualizerController {
         }
         this.sourceNode = null;
       }
+      this.sourceStream = null;
 
       if (this.audioContext && this.audioContext.state !== 'closed') {
         try {

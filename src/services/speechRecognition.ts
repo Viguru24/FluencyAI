@@ -57,7 +57,8 @@ export interface RecognitionOptions {
   lang?: string;
   onInterim?: (text: string) => void;
   onStatusChange?: (status: 'listening' | 'heard' | 'error' | 'stopped', details?: string) => void;
-  silenceTimeoutMs?: number; // Defaults to 6000ms (6s pause tolerance for ESL learners)
+  silenceTimeoutMs?: number; // Post-speech silence timeout (defaults to 4500ms for ESL learners)
+  initialSilenceTimeoutMs?: number; // Max wait before any speech is heard (defaults to 15000ms)
   onSilenceTimeout?: () => void;
   onSilenceStop?: () => void;
   onSegmentAnalysis?: (segments: SpokenSegmentAnalysis[]) => void;
@@ -67,6 +68,7 @@ export interface RecognitionOptions {
 export interface RecognitionHandle {
   stop: () => Promise<string | null>;
   stopWithDetails: () => Promise<RecognitionDetails | null>;
+  abort: () => void;
   getLatestTranscript: () => string;
   getPronunciationMetadata: () => SpokenSegmentAnalysis[];
   resetSilenceTimer: () => void;
@@ -74,8 +76,9 @@ export interface RecognitionHandle {
 }
 
 /**
- * Merges accumulated transcript with current cycle transcript, eliminating accidental duplicate text
- * from Web Speech API restarts, audio buffer flushes, and interim-to-final transitions.
+ * Merges accumulated transcript (from previous recognition cycle before a pause)
+ * with current cycle transcript, eliminating accidental boundary duplicates without
+ * ever swallowing new words that happen to appear earlier in the sentence.
  */
 export function mergeTranscripts(accumulated: string, current: string): string {
   const acc = (accumulated || '').trim();
@@ -84,38 +87,43 @@ export function mergeTranscripts(accumulated: string, current: string): string {
   if (!acc) return curr;
   if (!curr) return acc;
 
-  const accLower = acc.toLowerCase();
-  const currLower = curr.toLowerCase();
+  const normalizeToken = (w: string) => w.toLowerCase().replace(/[^a-z0-9']/g, '');
+  const accWords = acc.split(/\s+/).filter(Boolean);
+  const currWords = curr.split(/\s+/).filter(Boolean);
 
-  // 1. Exact identical match
-  if (accLower === currLower) {
+  if (accWords.length === 0) return curr;
+  if (currWords.length === 0) return acc;
+
+  const accNorm = accWords.map(normalizeToken);
+  const currNorm = currWords.map(normalizeToken);
+
+  // 1. Exact identical word sequence
+  if (accNorm.length === currNorm.length && accNorm.every((w, i) => w === currNorm[i])) {
     return curr;
   }
 
-  // 2. Current cycle already contains accumulated text from beginning (e.g. Chrome continuous buffer)
-  if (currLower.startsWith(accLower)) {
+  // 2. Current cycle starts with all of accumulated words (e.g. cumulative buffer on mobile)
+  if (
+    currNorm.length > accNorm.length &&
+    accNorm.every((w, i) => w === currNorm[i])
+  ) {
     return curr;
   }
 
-  // 3. Current cycle is completely contained within accumulated text
-  if (accLower.includes(currLower)) {
-    return acc;
-  }
-
-  // 4. Accumulated text is completely contained within current cycle
-  if (currLower.includes(accLower)) {
-    return curr;
-  }
-
-  // 5. Overlapping word boundary detection (e.g. acc ends with words that curr starts with)
-  const accWords = acc.split(/\s+/);
-  const currWords = curr.split(/\s+/);
-
+  // 3. Word-boundary suffix/prefix overlap (e.g. acc ends with the exact words curr starts with)
   const maxOverlap = Math.min(accWords.length, currWords.length);
   for (let len = maxOverlap; len > 0; len--) {
-    const accEnd = accWords.slice(accWords.length - len).map((w) => w.toLowerCase()).join(' ');
-    const currStart = currWords.slice(0, len).map((w) => w.toLowerCase()).join(' ');
-    if (accEnd === currStart) {
+    let matches = true;
+    for (let i = 0; i < len; i++) {
+      const aWord = accNorm[accNorm.length - len + i];
+      const cWord = currNorm[i];
+      if (!aWord || aWord !== cWord) {
+        matches = false;
+        break;
+      }
+    }
+    // Avoid merging on a single common 1-2 letter word (like "I", "a", "to") unless acc only has 1 word
+    if (matches && (len >= 2 || accWords.length === 1 || accNorm[accNorm.length - 1].length >= 4)) {
       const nonOverlappingCurr = currWords.slice(len).join(' ');
       return nonOverlappingCurr ? `${acc} ${nonOverlappingCurr}`.trim() : acc;
     }
@@ -133,8 +141,8 @@ export function deduplicateSpokenText(text: string): string {
   let cleaned = text.trim();
 
   const words = cleaned.split(/\s+/);
-  // Check if string is two identical halves
-  if (words.length >= 2 && words.length % 2 === 0) {
+  // Check if string is two identical halves (at least 3 words per half so "no no" or "yes yes" isn't mangled)
+  if (words.length >= 6 && words.length % 2 === 0) {
     const half = words.length / 2;
     const firstHalf = words.slice(0, half).join(' ');
     const secondHalf = words.slice(half).join(' ');
@@ -143,8 +151,8 @@ export function deduplicateSpokenText(text: string): string {
     }
   }
 
-  // Check for repeated trailing multi-word chunks
-  for (let n = Math.min(10, Math.floor(words.length / 2)); n >= 2; n--) {
+  // Check for repeated trailing multi-word chunks (3+ words)
+  for (let n = Math.min(10, Math.floor(words.length / 2)); n >= 3; n--) {
     const endChunk = words.slice(words.length - n).map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
     const prevChunk = words.slice(words.length - 2 * n, words.length - n).map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
     if (endChunk && endChunk === prevChunk) {
@@ -160,8 +168,8 @@ export function deduplicateSpokenText(text: string): string {
  * Start listening with SpeechRecognition engineered for non-native ESL learners:
  * - continuous = true, interimResults = true, maxAlternatives = 3
  * - Pause-tolerant session accumulation across browser auto-stops
- * - 6-second silence timeout
- * - Captures confidence scores (< 0.80) and phonetic alternatives for pronunciation coaching
+ * - Separate initial wait timeout (15s) vs post-speech pause timeout (4.5s+)
+ * - Waits for final audio buffer flush on stop() so the last spoken words are never cut off
  */
 export function startRecognition(
   options: RecognitionOptions | string = 'en-GB',
@@ -175,7 +183,10 @@ export function startRecognition(
   const lang = opts.lang || 'en-GB';
   const onInterim = opts.onInterim;
   const onStatusChange = opts.onStatusChange;
-  const silenceTimeoutMs = opts.silenceTimeoutMs ?? 6000;
+  // Ensure post-speech silence timeout is at least 3800ms so learners are never cut off mid-sentence
+  const rawSilenceMs = opts.silenceTimeoutMs ?? 4500;
+  const silenceTimeoutMs = rawSilenceMs > 0 ? Math.max(3800, rawSilenceMs) : 0;
+  const initialSilenceTimeoutMs = opts.initialSilenceTimeoutMs ?? 15000;
   const onSilenceTimeout = opts.onSilenceTimeout || opts.onSilenceStop;
   const onSegmentAnalysis = opts.onSegmentAnalysis;
 
@@ -188,6 +199,7 @@ export function startRecognition(
     return {
       stop: async () => null,
       stopWithDetails: async () => null,
+      abort: () => {},
       getLatestTranscript: () => '',
       getPronunciationMetadata: () => [],
       resetSilenceTimer: () => {},
@@ -198,10 +210,17 @@ export function startRecognition(
   let accumulatedFinalText = '';
   let latestTranscript = '';
   let latestRawResults: any = null;
-  let isStopped = false;
+  let isStopping = false;
+  let isFinalized = false;
+  let hasFatalError = false;
+  let hasHeardSpeech = false;
+  let isRecRunning = false;
   let isSilenceTimerPaused = false;
   let rec: AnyRecognition = null;
   let silenceTimerId: number | null = null;
+  let restartTimerId: number | null = null;
+  let onEndFlushResolver: (() => void) | null = null;
+  let consecutiveErrors = 0;
   const recordedSegments: SpokenSegmentAnalysis[] = [];
 
   const clearSilenceTimer = () => {
@@ -211,16 +230,28 @@ export function startRecognition(
     }
   };
 
+  const clearRestartTimer = () => {
+    if (restartTimerId !== null) {
+      window.clearTimeout(restartTimerId);
+      restartTimerId = null;
+    }
+  };
+
   const scheduleSilenceTimer = (customMs?: number) => {
     clearSilenceTimer();
-    if (isStopped || isSilenceTimerPaused) return;
+    if (isStopping || isFinalized || isSilenceTimerPaused) return;
 
-    // Arm silence timeout (either silenceTimeoutMs or custom duration)
-    const delay = customMs ?? (silenceTimeoutMs > 0 ? silenceTimeoutMs : 6000);
+    // Before the user has spoken any words, use initialSilenceTimeoutMs (15s) so we NEVER
+    // cut them off while they are preparing to speak or while the browser speech socket connects!
+    const defaultDelay = hasHeardSpeech ? silenceTimeoutMs : initialSilenceTimeoutMs;
+    const delay = customMs ?? defaultDelay;
+
     if (delay > 0) {
       silenceTimerId = window.setTimeout(() => {
-        if (!isStopped && !isSilenceTimerPaused) {
-          console.log('[SpeechRecognition] Silence timeout reached. Auto-completing learner turn.');
+        if (!isStopping && !isFinalized && !isSilenceTimerPaused) {
+          console.log(
+            `[SpeechRecognition] Silence timeout reached (${delay}ms, hasHeardSpeech=${hasHeardSpeech}).`
+          );
           onSilenceTimeout?.();
         }
       }, delay);
@@ -233,23 +264,26 @@ export function startRecognition(
   };
 
   const initRecognition = () => {
-    if (isStopped) return;
+    if (isStopping || isFinalized || hasFatalError) return;
 
     try {
       rec = new Ctor();
       rec.lang = lang;
       rec.interimResults = true;
-      // On mobile devices (especially Android Chrome), continuous mode is unstable and often causes
-      // SpeechRecognition to abort immediately or fail to fire onresult.
-      // Non-continuous mode is rock-solid on mobile and auto-restarts seamlessly via onend.
       rec.continuous = !isMobileDevice();
       rec.maxAlternatives = 3;
 
       rec.onstart = () => {
-        onStatusChange?.('listening', 'Microphone active');
+        isRecRunning = true;
+        consecutiveErrors = 0;
+        if (!isStopping && !isFinalized) {
+          onStatusChange?.('listening', 'Microphone active');
+        }
       };
 
       rec.onresult = (event: any) => {
+        if (isFinalized) return;
+
         let currentCycleText = '';
         latestRawResults = event.results;
         opts.onSpeechResults?.(event.results);
@@ -262,7 +296,6 @@ export function startRecognition(
           const transcript = (topAlt.transcript || '').trim();
           const confidence = typeof topAlt.confidence === 'number' ? topAlt.confidence : 1.0;
 
-          // Capture phonetic alternatives (up to maxAlternatives = 3)
           const alternatives: string[] = [];
           for (let a = 1; a < item.length; a++) {
             const altText = item[a]?.transcript?.trim();
@@ -271,9 +304,10 @@ export function startRecognition(
             }
           }
 
-          currentCycleText += (currentCycleText ? ' ' : '') + transcript;
+          if (transcript) {
+            currentCycleText += (currentCycleText ? ' ' : '') + transcript;
+          }
 
-          // If final result, record pronunciation metadata for the segment (< 0.75 threshold)
           if (item.isFinal && transcript) {
             const isLowConfidence = confidence > 0 && confidence < 0.75;
             const isAmbiguous = alternatives.length > 0;
@@ -302,25 +336,40 @@ export function startRecognition(
         const combined = deduplicateSpokenText(mergeTranscripts(accumulatedFinalText, currentCycleText));
 
         if (combined) {
+          hasHeardSpeech = true;
           latestTranscript = combined;
-          onInterim?.(combined);
-          onStatusChange?.('heard', combined);
-          onSegmentAnalysis?.(recordedSegments);
-          scheduleSilenceTimer();
+          if (!isStopping) {
+            onInterim?.(combined);
+            onStatusChange?.('heard', combined);
+            onSegmentAnalysis?.(recordedSegments);
+            scheduleSilenceTimer();
+          }
         }
       };
 
       rec.onerror = (event: any) => {
         const err = event?.error;
-        console.warn('[SpeechRecognition] Error event:', err);
-
-        // Benign errors: 'no-speech' happens when the user is thinking/pausing mid-sentence.
-        // DO NOT stop or clear transcript on 'no-speech'
         if (err === 'no-speech') {
+          // Benign: user is thinking or pausing between phrases
+          return;
+        }
+        if (err === 'aborted' && (isStopping || isFinalized)) {
           return;
         }
 
-        clearSilenceTimer();
+        console.warn('[SpeechRecognition] Error event:', err);
+        consecutiveErrors++;
+
+        if (err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture') {
+          hasFatalError = true;
+          clearSilenceTimer();
+          clearRestartTimer();
+        } else if (consecutiveErrors >= 3) {
+          hasFatalError = true;
+          clearSilenceTimer();
+          clearRestartTimer();
+        }
+
         let errorMsg = `Speech recognition error: ${err}`;
         if (err === 'not-allowed') {
           errorMsg = 'Microphone permission denied. Please allow microphone access in your browser settings.';
@@ -332,25 +381,44 @@ export function startRecognition(
           errorMsg = 'Network error connecting to speech recognition service.';
         }
         diagnosticLogger.warn('STT', `SpeechRecognition onerror: ${err}`, { errorMsg });
-        onStatusChange?.('error', errorMsg);
+        if (hasFatalError) {
+          onStatusChange?.('error', errorMsg);
+        }
       };
 
       rec.onend = () => {
-        // If recognition ended without manual user stop (e.g. Chrome 3-second auto cutoff),
-        // save what was accumulated so far and restart seamlessly to maintain Pause-Tolerant mode.
-        if (!isStopped) {
+        isRecRunning = false;
+
+        if (onEndFlushResolver) {
+          const resolveFlush = onEndFlushResolver;
+          onEndFlushResolver = null;
+          resolveFlush();
+          return;
+        }
+
+        // If recognition ended without manual user stop (e.g. pause between sentences),
+        // save what was accumulated so far and restart seamlessly.
+        if (!isStopping && !isFinalized && !hasFatalError) {
           accumulatedFinalText = deduplicateSpokenText(latestTranscript);
-          diagnosticLogger.log('STT', 'SpeechRecognition session ended, re-initializing', { accumulated: accumulatedFinalText });
-          setTimeout(() => {
-            if (!isStopped) initRecognition();
-          }, 80);
+          diagnosticLogger.log('STT', 'SpeechRecognition session ended, re-initializing', {
+            accumulated: accumulatedFinalText,
+          });
+          clearRestartTimer();
+          restartTimerId = window.setTimeout(() => {
+            restartTimerId = null;
+            if (!isStopping && !isFinalized && !hasFatalError) {
+              initRecognition();
+            }
+          }, 60);
         }
       };
 
       rec.start();
+      isRecRunning = true;
       scheduleSilenceTimer();
       diagnosticLogger.log('STT', 'SpeechRecognition started', { lang, continuous: rec.continuous });
     } catch (e: any) {
+      isRecRunning = false;
       diagnosticLogger.error('STT', 'Failed to start SpeechRecognition', e?.message || e);
       console.warn('[SpeechRecognition] Failed to start:', e);
       onStatusChange?.('error', e?.message || 'Failed to start');
@@ -370,7 +438,6 @@ export function startRecognition(
         if (!cleanWord || seenWords.has(cleanWord)) continue;
         seenWords.add(cleanWord);
 
-        // If whole segment is low confidence or has alternatives, attribute to key words
         if (segment.isLowConfidence || segment.isAmbiguous) {
           words.push({
             word: cleanWord,
@@ -430,6 +497,44 @@ export function startRecognition(
     };
   };
 
+  const stopAndFlush = async (): Promise<void> => {
+    if (isFinalized) return;
+    isStopping = true;
+    clearSilenceTimer();
+    clearRestartTimer();
+
+    if (rec && isRecRunning) {
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          onEndFlushResolver = null;
+          resolve();
+        };
+
+        onEndFlushResolver = finish;
+        // Wait up to 450ms for browser SpeechRecognition to flush final audio buffer after rec.stop()
+        window.setTimeout(finish, 450);
+
+        try {
+          rec.stop();
+        } catch {
+          finish();
+        }
+      });
+    } else if (rec) {
+      try {
+        rec.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+
+    isFinalized = true;
+    onStatusChange?.('stopped');
+  };
+
   return {
     getLatestTranscript: () => deduplicateSpokenText(latestTranscript.trim()),
     getPronunciationMetadata: () => [...recordedSegments],
@@ -444,35 +549,31 @@ export function startRecognition(
         scheduleSilenceTimer();
       }
     },
-    stop: async () => {
-      isStopped = true;
+    abort: () => {
+      isStopping = true;
+      isFinalized = true;
       clearSilenceTimer();
+      clearRestartTimer();
+      if (onEndFlushResolver) {
+        const resolveFlush = onEndFlushResolver;
+        onEndFlushResolver = null;
+        resolveFlush();
+      }
       if (rec) {
         try {
-          rec.stop();
+          rec.abort();
         } catch {
           /* ignore */
         }
       }
       onStatusChange?.('stopped');
-
-      // Allow 200ms for final audio buffers to flush
-      await new Promise((r) => setTimeout(r, 200));
+    },
+    stop: async () => {
+      await stopAndFlush();
       return deduplicateSpokenText(latestTranscript.trim()) || null;
     },
     stopWithDetails: async () => {
-      isStopped = true;
-      clearSilenceTimer();
-      if (rec) {
-        try {
-          rec.stop();
-        } catch {
-          /* ignore */
-        }
-      }
-      onStatusChange?.('stopped');
-
-      await new Promise((r) => setTimeout(r, 200));
+      await stopAndFlush();
       return getDetails();
     },
   };

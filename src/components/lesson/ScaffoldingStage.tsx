@@ -14,7 +14,7 @@ import {
   Activity
 } from 'lucide-react';
 import type { LessonPlan, NativeLanguage } from '../../types';
-import { speakEnglish, playChime } from '../../services/speech';
+import { speakEnglish, stopSpeaking, playChime } from '../../services/speech';
 import { PronunciationRadarModal } from './PronunciationRadarModal';
 import { 
   startRecognition, 
@@ -23,6 +23,8 @@ import {
   type RecognitionHandle 
 } from '../../services/speechRecognition';
 import { AudioVisualizerController } from '../../services/audioVisualizer';
+import { AudioRecorderController } from '../../services/audioRecorder';
+import { transcribeAudioWithAI } from '../../services/geminiService';
 import { getDueSRSFlashcards } from '../../services/srsService';
 
 interface Props {
@@ -64,13 +66,20 @@ export const ScaffoldingStage: React.FC<Props> = ({
 
   const recRef = useRef<RecognitionHandle | null>(null);
   const vizRef = useRef(new AudioVisualizerController());
+  const recorderRef = useRef(new AudioRecorderController());
+  const liveTranscriptRef = useRef<string>('');
   const fallbackTimer = useRef<number | null>(null);
 
   const practicedCount = plan.phrases.filter((p) => scores[p.id] !== undefined).length;
   const allDone = practicedCount === plan.phrases.length;
 
   const finishRecording = async (id: string, target: string) => {
-    if (fallbackTimer.current) window.clearTimeout(fallbackTimer.current);
+    if (fallbackTimer.current) {
+      window.clearTimeout(fallbackTimer.current);
+      fallbackTimer.current = null;
+    }
+
+    const audioClip = await recorderRef.current.stop().catch(() => null);
 
     let text: string | null = null;
     if (recRef.current) {
@@ -78,13 +87,31 @@ export const ScaffoldingStage: React.FC<Props> = ({
       recRef.current = null;
     }
 
-    vizRef.current.stopMicrophone();
+    vizRef.current.stopMicrophone(false);
     setRecordingId(null);
     setLevel(0);
 
-    // Fallback if browser didn't return any text but user was recording
-    const finalText = text && text.trim().length > 0 ? text.trim() : liveTranscript.trim() || null;
+    let finalText =
+      text && text.trim().length >= liveTranscriptRef.current.trim().length
+        ? text.trim()
+        : liveTranscriptRef.current.trim() || text?.trim() || null;
+    liveTranscriptRef.current = '';
     setLiveTranscript('');
+
+    if (!finalText && audioClip?.base64 && (audioClip.durationMs ?? 0) >= 500) {
+      try {
+        const aiText = await transcribeAudioWithAI({
+          base64: audioClip.base64,
+          mimeType: audioClip.mimeType,
+          blob: audioClip.blob,
+        });
+        if (aiText && aiText.trim().length > 0) {
+          finalText = aiText.trim();
+        }
+      } catch {
+        /* ignore AI fallback errors */
+      }
+    }
 
     if (finalText) {
       const score = scorePronunciation(target, finalText);
@@ -107,42 +134,55 @@ export const ScaffoldingStage: React.FC<Props> = ({
     }
     if (recordingId) return;
 
-    playChime('tap');
+    stopSpeaking();
+    playChime('micStart');
+    liveTranscriptRef.current = '';
     setLiveTranscript('');
-
-    // Try starting mic visualizer
-    vizRef.current.startMicrophone((bands) => {
-      setLevel(bands.reduce((a, b) => a + b, 0) / bands.length);
-    }).catch(() => {
-      /* ignore audio viz errors, SpeechRecognition will handle mic */
-    });
-
-    if (!isRecognitionSupported()) {
-      onMicDenied();
-      return;
-    }
+    vizRef.current.enableTracksSync();
 
     setRecordingId(id);
 
     try {
-      recRef.current = startRecognition({
-        lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
-        onInterim: (interim) => {
-          setLiveTranscript(interim);
-        },
-        onStatusChange: (status, details) => {
-          if (status === 'error') {
-            console.warn('[ScaffoldingStage] SpeechRecognition status:', details);
-          }
-        },
-      });
+      if (isRecognitionSupported()) {
+        recRef.current = startRecognition({
+          lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
+          silenceTimeoutMs: 3800,
+          initialSilenceTimeoutMs: 10000,
+          onInterim: (interim) => {
+            liveTranscriptRef.current = interim;
+            setLiveTranscript(interim);
+          },
+          onSilenceTimeout: () => {
+            if (liveTranscriptRef.current.trim().length > 0) {
+              finishRecording(id, target);
+            }
+          },
+          onStatusChange: (status, details) => {
+            if (status === 'error') {
+              console.warn('[ScaffoldingStage] SpeechRecognition status:', details);
+            }
+          },
+        });
+      }
 
-      // Auto-stop after 8s so user isn't stuck
+      const ok = await vizRef.current.startMicrophone((bands) => {
+        setLevel(bands.reduce((a, b) => a + b, 0) / (bands.length || 1));
+      });
+      if (ok) {
+        await recorderRef.current.start(vizRef.current.getStream());
+      } else if (!isRecognitionSupported()) {
+        setRecordingId(null);
+        onMicDenied();
+        return;
+      }
+
+      // Auto-stop after 12s so user isn't stuck
       fallbackTimer.current = window.setTimeout(() => {
         finishRecording(id, target);
-      }, 8000);
+      }, 12000);
     } catch (e) {
       console.warn('Recognition start failed:', e);
+      setRecordingId(null);
       onMicDenied();
     }
   };

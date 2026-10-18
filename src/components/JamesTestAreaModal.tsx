@@ -319,19 +319,34 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     [coach, pronunciationAvg, selectedScenario.title, speakText, streakDays, turns, userLevel]
   );
 
+  const greetingTimerRef = useRef<number | null>(null);
+
+  const clearGreetingTimer = useCallback(() => {
+    if (greetingTimerRef.current !== null) {
+      window.clearTimeout(greetingTimerRef.current);
+      greetingTimerRef.current = null;
+    }
+  }, []);
+
   const {
     isRecording,
     isHolding,
+    isTranscribing,
     bands,
     livePreview,
     recordedClipsRef,
     pronunciationMetadataRef,
+    stopRecording,
+    cancelRecording,
     cleanupAudio,
     onPointerDown,
     onPointerUp,
   } = useVoiceCapture({
     lang: coach.accent === 'US' ? 'en-US' : 'en-GB',
-    onBeforeStart: () => setIsAiSpeaking(false),
+    onBeforeStart: () => {
+      clearGreetingTimer();
+      setIsAiSpeaking(false);
+    },
     onCompleteCapture: handleUserMessage,
   });
 
@@ -345,6 +360,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
   const resetScenario = useCallback(
     (scenario: TopicPreset) => {
+      clearGreetingTimer();
       cleanupAudio();
       setIsProcessing(false);
       setIsAiSpeaking(false);
@@ -362,33 +378,37 @@ export const JamesTestAreaModal: React.FC<Props> = ({
       setTurns([initialTurn]);
 
       if (!isMuted) {
-        window.setTimeout(() => {
+        greetingTimerRef.current = window.setTimeout(() => {
+          greetingTimerRef.current = null;
           speakText(greetingText);
         }, 350);
       }
     },
-    [cleanupAudio, coach.name, isMuted, speakText]
+    [clearGreetingTimer, cleanupAudio, coach.name, isMuted, speakText]
   );
 
   useEffect(() => {
     if (isOpen && !prevOpenRef.current) {
       const greetingText = selectedScenario.greeting(coach.name);
       if (!isMuted) {
-        window.setTimeout(() => {
+        clearGreetingTimer();
+        greetingTimerRef.current = window.setTimeout(() => {
+          greetingTimerRef.current = null;
           speakText(greetingText);
         }, 350);
       }
     } else if (!isOpen) {
+      clearGreetingTimer();
       cleanupAudio();
     }
     prevOpenRef.current = isOpen;
-  }, [cleanupAudio, coach.name, isMuted, isOpen, selectedScenario, speakText]);
+  }, [clearGreetingTimer, cleanupAudio, coach.name, isMuted, isOpen, selectedScenario, speakText]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [turns, livePreview, isProcessing]);
+  }, [turns, livePreview, isProcessing, isRecording, isTranscribing]);
 
   const handleSendTyped = (e: React.FormEvent) => {
     e.preventDefault();
@@ -836,11 +856,26 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               );
             })}
 
-            {isRecording && livePreview && (
-              <div className="flex justify-end animate-pulse">
-                <div className="max-w-[85%] p-3 rounded-2xl bg-brand-500/80 text-white text-sm border border-brand-400/40 rounded-tr-sm shadow-md">
-                  <div className="text-[10px] font-bold text-brand-200 mb-0.5">Listening live…</div>
-                  <div>{livePreview}</div>
+            {isRecording && (
+              <div className="flex justify-end animate-fade-in">
+                <div className="max-w-[85%] p-3 rounded-2xl bg-indigo-600/90 text-white text-sm border border-indigo-400/40 rounded-tr-sm shadow-md">
+                  <div className="text-[10px] font-bold text-indigo-200 mb-0.5 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+                    <span>Listening live · tap Send when finished</span>
+                  </div>
+                  <div className="font-medium">
+                    {livePreview || 'Speak naturally at your own pace…'}
+                    <span className="inline-block w-1 h-3.5 ml-1 bg-white/80 animate-pulse align-middle rounded-full" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isTranscribing && !isRecording && (
+              <div className="flex justify-end animate-fade-in">
+                <div className="max-w-[85%] px-3.5 py-2.5 rounded-2xl bg-indigo-600/80 text-white text-xs font-semibold rounded-tr-sm shadow-sm flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Transcribing your speech…</span>
                 </div>
               </div>
             )}
@@ -864,7 +899,7 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
           {/* Sleek Silky Voice & Text Input Bar */}
           <div className="px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 flex-shrink-0 space-y-2 shadow-lg">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <div className="relative flex items-center justify-center flex-shrink-0">
                 {/* Ambient breathing radial bloom */}
                 <span
@@ -896,56 +931,81 @@ export const JamesTestAreaModal: React.FC<Props> = ({
 
                 <button
                   type="button"
-                  onPointerDown={(e) => onPointerDown(e, isProcessing)}
+                  onPointerDown={(e) => onPointerDown(e, isProcessing || isTranscribing)}
                   onPointerUp={onPointerUp}
                   onPointerCancel={onPointerUp}
                   onContextMenu={(e) => e.preventDefault()}
-                  disabled={isProcessing}
-                  className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full text-white transition-all duration-500 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
+                  disabled={isProcessing || isTranscribing}
+                  className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full text-white transition-all duration-300 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
                     isRecording
-                      ? 'bg-gradient-to-tr from-indigo-600 via-violet-500 to-sky-400 scale-105 shadow-[0_0_24px_rgba(99,102,241,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
+                      ? 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-sky-400 scale-105 shadow-[0_0_24px_rgba(16,185,129,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
                       : 'bg-gradient-to-tr from-brand-600 via-indigo-500 to-sky-500 hover:scale-[1.04] active:scale-95 shadow-[0_4px_16px_rgba(59,130,246,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)]'
                   }`}
                   title={
                     isRecording
                       ? isHolding
-                        ? 'Release to finish'
-                        : 'Tap again to finish'
-                      : 'Hold to talk, or tap to start and tap again to end'
+                        ? 'Release to send'
+                        : 'Tap to finish and send'
+                      : `Click to speak to ${coach.name}`
                   }
                 >
-                  <Mic
-                    className={`w-5 h-5 transition-transform duration-300 ${
-                      isRecording ? 'scale-110 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'text-white'
-                    }`}
-                  />
+                  {isRecording ? (
+                    <Check className="w-5 h-5 scale-110 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]" />
+                  ) : (
+                    <Mic className="w-5 h-5 text-white" />
+                  )}
                 </button>
               </div>
 
-              <form onSubmit={handleSendTyped} className="flex-1 flex items-center gap-1.5">
-                <input
-                  type="text"
-                  value={typedInput}
-                  onChange={(e) => setTypedInput(e.target.value)}
-                  placeholder={
-                    isRecording
-                      ? isHolding
-                        ? 'Listening… release button when finished'
-                        : 'Listening… tap button again when finished'
-                      : `Hold or tap mic to speak, or type to ${coach.name}…`
-                  }
-                  disabled={isRecording || isProcessing}
-                  className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 outline-none transition shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-                <button
-                  type="submit"
-                  disabled={!typedInput.trim() || isProcessing || isRecording}
-                  className="p-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-600 shadow-sm"
-                  title={`Send message to ${coach.name}`}
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
+              {isRecording ? (
+                <div className="flex-1 flex items-center justify-between gap-2 px-3.5 py-2 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-indigo-950 dark:text-indigo-100 truncate">
+                      {livePreview ? `“${livePreview}”` : 'Listening… speak now'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={cancelRecording}
+                      className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95 flex items-center gap-1"
+                      title="Cancel recording without sending"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Cancel</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={stopRecording}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition active:scale-95 flex items-center gap-1 shadow-xs"
+                      title={`Send spoken message to ${coach.name}`}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSendTyped} className="flex-1 flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={typedInput}
+                    onChange={(e) => setTypedInput(e.target.value)}
+                    placeholder={`Click mic to speak, or type to ${coach.name}…`}
+                    disabled={isProcessing || isTranscribing}
+                    className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 outline-none transition shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!typedInput.trim() || isProcessing || isTranscribing}
+                    className="p-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-600 shadow-sm"
+                    title={`Send message to ${coach.name}`}
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              )}
             </div>
 
             {onOpenLessonRoleplay && (

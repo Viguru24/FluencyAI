@@ -36,10 +36,12 @@ export const RapidWarmupModal: React.FC<RapidWarmupModalProps> = ({
 
   const timerRef = useRef<number | null>(null);
   const recRef = useRef<RecognitionHandle | null>(null);
+  const completedPromptsTranscriptRef = useRef('');
+  const currentPromptTranscriptRef = useRef('');
 
   const handleCompleteWarmup = React.useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    recRef.current?.stop();
+    recRef.current?.abort();
     stopSpeaking();
     setIsRecording(false);
     setIsAiSpeaking(false);
@@ -57,16 +59,21 @@ export const RapidWarmupModal: React.FC<RapidWarmupModalProps> = ({
 
   const startListening = React.useCallback(() => {
     setIsRecording(true);
+    currentPromptTranscriptRef.current = '';
     try {
       recRef.current = startRecognition({
         lang: 'en-GB',
+        silenceTimeoutMs: 60000,
+        initialSilenceTimeoutMs: 60000,
         onInterim: (text) => {
-          setSpokenTranscript((prev) => {
-            const updated = prev ? `${prev} ${text}` : text;
-            const words = updated.split(/\s+/).filter(Boolean);
-            setWordCount(words.length);
-            return updated;
-          });
+          currentPromptTranscriptRef.current = text;
+          const combined = [completedPromptsTranscriptRef.current, text]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+          setSpokenTranscript(combined);
+          const words = combined ? combined.split(/\s+/).filter(Boolean) : [];
+          setWordCount(words.length);
         },
         onStatusChange: (status) => {
           if (status === 'error' || status === 'stopped') {
@@ -82,6 +89,8 @@ export const RapidWarmupModal: React.FC<RapidWarmupModalProps> = ({
   // Initialize or reset when modal opens
   useEffect(() => {
     if (isOpen) {
+      completedPromptsTranscriptRef.current = '';
+      currentPromptTranscriptRef.current = '';
       queueMicrotask(() => {
         setSecondsRemaining(60);
         setQuestionIndex(0);
@@ -118,18 +127,28 @@ export const RapidWarmupModal: React.FC<RapidWarmupModalProps> = ({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       stopSpeaking();
-      recRef.current?.stop();
+      recRef.current?.abort();
     };
   }, [isOpen, persona.name, persona.rate, persona.pitch, handleCompleteWarmup, startListening]);
 
   const handleNextPrompt = () => {
     if (questionIndex + 1 < WARMUP_QUESTIONS.length) {
       playChime('tap');
+      if (currentPromptTranscriptRef.current.trim()) {
+        completedPromptsTranscriptRef.current = [
+          completedPromptsTranscriptRef.current,
+          currentPromptTranscriptRef.current.trim(),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        currentPromptTranscriptRef.current = '';
+      }
       const nextIdx = questionIndex + 1;
       setQuestionIndex(nextIdx);
       const q = WARMUP_QUESTIONS[nextIdx];
 
-      recRef.current?.stop();
+      recRef.current?.abort();
       setIsRecording(false);
 
       speakEnglish(q, {

@@ -17,6 +17,9 @@ import {
   Lock,
   Headphones,
   Terminal,
+  X,
+  Send,
+  Keyboard,
 } from 'lucide-react';
 import type { CEFRLevel, LessonPlan, NativeLanguage, PhrasingUpgrade, PronunciationCoachingPoint, PronunciationFeedbackWord } from '../../types';
 import { speakEnglish, stopSpeaking, playChime, isCurrentlySpeaking } from '../../services/speech';
@@ -44,6 +47,7 @@ import { getAvailableAudioSpeeds, useGamificationStore } from '../../store/rewar
 import { InteractiveTranscriptText, WordLookupModal } from '../WordLookupPopover';
 import { diagnosticLogger } from '../../services/diagnosticLogger';
 import { DiagnosticLogsModal } from '../DiagnosticLogsModal';
+import { toast } from '../../services/toast';
 
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'is', 'are', 'was', 'were', 'to', 'in', 'on', 'at', 'for', 'of', 'with', 'it', 'that', 'this', 'and', 'or', 'so'
@@ -153,7 +157,7 @@ interface Props {
   onEnd: (stats: RoleplayStats) => void;
 }
 
-const HOLD_THRESHOLD_MS = 600;
+const HOLD_THRESHOLD_MS = 1200;
 
 export const RoleplayStage: React.FC<Props> = ({
   plan,
@@ -249,11 +253,14 @@ export const RoleplayStage: React.FC<Props> = ({
   const isPressingRef = useRef(false);
   const isHoldingRef = useRef(false);
   const holdTimerRef = useRef<number | null>(null);
+  const initialAiTimerRef = useRef<number | null>(null);
   const pendingStopRef = useRef(false);
   const hasDetectedVoiceRef = useRef(false);
   const lastVoiceTimeRef = useRef(0);
   const recordingStartedAtRef = useRef(0);
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [typedReply, setTypedReply] = useState('');
 
   const userTurnsCount = turns.filter((t) => t.speaker === 'user').length;
   const currentTurn = userTurnsCount + 1;
@@ -281,6 +288,7 @@ export const RoleplayStage: React.FC<Props> = ({
 
   const speakAi = useCallback(
     (text: string) => {
+      if (isRecordingRef.current || isInitializingMicRef.current) return;
       const cleaned = cleanTextForTTS(text, plan.persona.name);
       if (!cleaned) return;
 
@@ -300,12 +308,17 @@ export const RoleplayStage: React.FC<Props> = ({
   );
 
   const pushAiTurn = useCallback(
-    (index: number) => {
+    (index: number, silent = false) => {
       const text = plan.aiTurns[index];
       if (!text) return;
-      setTurns((t) => [...t, { id: `ai-${index}`, speaker: 'ai', text, revealed: false }]);
+      setTurns((t) => {
+        if (t.some((existing) => existing.id === `ai-${index}`)) return t;
+        return [...t, { id: `ai-${index}`, speaker: 'ai', text, revealed: false }];
+      });
       setAiIndex(index + 1);
-      speakAi(text);
+      if (!silent) {
+        speakAi(text);
+      }
     },
     [plan.aiTurns, speakAi]
   );
@@ -314,15 +327,25 @@ export const RoleplayStage: React.FC<Props> = ({
   useEffect(() => {
     // Pre-warm the microphone stream in the background if permissions are already granted
     vizRef.current.prewarm().catch(() => {});
-    const t = window.setTimeout(() => pushAiTurn(0), 500);
+    initialAiTimerRef.current = window.setTimeout(() => {
+      initialAiTimerRef.current = null;
+      pushAiTurn(0);
+    }, 500);
     const viz = vizRef.current;
     const recorder = recorderRef.current;
     return () => {
-      window.clearTimeout(t);
+      if (initialAiTimerRef.current) {
+        window.clearTimeout(initialAiTimerRef.current);
+        initialAiTimerRef.current = null;
+      }
+      if (holdTimerRef.current) {
+        window.clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
       stopSpeaking();
       viz.stopMicrophone(true);
       recorder.stop();
-      recRef.current?.stop();
+      recRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -331,14 +354,148 @@ export const RoleplayStage: React.FC<Props> = ({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [turns, livePreview, isRecording, isTranscribingAudio]);
 
+  const cancelRecording = useCallback(() => {
+    if (holdTimerRef.current) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    pendingStopRef.current = false;
+    isInitializingMicRef.current = false;
+    isRecordingRef.current = false;
+    isStoppingRef.current = false;
+    isPressingRef.current = false;
+    isHoldingRef.current = false;
+    hasDetectedVoiceRef.current = false;
+    setIsRecording(false);
+    setIsHolding(false);
+    setIsTranscribingAudio(false);
+    setBands([]);
+    livePreviewRef.current = '';
+    setLivePreview('');
+    setLiveLowConfidenceWords([]);
+    vizRef.current.stopMicrophone(false);
+    recorderRef.current.stop().catch(() => {});
+    recRef.current?.abort();
+    recRef.current = null;
+    playChime('tap');
+  }, []);
+
+  const processUserTurn = async (
+    text: string,
+    audioAttachment: AudioAttachment | null = null,
+    turnLowConfidenceWords: string[] = [],
+    turnWordConfidences: WordConfidenceInfo[] = []
+  ) => {
+    const idx = userTurnCount.current++;
+
+    const phrasesToCheck = [...plan.phrases];
+    if (dueSRSCard) {
+      phrasesToCheck.push({
+        id: dueSRSCard.id,
+        phrase: dueSRSCard.phrase,
+        ipa: dueSRSCard.ipa,
+        usageContext: dueSRSCard.context,
+        translations: {},
+      });
+    }
+
+    const newlyMatched: string[] = [];
+    phrasesToCheck.forEach((tp) => {
+      if (!usedTargetPhraseIds.has(tp.id)) {
+        if (matchesTargetPhrase(text, tp.phrase)) {
+          newlyMatched.push(tp.id);
+        }
+      }
+    });
+
+    if (newlyMatched.length > 0) {
+      setUsedTargetPhraseIds((prev) => {
+        const next = new Set(prev);
+        newlyMatched.forEach((id) => next.add(id));
+        return next;
+      });
+      setJustMatchedPhraseId(newlyMatched[0]);
+      setTimeout(() => setJustMatchedPhraseId(null), 3500);
+      playChime('success');
+    }
+
+    const newTurns: Turn[] = [
+      ...turns,
+      {
+        id: `u-${idx}`,
+        speaker: 'user',
+        text,
+        revealed: true,
+        isMock: false,
+        lowConfidenceWords: turnLowConfidenceWords,
+        wordConfidences: turnWordConfidences,
+      },
+    ];
+    setTurns(newTurns);
+
+    try {
+      const historyForGemini = newTurns.map((t) => ({ speaker: t.speaker, text: t.text }));
+
+      const aiReply = await generateJamesReply(
+        historyForGemini,
+        plan.title,
+        plan.aiTurns,
+        plan.persona,
+        audioAttachment,
+        userLevel
+      );
+
+      setTurns((prev) => [
+        ...prev,
+        { id: `ai-${Date.now()}`, speaker: 'ai', text: aiReply, revealed: false },
+      ]);
+      setAiIndex((i) => i + 1);
+      speakAi(aiReply);
+    } catch (err) {
+      console.warn('Error fetching tutor reply:', err);
+      const fallbackAi =
+        plan.aiTurns[Math.min(aiIndex, plan.aiTurns.length - 1)] || 'Splendid! Lovely chatting with you.';
+      setTurns((prev) => [
+        ...prev,
+        { id: `ai-${Date.now()}`, speaker: 'ai', text: fallbackAi, revealed: false },
+      ]);
+      setAiIndex((i) => i + 1);
+      speakAi(fallbackAi);
+    }
+  };
+
+  const handleSendTypedReply = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleaned = typedReply.trim();
+    if (!cleaned || isProcessing || isAnalyzingScorecard) return;
+    if (isRecordingRef.current || isInitializingMicRef.current) {
+      cancelRecording();
+    }
+    handleStopSpeaking();
+    setTypedReply('');
+    setIsProcessing(true);
+    try {
+      await processUserTurn(cleaned, null, [], []);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const startRecording = async () => {
-    if (isRecordingRef.current || isInitializingMicRef.current || isProcessing) return;
+    if (isRecordingRef.current || isInitializingMicRef.current || isStoppingRef.current || isProcessing) return;
+    if (initialAiTimerRef.current) {
+      window.clearTimeout(initialAiTimerRef.current);
+      initialAiTimerRef.current = null;
+      pushAiTurn(0, true);
+    }
     pendingStopRef.current = false;
     isInitializingMicRef.current = true;
+    isRecordingRef.current = true;
     hasDetectedVoiceRef.current = false;
-    lastVoiceTimeRef.current = Date.now();
-    stopSpeaking();
-    setIsAiSpeaking(false);
+    const startTs = Date.now();
+    recordingStartedAtRef.current = startTs;
+    lastVoiceTimeRef.current = startTs;
+    handleStopSpeaking();
 
     // Instant silky glow + warm acoustic chime on touch
     setIsRecording(true);
@@ -349,14 +506,17 @@ export const RoleplayStage: React.FC<Props> = ({
 
     diagnosticLogger.log('VOICE', 'startRecording initiated by user gesture');
 
+    // Synchronously unmute any prewarmed tracks before starting SpeechRecognition
+    vizRef.current.enableTracksSync();
+
     // CRITICAL: Start SpeechRecognition IMMEDIATELY at tick 0 on user gesture!
-    // Never await getUserMedia or MediaRecorder before starting speech recognition.
-    // Starting it synchronously guarantees Web Speech API begins listening without losing the first word.
     recRef.current = isRecognitionSupported()
       ? startRecognition({
           lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
-          silenceTimeoutMs: 2300,
+          silenceTimeoutMs: 4500,
+          initialSilenceTimeoutMs: 15000,
           onInterim: (text) => {
+            if (!isRecordingRef.current) return;
             livePreviewRef.current = text;
             setLivePreview(text);
             hasDetectedVoiceRef.current = true;
@@ -364,7 +524,11 @@ export const RoleplayStage: React.FC<Props> = ({
           },
           onSilenceTimeout: () => {
             if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
-              stopRecording();
+              if (livePreviewRef.current.trim().length > 0) {
+                stopRecording();
+              } else {
+                cancelRecording();
+              }
             }
           },
           onSpeechResults: (eventResults) => {
@@ -384,38 +548,29 @@ export const RoleplayStage: React.FC<Props> = ({
       if (!isRecordingRef.current) return;
       const avg = newBands.length > 0 ? newBands.reduce((a, b) => a + b, 0) / newBands.length : 0;
       const now = Date.now();
-      if (avg > 0.04) {
+      if (avg > 0.06) {
         if (!hasDetectedVoiceRef.current) {
           diagnosticLogger.log('VOICE', `Voice activity detected (amplitude: ${avg.toFixed(3)})`);
         }
         hasDetectedVoiceRef.current = true;
         lastVoiceTimeRef.current = now;
       } else if (
-        hasDetectedVoiceRef.current &&
+        livePreviewRef.current.trim().length > 0 &&
         !isPressingRef.current &&
         !isHoldingRef.current &&
-        now - recordingStartedAtRef.current > 1200 &&
-        now - lastVoiceTimeRef.current > 2000
+        now - recordingStartedAtRef.current > 2500 &&
+        now - lastVoiceTimeRef.current > 4200
       ) {
-        // User tapped once, spoke, and paused for ~2.0s -> auto-finish recording!
+        // User spoke recognized words and paused for >4.2s -> auto-finish recording!
         hasDetectedVoiceRef.current = false;
-        diagnosticLogger.log('VOICE', '2-second silence detected, auto-completing speaking turn');
-        stopRecording();
-      } else if (
-        !hasDetectedVoiceRef.current &&
-        !isPressingRef.current &&
-        !isHoldingRef.current &&
-        now - recordingStartedAtRef.current > 5500
-      ) {
-        // User started recording but stayed silent for 5.5s -> auto-finish and let tutor prompt them
-        diagnosticLogger.log('VOICE', '5.5s initial silence detected, auto-completing speaking turn');
+        diagnosticLogger.log('VOICE', '4.2-second post-speech silence detected, auto-completing speaking turn');
         stopRecording();
       }
     });
 
     if (!ok) {
       diagnosticLogger.error('VOICE', 'Microphone start failed or permission denied in viz.startMicrophone');
-      recRef.current?.stop();
+      recRef.current?.abort();
       recRef.current = null;
       isInitializingMicRef.current = false;
       isRecordingRef.current = false;
@@ -425,22 +580,14 @@ export const RoleplayStage: React.FC<Props> = ({
       return;
     }
 
-    if (pendingStopRef.current) {
-      pendingStopRef.current = false;
+    if (!isRecordingRef.current) {
       isInitializingMicRef.current = false;
-      vizRef.current.stopMicrophone(false);
-      recRef.current?.stop();
-      recRef.current = null;
-      isRecordingRef.current = false;
-      setIsRecording(false);
       return;
     }
 
     const activeStream = vizRef.current.getStream();
     await recorderRef.current.start(activeStream);
-    recordingStartedAtRef.current = Date.now();
     isInitializingMicRef.current = false;
-    isRecordingRef.current = true;
 
     if (pendingStopRef.current) {
       pendingStopRef.current = false;
@@ -449,15 +596,16 @@ export const RoleplayStage: React.FC<Props> = ({
   };
 
   const stopRecording = async () => {
+    if (!isRecordingRef.current || isStoppingRef.current) {
+      return;
+    }
     if (isInitializingMicRef.current) {
       pendingStopRef.current = true;
       return;
     }
-    if (!isRecordingRef.current || isStoppingRef.current) {
-      return;
-    }
     isStoppingRef.current = true;
     isRecordingRef.current = false;
+    const hadVoice = hasDetectedVoiceRef.current || livePreviewRef.current.trim().length > 0;
     hasDetectedVoiceRef.current = false;
     setIsRecording(false);
     setIsHolding(false);
@@ -519,7 +667,11 @@ export const RoleplayStage: React.FC<Props> = ({
         }
       }
 
-      let finalTranscript = deduplicateSpokenText(livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '');
+      const bestRawTranscript =
+        heard && heard.trim().length >= livePreviewRef.current.trim().length
+          ? heard.trim()
+          : livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '';
+      let finalTranscript = deduplicateSpokenText(bestRawTranscript);
       livePreviewRef.current = '';
       setLivePreview('');
       setLiveLowConfidenceWords([]);
@@ -530,13 +682,11 @@ export const RoleplayStage: React.FC<Props> = ({
           base64: audioClip.base64,
           mimeType: audioClip.mimeType,
         };
-        recordedClipsRef.current.push(audioAttachment);
       }
 
       // AI Audio Transcription Fallback:
-      // If the browser Web Speech API did not return text (common on mobile Android due to mic exclusive lock),
-      // but the microphone successfully recorded audio, transcribe the audio using Gemini multimodal AI!
-      if (!finalTranscript && audioAttachment && audioAttachment.base64) {
+      // Only invoke if Web Speech API returned empty AND user recorded >= 600ms or had detected voice
+      if (!finalTranscript && audioAttachment && audioAttachment.base64 && (hadVoice || (audioClip?.durationMs ?? 0) >= 600)) {
         diagnosticLogger.log(
           'VOICE',
           `Web Speech API returned empty transcript. Triggering AI audio transcription fallback (${audioAttachment.mimeType}, size: ${audioAttachment.base64.length} chars)...`
@@ -563,96 +713,22 @@ export const RoleplayStage: React.FC<Props> = ({
         }
       }
 
-      // If user stayed silent or no speech was captured, DO NOT ignore it — register hesitation and let tutor guide them!
+      // Do NOT inject a fake "(Silence / hesitated)" turn when no speech was heard!
       if (!finalTranscript) {
-        diagnosticLogger.log('VOICE', 'No speech detected after recording stop, registering hesitation turn');
-        finalTranscript = '(Silence / hesitated)';
+        diagnosticLogger.log('VOICE', 'No speech detected after recording stop; resetting cleanly without fake turn');
+        toast.info(
+          "Didn't catch any speech — tap the mic, speak clearly, and tap Send when finished.",
+          'No Speech Heard'
+        );
+        return;
+      }
+
+      if (audioAttachment) {
+        recordedClipsRef.current.push(audioAttachment);
       }
 
       finalTranscript = deduplicateSpokenText(finalTranscript);
-
-      const idx = userTurnCount.current++;
-      const userSpokeReal = true;
-      const text = finalTranscript;
-
-      if (userSpokeReal && text !== '(Silence / hesitated)') {
-        const phrasesToCheck = [...plan.phrases];
-        if (dueSRSCard) {
-          phrasesToCheck.push({
-            id: dueSRSCard.id,
-            phrase: dueSRSCard.phrase,
-            ipa: dueSRSCard.ipa,
-            usageContext: dueSRSCard.context,
-            translations: {},
-          });
-        }
-
-        const newlyMatched: string[] = [];
-        phrasesToCheck.forEach((tp) => {
-          if (!usedTargetPhraseIds.has(tp.id)) {
-            if (matchesTargetPhrase(text, tp.phrase)) {
-              newlyMatched.push(tp.id);
-            }
-          }
-        });
-
-        if (newlyMatched.length > 0) {
-          setUsedTargetPhraseIds((prev) => {
-            const next = new Set(prev);
-            newlyMatched.forEach((id) => next.add(id));
-            return next;
-          });
-          setJustMatchedPhraseId(newlyMatched[0]);
-          setTimeout(() => setJustMatchedPhraseId(null), 3500);
-          playChime('success');
-        }
-      }
-
-      const newTurns: Turn[] = [
-        ...turns,
-        {
-          id: `u-${idx}`,
-          speaker: 'user',
-          text,
-          revealed: true,
-          isMock: !userSpokeReal,
-          lowConfidenceWords: turnLowConfidenceWords,
-          wordConfidences: turnWordConfidences,
-        },
-      ];
-      setTurns(newTurns);
-
-      try {
-        const historyForGemini = newTurns.map((t) => ({ speaker: t.speaker, text: t.text }));
-
-        const aiReply = await generateJamesReply(
-          historyForGemini,
-          plan.title,
-          plan.aiTurns,
-          plan.persona,
-          audioAttachment,
-          userLevel
-        );
-
-        setTurns((prev) => [
-          ...prev,
-          { id: `ai-${Date.now()}`, speaker: 'ai', text: aiReply, revealed: false },
-        ]);
-        setAiIndex((i) => i + 1);
-        speakAi(aiReply);
-      } catch (err) {
-        console.warn('Error fetching tutor reply:', err);
-        const isHesitation = text.includes('Silence / hesitated');
-        const fallbackAi = isHesitation
-          ? "No worries at all, take your time! If you're not sure how to answer, you could say: 'Could you give me a moment, please?' or ask for a hint."
-          : plan.aiTurns[Math.min(aiIndex, plan.aiTurns.length - 1)] || 'Splendid! Lovely chatting with you.';
-        setTurns((prev) => [
-          ...prev,
-          { id: `ai-${Date.now()}`, speaker: 'ai', text: fallbackAi, revealed: false },
-        ]);
-        setAiIndex((i) => i + 1);
-        speakAi(fallbackAi);
-      }
+      await processUserTurn(finalTranscript, audioAttachment, turnLowConfidenceWords, turnWordConfidences);
     } finally {
       isStoppingRef.current = false;
       setIsProcessing(false);
@@ -710,7 +786,8 @@ export const RoleplayStage: React.FC<Props> = ({
       }
     }
 
-    if (wasHolding) {
+    // Only auto-stop on pointer release if held >= 1.2s AND words were actually spoken
+    if (wasHolding && livePreviewRef.current.trim().length > 0) {
       stopRecording();
     }
   };
@@ -1151,109 +1228,157 @@ export const RoleplayStage: React.FC<Props> = ({
       </div>
 
       {/* Minimalist Bottom Bar with the Little Silky Glowing Voice Button */}
-      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-safe pt-2.5 border-t border-slate-200/70 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+      <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-safe pt-2.5 border-t border-slate-200/70 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md space-y-2">
+        {showTextInput && !isRecording && (
+          <form onSubmit={handleSendTypedReply} className="max-w-xl mx-auto flex items-center gap-2 animate-fade-in">
+            <input
+              type="text"
+              value={typedReply}
+              onChange={(e) => setTypedReply(e.target.value)}
+              disabled={isProcessing || isAnalyzingScorecard}
+              placeholder={`Type your reply to ${plan.persona.name}...`}
+              className="flex-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+            />
+            <button
+              type="submit"
+              disabled={!typedReply.trim() || isProcessing || isAnalyzingScorecard}
+              className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 transition active:scale-95"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Send</span>
+            </button>
+          </form>
+        )}
+
         <div className="max-w-xl mx-auto flex items-center justify-between">
-          {/* Left: Subtle Help Button */}
-          <button
-            onClick={() => {
-              handleStopSpeaking();
-              if (isRecordingRef.current || isInitializingMicRef.current) {
-                isInitializingMicRef.current = false;
-                isRecordingRef.current = false;
-                setIsRecording(false);
-                setIsHolding(false);
-                isHoldingRef.current = false;
-                isPressingRef.current = false;
-                setBands([]);
-                livePreviewRef.current = '';
-                setLivePreview('');
-                vizRef.current.stopMicrophone();
-                recorderRef.current.stop().catch(() => {});
-                recRef.current?.stop().catch(() => {});
-                recRef.current = null;
-              }
-              setHelpOpen(true);
-              setHelpRequests((n) => n + 1);
-            }}
-            className="flex flex-col items-center gap-0.5 w-20 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition active:scale-95"
-            title="Need a phrase hint?"
-          >
-            <span className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/90 hover:bg-amber-50 dark:hover:bg-amber-950/50 flex items-center justify-center transition">
-              <LifeBuoy className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            </span>
-            <span className="text-[10px] font-semibold">Hints</span>
-          </button>
-
-          {/* Center: The Little Silky Glowing Voice Button */}
-          <div className="flex flex-col items-center">
-            <div className="relative flex items-center justify-center">
-              {/* Layer 1: Ambient breathing radial bloom */}
-              <span
-                className={`absolute -inset-5 rounded-full pointer-events-none transition-all duration-500 ease-out ${
-                  isRecording
-                    ? 'silky-orb-active-bloom opacity-100'
-                    : 'bg-indigo-500/15 dark:bg-indigo-400/15 blur-xl silky-orb-idle'
-                }`}
-                style={
-                  isRecording
-                    ? { transform: `scale(${voiceBloomScale})` }
-                    : undefined
+          {/* Left: Subtle Help & Keyboard Buttons */}
+          <div className="flex items-center gap-2 w-24">
+            <button
+              onClick={() => {
+                handleStopSpeaking();
+                if (isRecordingRef.current || isInitializingMicRef.current) {
+                  cancelRecording();
                 }
-              />
+                setHelpOpen(true);
+                setHelpRequests((n) => n + 1);
+              }}
+              className="flex flex-col items-center gap-0.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition active:scale-95"
+              title="Need a phrase hint?"
+            >
+              <span className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/90 hover:bg-amber-50 dark:hover:bg-amber-950/50 flex items-center justify-center transition">
+                <LifeBuoy className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </span>
+              <span className="text-[10px] font-semibold">Hints</span>
+            </button>
 
-              {/* Layer 2: Silky rotating multi-hue aurora halo when recording */}
+            <button
+              type="button"
+              onClick={() => {
+                playChime('tap');
+                setShowTextInput((v) => !v);
+              }}
+              className={`flex flex-col items-center gap-0.5 transition active:scale-95 ${
+                showTextInput
+                  ? 'text-brand-600 dark:text-brand-400'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400'
+              }`}
+              title="Type a reply instead of speaking"
+            >
               <span
-                className={`absolute -inset-2 rounded-full blur-md pointer-events-none transition-all duration-500 ease-out ${
-                  isRecording
-                    ? 'silky-orb-active-aura opacity-95'
-                    : 'opacity-0 scale-75'
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                  showTextInput
+                    ? 'bg-brand-100 dark:bg-brand-950/70 text-brand-600 dark:text-brand-400 ring-1 ring-brand-300 dark:ring-brand-700'
+                    : 'bg-slate-100 dark:bg-slate-800/90 hover:bg-brand-50 dark:hover:bg-brand-950/50'
                 }`}
-                style={
-                  isRecording
-                    ? { transform: `scale(${voiceBloomScale * 0.98})` }
-                    : undefined
-                }
-              />
-
-              {/* Layer 3: Soft inner luminous rim */}
-              <span
-                className={`absolute -inset-0.5 rounded-full pointer-events-none transition-all duration-500 ${
-                  isRecording
-                    ? 'bg-gradient-to-tr from-sky-400 via-indigo-400 to-fuchsia-400 opacity-90 blur-[2px]'
-                    : 'bg-gradient-to-tr from-brand-400/40 to-indigo-400/40 opacity-50'
-                }`}
-              />
-
-              {/* The Little Button itself */}
-              <button
-                type="button"
-                onPointerDown={onPointerDown}
-                onPointerUp={onPointerUp}
-                onPointerCancel={onPointerCancel}
-                onKeyDown={onKeyDown}
-                onContextMenu={(e) => e.preventDefault()}
-                disabled={isProcessing || isAnalyzingScorecard}
-                className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-white transition-all duration-500 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
-                  isRecording
-                    ? 'bg-gradient-to-tr from-indigo-600 via-violet-500 to-sky-400 scale-105 shadow-[0_0_30px_rgba(99,102,241,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
-                    : 'bg-gradient-to-tr from-brand-600 via-indigo-500 to-sky-500 hover:scale-[1.04] active:scale-95 shadow-[0_6px_20px_rgba(59,130,246,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)]'
-                }`}
-                aria-label={
-                  isRecording
-                    ? 'Release or tap to finish speaking'
-                    : 'Hold to talk, or tap to start and tap again to end'
-                }
               >
-                {isProcessing ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-white/95" />
-                ) : (
-                  <Mic
-                    className={`w-6 h-6 transition-transform duration-300 ${
-                      isRecording ? 'scale-110 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'text-white'
-                    }`}
-                  />
-                )}
-              </button>
+                <Keyboard className="w-4 h-4" />
+              </span>
+              <span className="text-[10px] font-semibold">Type</span>
+            </button>
+          </div>
+
+          {/* Center: The Little Silky Glowing Voice Button (+ Cancel when recording) */}
+          <div className="flex flex-col items-center">
+            <div className="relative flex items-center justify-center gap-3">
+              {isRecording && (
+                <button
+                  type="button"
+                  onClick={cancelRecording}
+                  className="relative z-10 w-10 h-10 rounded-full bg-slate-200/90 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-950/70 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-300 flex items-center justify-center transition active:scale-95 shadow-xs"
+                  title="Cancel recording"
+                  aria-label="Cancel recording"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+
+              <div className="relative flex items-center justify-center">
+                {/* Layer 1: Ambient breathing radial bloom */}
+                <span
+                  className={`absolute -inset-5 rounded-full pointer-events-none transition-all duration-500 ease-out ${
+                    isRecording
+                      ? 'silky-orb-active-bloom opacity-100'
+                      : 'bg-indigo-500/15 dark:bg-indigo-400/15 blur-xl silky-orb-idle'
+                  }`}
+                  style={
+                    isRecording
+                      ? { transform: `scale(${voiceBloomScale})` }
+                      : undefined
+                  }
+                />
+
+                {/* Layer 2: Silky rotating multi-hue aurora halo when recording */}
+                <span
+                  className={`absolute -inset-2 rounded-full blur-md pointer-events-none transition-all duration-500 ease-out ${
+                    isRecording
+                      ? 'silky-orb-active-aura opacity-95'
+                      : 'opacity-0 scale-75'
+                  }`}
+                  style={
+                    isRecording
+                      ? { transform: `scale(${voiceBloomScale * 0.98})` }
+                      : undefined
+                  }
+                />
+
+                {/* Layer 3: Soft inner luminous rim */}
+                <span
+                  className={`absolute -inset-0.5 rounded-full pointer-events-none transition-all duration-500 ${
+                    isRecording
+                      ? 'bg-gradient-to-tr from-sky-400 via-indigo-400 to-fuchsia-400 opacity-90 blur-[2px]'
+                      : 'bg-gradient-to-tr from-brand-400/40 to-indigo-400/40 opacity-50'
+                  }`}
+                />
+
+                {/* The Little Button itself */}
+                <button
+                  type="button"
+                  onPointerDown={onPointerDown}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerCancel}
+                  onKeyDown={onKeyDown}
+                  onContextMenu={(e) => e.preventDefault()}
+                  disabled={isProcessing || isAnalyzingScorecard}
+                  className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-white transition-all duration-500 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
+                    isRecording
+                      ? 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-sky-400 scale-105 shadow-[0_0_30px_rgba(16,185,129,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
+                      : 'bg-gradient-to-tr from-brand-600 via-indigo-500 to-sky-500 hover:scale-[1.04] active:scale-95 shadow-[0_6px_20px_rgba(59,130,246,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)]'
+                  }`}
+                  aria-label={
+                    isRecording
+                      ? 'Tap to send your spoken message'
+                      : 'Tap to start speaking, then tap again to send'
+                  }
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-white/95" />
+                  ) : isRecording ? (
+                    <Send className="w-5 h-5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                  ) : (
+                    <Mic className="w-6 h-6 text-white transition-transform duration-300" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <span className="mt-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 select-none">
@@ -1263,32 +1388,34 @@ export const RoleplayStage: React.FC<Props> = ({
                 ? 'Thinking…'
                 : isRecording
                 ? isHolding
-                  ? 'Release to finish'
-                  : 'Tap to finish (or pause)'
-                : 'Hold or tap to speak'}
+                  ? 'Release to send'
+                  : 'Tap green button to send (or ✕ to cancel)'
+                : 'Tap mic to speak'}
             </span>
           </div>
 
           {/* Right: Finish Roleplay Button */}
-          <button
-            onClick={endRoleplay}
-            disabled={isAnalyzingScorecard || isProcessing || userTurnsCount === 0}
-            className="flex flex-col items-center gap-0.5 w-20 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-35 transition active:scale-95"
-            title={userTurnsCount >= 1 ? 'Finish & view scorecard' : 'Speak at least once to finish'}
-          >
-            <span
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
-                userTurnsCount >= 3
-                  ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
-                  : userTurnsCount >= 1
-                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-slate-100 dark:bg-slate-800/90 text-slate-400 dark:text-slate-500'
-              }`}
+          <div className="flex justify-end w-24">
+            <button
+              onClick={endRoleplay}
+              disabled={isAnalyzingScorecard || isProcessing || userTurnsCount === 0}
+              className="flex flex-col items-center gap-0.5 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-35 transition active:scale-95"
+              title={userTurnsCount >= 1 ? 'Finish & view scorecard' : 'Speak at least once to finish'}
             >
-              <Flag className="w-4 h-4" />
-            </span>
-            <span className="text-[10px] font-semibold">Finish</span>
-          </button>
+              <span
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                  userTurnsCount >= 3
+                    ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+                    : userTurnsCount >= 1
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-slate-100 dark:bg-slate-800/90 text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                <Flag className="w-4 h-4" />
+              </span>
+              <span className="text-[10px] font-semibold">Finish</span>
+            </button>
+          </div>
         </div>
       </div>
 
