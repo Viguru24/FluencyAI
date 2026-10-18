@@ -613,35 +613,22 @@ export function playChime(type: 'success' | 'tap' | 'streak' | 'micStart' | 'mic
     const now = ctx.currentTime;
 
     if (type === 'micStart') {
-      // Silky ascending harmonic bloom (warm fifth/ninth shimmer: F4 -> C5 -> G5)
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1800, now);
-      filter.frequency.exponentialRampToValueAtTime(3200, now + 0.22);
-      filter.connect(ctx.destination);
+      // Ultra-short, tactile micro-cue (40ms) with gentle low-amplitude decay.
+      // Finishes in < 45ms so it never interferes with speech or triggers browser Acoustic Echo Cancellation (AEC) ducking!
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.035);
 
-      const partials = [
-        { freqStart: 440, freqEnd: 587.33, delay: 0, dur: 0.28, amp: 0.09, wave: 'sine' as OscillatorType },
-        { freqStart: 659.25, freqEnd: 880, delay: 0.035, dur: 0.32, amp: 0.065, wave: 'sine' as OscillatorType },
-        { freqStart: 880, freqEnd: 1174.66, delay: 0.06, dur: 0.34, amp: 0.03, wave: 'triangle' as OscillatorType },
-      ];
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.035, now + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.042);
 
-      partials.forEach(({ freqStart, freqEnd, delay, dur, amp, wave }) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = wave;
-        osc.frequency.setValueAtTime(freqStart, now + delay);
-        osc.frequency.exponentialRampToValueAtTime(freqEnd, now + delay + 0.14);
-
-        gain.gain.setValueAtTime(0.0001, now + delay);
-        gain.gain.linearRampToValueAtTime(amp, now + delay + 0.018);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + dur);
-
-        osc.connect(gain);
-        gain.connect(filter);
-        osc.start(now + delay);
-        osc.stop(now + delay + dur + 0.02);
-      });
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.045);
     } else if (type === 'micStop') {
       // Silky warm resolving cadence (gentle descending harmonic settle)
       const filter = ctx.createBiquadFilter();

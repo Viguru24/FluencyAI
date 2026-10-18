@@ -57,7 +57,7 @@ export function useVoiceCapture({
 
   const cleanupAudio = useCallback(() => {
     stopSpeaking();
-    vizRef.current.stopMicrophone();
+    vizRef.current.stopMicrophone(true);
     recorderRef.current.stop().catch(() => {});
     recRef.current?.stop();
     isInitializingMicRef.current = false;
@@ -70,6 +70,8 @@ export function useVoiceCapture({
   }, [updateLivePreview]);
 
   useEffect(() => {
+    // Pre-warm microphone stream in the background if available
+    vizRef.current.prewarm().catch(() => {});
     return () => {
       cleanupAudio();
     };
@@ -108,7 +110,8 @@ export function useVoiceCapture({
         console.warn('[useVoiceCapture] Recorder stop error:', e);
       }
 
-      vizRef.current.stopMicrophone();
+      // Keep stream warm between turns for zero-latency restart
+      vizRef.current.stopMicrophone(false);
 
       let heard = '';
       if (recRef.current) {
@@ -166,6 +169,25 @@ export function useVoiceCapture({
     updateLivePreview('');
     playChime('micStart');
 
+    // CRITICAL: Start SpeechRecognition IMMEDIATELY at tick 0 on user gesture!
+    // Never await getUserMedia or MediaRecorder before starting speech recognition.
+    recRef.current = isRecognitionSupported()
+      ? startRecognition({
+          lang,
+          silenceTimeoutMs: 2300,
+          onInterim: (text) => {
+            updateLivePreview(text);
+            hasDetectedVoiceRef.current = true;
+            lastVoiceTimeRef.current = Date.now();
+          },
+          onSilenceTimeout: () => {
+            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
+              stopRecording();
+            }
+          },
+        })
+      : null;
+
     const ok = await vizRef.current.startMicrophone((newBands) => {
       setBands(newBands);
       if (!isRecordingRef.current) return;
@@ -194,6 +216,8 @@ export function useVoiceCapture({
       }
     });
     if (!ok) {
+      recRef.current?.stop();
+      recRef.current = null;
       isInitializingMicRef.current = false;
       isRecordingRef.current = false;
       setIsRecording(false);
@@ -209,7 +233,9 @@ export function useVoiceCapture({
     if (pendingStopRef.current) {
       pendingStopRef.current = false;
       isInitializingMicRef.current = false;
-      vizRef.current.stopMicrophone();
+      vizRef.current.stopMicrophone(false);
+      recRef.current?.stop();
+      recRef.current = null;
       isRecordingRef.current = false;
       setIsRecording(false);
       return;
@@ -220,23 +246,6 @@ export function useVoiceCapture({
     recordingStartedAtRef.current = Date.now();
     isInitializingMicRef.current = false;
     isRecordingRef.current = true;
-
-    recRef.current = isRecognitionSupported()
-      ? startRecognition({
-          lang,
-          silenceTimeoutMs: 2300,
-          onInterim: (text) => {
-            updateLivePreview(text);
-            hasDetectedVoiceRef.current = true;
-            lastVoiceTimeRef.current = Date.now();
-          },
-          onSilenceTimeout: () => {
-            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
-              stopRecording();
-            }
-          },
-        })
-      : null;
 
     if (pendingStopRef.current) {
       pendingStopRef.current = false;

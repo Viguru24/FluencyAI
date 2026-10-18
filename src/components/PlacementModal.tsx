@@ -256,22 +256,10 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
     stopSpeaking();
     setIsAiSpeaking(false);
     playChime('tap');
-
-    // 1. Request microphone and start audio visualizer
-    const ok = await vizRef.current.startMicrophone((newBands: number[]) => setBands(newBands));
-    if (!ok) {
-      setMicError('Microphone access was blocked or is unavailable. Please allow microphone permissions in your browser or switch to Type mode.');
-      return;
-    }
-
-    // 2. Start audio recording via MediaRecorder for guaranteed AI fallback
-    const stream = vizRef.current.getStream();
-    await recorderRef.current.start(stream);
-
     setIsRecording(true);
     liveTranscriptRef.current = '';
 
-    // 3. Start browser Web Speech API in parallel for live instant text preview if supported
+    // 1. Start browser Web Speech API IMMEDIATELY at tick 0 for zero speech latency
     if (isRecognitionSupported()) {
       try {
         recRef.current = startRecognition({
@@ -293,6 +281,20 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
         console.warn('[PlacementModal] Could not start speech recognition:', e);
       }
     }
+
+    // 2. Request microphone and start audio visualizer
+    const ok = await vizRef.current.startMicrophone((newBands: number[]) => setBands(newBands));
+    if (!ok) {
+      recRef.current?.stop();
+      recRef.current = null;
+      setIsRecording(false);
+      setMicError('Microphone access was blocked or is unavailable. Please allow microphone permissions in your browser or switch to Type mode.');
+      return;
+    }
+
+    // 3. Start audio recording via MediaRecorder for guaranteed AI fallback
+    const stream = vizRef.current.getStream();
+    await recorderRef.current.start(stream);
   };
 
   const handleNextStep = async () => {

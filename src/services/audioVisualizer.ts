@@ -9,17 +9,14 @@ export class AudioVisualizerController {
   private isListening: boolean = false;
   private animationFrameId: number | null = null;
 
-  async startMicrophone(onAudioData?: (normalizedAmplitudes: number[]) => void): Promise<boolean> {
+  async prewarm(): Promise<MediaStream | null> {
     try {
-      if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
-        diagnosticLogger.warn('MIC', 'navigator.mediaDevices.getUserMedia is unavailable');
-        return false;
+      if (this.mediaStream && this.mediaStream.active && this.mediaStream.getAudioTracks().some((t) => t.readyState === 'live')) {
+        return this.mediaStream;
       }
-
-      // Stop any existing session
-      this.stopMicrophone();
-
-      diagnosticLogger.log('MIC', 'Requesting microphone access via getUserMedia...');
+      if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
+        return null;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -27,35 +24,88 @@ export class AudioVisualizerController {
           autoGainControl: true,
         },
       });
-
       this.mediaStream = stream;
-      const tracks = stream.getAudioTracks();
-      diagnosticLogger.log('MIC', `Microphone stream acquired (${tracks.length} track(s))`, {
-        label: tracks[0]?.label,
-        enabled: tracks[0]?.enabled,
-        muted: tracks[0]?.muted,
+      this.initAudioGraph(stream);
+      // Mute tracks while idle so no background audio is processed
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
       });
+      diagnosticLogger.log('MIC', 'Microphone pre-warmed and ready for immediate capture');
+      return stream;
+    } catch (err) {
+      // Permission blocked or user hasn't interacted yet; will prompt on user gesture
+      return null;
+    }
+  }
 
+  private initAudioGraph(stream: MediaStream) {
+    if (!this.audioContext || this.audioContext.state === 'closed') {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.audioContext = new AudioCtx();
-      
-      if (this.audioContext.state === 'suspended') {
-        diagnosticLogger.log('AUDIO', 'AudioContext suspended, resuming for user gesture...');
-        await this.audioContext.resume();
-      }
-      diagnosticLogger.log('AUDIO', `AudioContext running (sampleRate: ${this.audioContext.sampleRate})`);
-
+    }
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().catch(() => {});
+    }
+    if (!this.analyser) {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 64;
       this.analyser.smoothingTimeConstant = 0.8;
+    }
+    if (!this.sourceNode) {
+      try {
+        this.sourceNode = this.audioContext.createMediaStreamSource(stream);
+        this.sourceNode.connect(this.analyser);
+      } catch (e) {
+        diagnosticLogger.warn('MIC', 'Could not create MediaStreamSource', e);
+      }
+    }
+  }
 
-      this.sourceNode = this.audioContext.createMediaStreamSource(stream);
-      this.sourceNode.connect(this.analyser);
+  async startMicrophone(onAudioData?: (normalizedAmplitudes: number[]) => void): Promise<boolean> {
+    try {
+      if (typeof window === 'undefined') {
+        return false;
+      }
+
+      // Check if we already have an active, usable stream
+      let stream = this.mediaStream;
+      const isStreamActive = Boolean(
+        stream && stream.active && stream.getAudioTracks().some((t) => t.readyState === 'live')
+      );
+
+      if (!isStreamActive) {
+        if (!navigator?.mediaDevices?.getUserMedia) {
+          diagnosticLogger.warn('MIC', 'navigator.mediaDevices.getUserMedia is unavailable');
+          return false;
+        }
+
+        diagnosticLogger.log('MIC', 'Requesting microphone access via getUserMedia...');
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+        this.mediaStream = stream;
+        diagnosticLogger.log('MIC', 'Acquired fresh microphone stream');
+      }
+
+      // Unmute/enable all audio tracks instantly
+      stream!.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+
+      this.initAudioGraph(stream!);
 
       this.isListening = true;
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
+      }
 
       // Real-time animation loop
-      const bufferLength = this.analyser.frequencyBinCount;
+      const bufferLength = this.analyser!.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
       const updateLoop = () => {
@@ -64,7 +114,6 @@ export class AudioVisualizerController {
         this.analyser.getByteFrequencyData(dataArray);
 
         if (onAudioData) {
-          // Normalize 0..255 to 0..1 range across ~16 representative frequency bands
           const bands: number[] = [];
           const step = Math.max(1, Math.floor(bufferLength / 16));
           for (let i = 0; i < 16; i++) {
@@ -82,12 +131,12 @@ export class AudioVisualizerController {
     } catch (err) {
       diagnosticLogger.error('MIC', 'Microphone access blocked or failed in getUserMedia', err);
       console.warn('[AudioVisualizer] Microphone access blocked or unavailable:', err);
-      this.stopMicrophone();
+      this.stopMicrophone(true);
       return false;
     }
   }
 
-  stopMicrophone() {
+  stopMicrophone(releaseHardware: boolean = false) {
     this.isListening = false;
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
@@ -95,26 +144,36 @@ export class AudioVisualizerController {
     }
 
     if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach((track) => track.stop());
-      this.mediaStream = null;
+      if (releaseHardware) {
+        this.mediaStream.getTracks().forEach((track) => track.stop());
+        this.mediaStream = null;
+      } else {
+        // Between turns: mute audio tracks so no background data is captured, but maintain the live hardware stream for 0ms restart
+        this.mediaStream.getAudioTracks().forEach((track) => {
+          track.enabled = false;
+        });
+      }
     }
 
-    if (this.sourceNode) {
-      try {
-        this.sourceNode.disconnect();
-      } catch {
-        /* ignore */
+    if (releaseHardware) {
+      if (this.sourceNode) {
+        try {
+          this.sourceNode.disconnect();
+        } catch {
+          /* ignore */
+        }
+        this.sourceNode = null;
       }
-      this.sourceNode = null;
-    }
 
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      try {
-        this.audioContext.close();
-      } catch {
-        /* ignore */
+      if (this.audioContext && this.audioContext.state !== 'closed') {
+        try {
+          this.audioContext.close();
+        } catch {
+          /* ignore */
+        }
+        this.audioContext = null;
       }
-      this.audioContext = null;
+      this.analyser = null;
     }
   }
 
@@ -122,8 +181,8 @@ export class AudioVisualizerController {
     return this.startMicrophone(onAudioData);
   }
 
-  stop() {
-    this.stopMicrophone();
+  stop(releaseHardware: boolean = false) {
+    this.stopMicrophone(releaseHardware);
   }
 
   getStream(): MediaStream | null {

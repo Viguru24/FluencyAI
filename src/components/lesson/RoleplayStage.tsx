@@ -310,15 +310,17 @@ export const RoleplayStage: React.FC<Props> = ({
     [plan.aiTurns, speakAi]
   );
 
-  // Kick off with James's opening line
+  // Kick off with James's opening line & prewarm mic
   useEffect(() => {
+    // Pre-warm the microphone stream in the background if permissions are already granted
+    vizRef.current.prewarm().catch(() => {});
     const t = window.setTimeout(() => pushAiTurn(0), 500);
     const viz = vizRef.current;
     const recorder = recorderRef.current;
     return () => {
       window.clearTimeout(t);
       stopSpeaking();
-      viz.stopMicrophone();
+      viz.stopMicrophone(true);
       recorder.stop();
       recRef.current?.stop();
     };
@@ -346,6 +348,36 @@ export const RoleplayStage: React.FC<Props> = ({
     playChime('micStart');
 
     diagnosticLogger.log('VOICE', 'startRecording initiated by user gesture');
+
+    // CRITICAL: Start SpeechRecognition IMMEDIATELY at tick 0 on user gesture!
+    // Never await getUserMedia or MediaRecorder before starting speech recognition.
+    // Starting it synchronously guarantees Web Speech API begins listening without losing the first word.
+    recRef.current = isRecognitionSupported()
+      ? startRecognition({
+          lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
+          silenceTimeoutMs: 2300,
+          onInterim: (text) => {
+            livePreviewRef.current = text;
+            setLivePreview(text);
+            hasDetectedVoiceRef.current = true;
+            lastVoiceTimeRef.current = Date.now();
+          },
+          onSilenceTimeout: () => {
+            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
+              stopRecording();
+            }
+          },
+          onSpeechResults: (eventResults) => {
+            const extracted = extractWordsFromSpeechResults(eventResults);
+            const lowConfWords = extracted
+              .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
+              .map((w) => w.word);
+            if (lowConfWords.length > 0) {
+              setLiveLowConfidenceWords(Array.from(new Set(lowConfWords)));
+            }
+          },
+        })
+      : null;
 
     const ok = await vizRef.current.startMicrophone((newBands) => {
       setBands(newBands);
@@ -383,6 +415,8 @@ export const RoleplayStage: React.FC<Props> = ({
 
     if (!ok) {
       diagnosticLogger.error('VOICE', 'Microphone start failed or permission denied in viz.startMicrophone');
+      recRef.current?.stop();
+      recRef.current = null;
       isInitializingMicRef.current = false;
       isRecordingRef.current = false;
       setIsRecording(false);
@@ -394,7 +428,9 @@ export const RoleplayStage: React.FC<Props> = ({
     if (pendingStopRef.current) {
       pendingStopRef.current = false;
       isInitializingMicRef.current = false;
-      vizRef.current.stopMicrophone();
+      vizRef.current.stopMicrophone(false);
+      recRef.current?.stop();
+      recRef.current = null;
       isRecordingRef.current = false;
       setIsRecording(false);
       return;
@@ -405,33 +441,6 @@ export const RoleplayStage: React.FC<Props> = ({
     recordingStartedAtRef.current = Date.now();
     isInitializingMicRef.current = false;
     isRecordingRef.current = true;
-
-    recRef.current = isRecognitionSupported()
-      ? startRecognition({
-          lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
-          silenceTimeoutMs: 2300,
-          onInterim: (text) => {
-            livePreviewRef.current = text;
-            setLivePreview(text);
-            hasDetectedVoiceRef.current = true;
-            lastVoiceTimeRef.current = Date.now();
-          },
-          onSilenceTimeout: () => {
-            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
-              stopRecording();
-            }
-          },
-          onSpeechResults: (eventResults) => {
-            const extracted = extractWordsFromSpeechResults(eventResults);
-            const lowConfWords = extracted
-              .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
-              .map((w) => w.word);
-            if (lowConfWords.length > 0) {
-              setLiveLowConfidenceWords(Array.from(new Set(lowConfWords)));
-            }
-          },
-        })
-      : null;
 
     if (pendingStopRef.current) {
       pendingStopRef.current = false;
@@ -466,7 +475,8 @@ export const RoleplayStage: React.FC<Props> = ({
         console.warn('[RoleplayStage] Failed to stop audio recorder:', e);
       }
 
-      vizRef.current.stopMicrophone();
+      // Keep stream warm between turns for zero-latency restart
+      vizRef.current.stopMicrophone(false);
 
       let heard: string | null = null;
       let turnLowConfidenceWords: string[] = [];
@@ -727,7 +737,7 @@ export const RoleplayStage: React.FC<Props> = ({
 
   const endRoleplay = async () => {
     stopSpeaking();
-    vizRef.current.stopMicrophone();
+    vizRef.current.stopMicrophone(true);
     recorderRef.current.stop();
     recRef.current?.stop();
 
