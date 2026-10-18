@@ -17,9 +17,9 @@ import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession, AIPersona } 
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
 import { playChime } from '../services/speech';
 import { getLLMConfig, testGatewayConnection, type LLMConfig } from '../services/llmConfig';
-import { AIGatewaySettingsModal } from './AIGatewaySettingsModal';
-import { UserProfileModal } from './UserProfileModal';
-import { DiagnosticLogsModal } from './DiagnosticLogsModal';
+const AIGatewaySettingsModal = React.lazy(() => import('./AIGatewaySettingsModal').then((m) => ({ default: m.AIGatewaySettingsModal })));
+const UserProfileModal = React.lazy(() => import('./UserProfileModal').then((m) => ({ default: m.UserProfileModal })));
+const DiagnosticLogsModal = React.lazy(() => import('./DiagnosticLogsModal').then((m) => ({ default: m.DiagnosticLogsModal })));
 import { UserAvatar } from './UserAvatar';
 import { ThemeToggle } from './ThemeToggle';
 import { authService } from '../services/authService';
@@ -765,34 +765,42 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* AI Gateway Settings Modal */}
       {showGatewayModal && (
-        <AIGatewaySettingsModal
-          isOpen={showGatewayModal}
-          onClose={closeGatewayModal}
-          onConnectionStatusChange={(ok) => setIsGatewayConnected(ok)}
-        />
+        <React.Suspense fallback={null}>
+          <AIGatewaySettingsModal
+            isOpen={showGatewayModal}
+            onClose={closeGatewayModal}
+            onConnectionStatusChange={(ok) => setIsGatewayConnected(ok)}
+          />
+        </React.Suspense>
       )}
 
       {/* User Profile, Cloud Sync & AI Gateway Settings Modal */}
       {showProfileModal && (
-        <UserProfileModal
-          isOpen={showProfileModal}
-          onClose={closeProfileModal}
-          progress={progress}
-          onUpdateProgress={onUpdateProgress}
-          onOpenPlacement={onOpenPlacement}
-          onOpenGatewaySettings={openGatewayModal}
-          onOpenPricing={onOpenPricing}
-          onOpenOnboarding={onOpenOnboarding}
-          isGatewayConnected={isGatewayConnected}
-          llmModelLabel={llmConfig.model}
-        />
+        <React.Suspense fallback={null}>
+          <UserProfileModal
+            isOpen={showProfileModal}
+            onClose={closeProfileModal}
+            progress={progress}
+            onUpdateProgress={onUpdateProgress}
+            onOpenPlacement={onOpenPlacement}
+            onOpenGatewaySettings={openGatewayModal}
+            onOpenPricing={onOpenPricing}
+            onOpenOnboarding={onOpenOnboarding}
+            isGatewayConnected={isGatewayConnected}
+            llmModelLabel={llmConfig.model}
+          />
+        </React.Suspense>
       )}
 
       {/* Device & Voice Diagnostic Logs Modal */}
-      <DiagnosticLogsModal
-        isOpen={showLogsModal}
-        onClose={() => setShowLogsModal(false)}
-      />
+      {showLogsModal && (
+        <React.Suspense fallback={null}>
+          <DiagnosticLogsModal
+            isOpen={showLogsModal}
+            onClose={() => setShowLogsModal(false)}
+          />
+        </React.Suspense>
+      )}
     </>
   );
 };

@@ -11,7 +11,7 @@ export interface LLMConfig {
 }
 
 export const STORAGE_KEY_LLM_CONFIG = 'fluency_llm_config';
-export const DEFAULT_FREELLM_BASE_URL = 'http://127.0.0.1:31415/v1';
+export const DEFAULT_FREELLM_BASE_URL = 'https://api.cosmowhisper.com/v1';
 export const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 export const AVAILABLE_MODELS_FREELLM = [
@@ -99,7 +99,20 @@ export function getLLMConfig(): LLMConfig {
 
   const apiKey = sanitizeApiKey(candidateKey || DEFAULT_FREELLM_KEY);
   const envBaseUrl = (import.meta as any).env?.VITE_FREELLM_BASE_URL;
-  const baseUrl = (saved.baseUrl || envBaseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
+  let baseUrl = (saved.baseUrl || envBaseUrl || DEFAULT_FREELLM_BASE_URL).trim().replace(/\/+$/, '');
+
+  // Prevent mixed-content or unreachable private LAN URLs when app is loaded over HTTPS (public testing)
+  if (typeof window !== 'undefined' && window.location?.protocol === 'https:') {
+    if (
+      baseUrl.startsWith('http://192.168.') ||
+      baseUrl.startsWith('http://127.0.0.1') ||
+      baseUrl.startsWith('http://localhost') ||
+      baseUrl.startsWith('http://10.') ||
+      baseUrl.startsWith('http://172.')
+    ) {
+      baseUrl = 'https://api.cosmowhisper.com/v1';
+    }
+  }
   
   let provider: LLMProvider = 'freellmapi';
   if (apiKey.startsWith('freellma')) {
@@ -209,24 +222,26 @@ export function getCandidateGatewayUrls(base?: string): string[] {
     addUnique(`${origin}/v1`);
     addUnique(`${origin}/freellm-gateway/v1`);
 
-    // 3. Remote HTTPS production fallback if accessed from external origins (e.g. GitHub Pages)
-    if (isHttps && !origin.includes('cosmowhisper.com')) {
+    // 3. Remote HTTPS production fallback
+    if (isHttps) {
       addUnique('https://api.cosmowhisper.com/v1');
       addUnique('https://api.cosmowhisper.com/fluency/v1');
       addUnique('https://api.cosmowhisper.com/freellm-gateway/v1');
     }
   }
 
-  // 4. Primary configured URL (e.g. http://192.168.1.28:3001/v1 or http://127.0.0.1:31415/v1)
+  // 4. Primary configured URL (e.g. https://api.cosmowhisper.com/v1 or http://127.0.0.1:31415/v1)
   addUnique(primary);
 
-  // 5. Local LAN and loopback fallbacks
-  addUnique('http://192.168.1.28:3001/v1');
-  addUnique('http://127.0.0.1:31415/v1');
-  if (primary.includes('127.0.0.1:31415')) {
-    addUnique(primary.replace('127.0.0.1:31415', 'localhost:31415'));
-  } else if (primary.includes('localhost:31415')) {
-    addUnique(primary.replace('localhost:31415', '127.0.0.1:31415'));
+  // 5. Local LAN and loopback fallbacks (only added if not on HTTPS to prevent Mixed Content)
+  if (typeof window === 'undefined' || window.location?.protocol !== 'https:') {
+    addUnique('http://192.168.1.28:3001/v1');
+    addUnique('http://127.0.0.1:31415/v1');
+    if (primary.includes('127.0.0.1:31415')) {
+      addUnique(primary.replace('127.0.0.1:31415', 'localhost:31415'));
+    } else if (primary.includes('localhost:31415')) {
+      addUnique(primary.replace('localhost:31415', '127.0.0.1:31415'));
+    }
   }
 
   return candidates;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Sparkles,
   Volume2,
@@ -116,11 +116,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   );
   const [auditioningId, setAuditioningId] = useState<PersonaId | null>(null);
 
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setStep(1);
     }
-  }, [isOpen]);
+  }
 
   if (!isOpen) return null;
 
@@ -186,8 +188,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const currentCoach = ALL_PERSONAS[selectedPersonaId] || ALL_PERSONAS.james;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden transition-all">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-xl max-h-[88dvh] sm:max-h-[85dvh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden transition-all pb-safe sm:pb-0">
+        {/* Mobile Drag Indicator */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mt-2.5 sm:hidden" />
         {/* Top Progress Header */}
         <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">

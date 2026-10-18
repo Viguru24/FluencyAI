@@ -216,8 +216,9 @@ export async function requestStructuredJSON<T = any>(params: {
       } catch {
         detailedMsg = errText.slice(0, 200) || detailedMsg;
       }
+      console.warn(`[aiClient] FreeLLMAPI error ${status}:`, detailedMsg);
       if (toastOnErrorTitle) {
-        toast.error(`Error (${status}): ${detailedMsg}`, toastOnErrorTitle);
+        toast.error(`We couldn't connect to the speech coach right now. Please check your internet connection.`, toastOnErrorTitle);
       }
       throw new Error(`FreeLLMAPI status ${status}: ${detailedMsg}`);
     }
@@ -276,8 +277,9 @@ export async function requestStructuredJSON<T = any>(params: {
       } catch {
         detailedMsg = errText.slice(0, 200) || detailedMsg;
       }
+      console.warn(`[aiClient] Gemini error ${response.status}:`, detailedMsg);
       if (toastOnErrorTitle) {
-        toast.error(`Gemini Error (${response.status}): ${detailedMsg}`, toastOnErrorTitle);
+        toast.error(`We couldn't reach the coaching server right now. Please check your internet connection and try again.`, toastOnErrorTitle);
       }
       throw new Error(`Gemini status ${response.status}: ${detailedMsg}`);
     }

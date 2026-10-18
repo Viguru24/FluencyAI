@@ -166,8 +166,7 @@ STRICT OUTPUT RULES:
         } catch {
           detailedMsg = errText.slice(0, 200) || detailedMsg;
         }
-
-        toast.error(`FreeLLMAPI Error (${status}): ${detailedMsg}`, 'FreeLLMAPI Router Issue');
+        console.warn(`[tutorChat] FreeLLMAPI responded with ${status}: ${detailedMsg}`);
         throw new Error(`FreeLLMAPI status ${status}: ${detailedMsg}`);
       }
 
@@ -262,8 +261,7 @@ STRICT OUTPUT RULES:
         } catch {
           detailedMsg = errText.slice(0, 200) || detailedMsg;
         }
-
-        toast.error(`Gemini API Error (${response.status}): ${detailedMsg}`, 'AI Brain Connection Issue');
+        console.warn(`[tutorChat] Gemini API error (${response.status}): ${detailedMsg}`);
         throw new Error(`Gemini status ${response.status}: ${detailedMsg}`);
       }
 
@@ -277,12 +275,6 @@ STRICT OUTPUT RULES:
     }
   } catch (err: any) {
     console.warn('[tutorChat] Live reply fallback used due to error:', err);
-    if (!err?.message?.includes('status')) {
-      toast.error(
-        `Network / Connection Error: ${err?.message || 'Check your internet or FreeLLMAPI gateway'}`,
-        'AI Request Failed'
-      );
-    }
     const fallbackIdx = Math.min(userTurnCount, fallbackReplies.length - 1);
     const lastUserMsg = conversationHistory[conversationHistory.length - 1];
     const isHesitation = lastUserMsg?.speaker === 'user' && lastUserMsg.text.includes('Silence / hesitated');

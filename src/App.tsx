@@ -1,22 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Navbar } from './components/Navbar';
 import { DailyGoalCard } from './components/DailyGoalCard';
 import { RoleplayList } from './components/RoleplayList';
-import { PWAInstallGuideModal } from './components/PWAInstallGuideModal';
 import { LessonFlow } from './components/lesson/LessonFlow';
-import { JamesTestAreaModal } from './components/JamesTestAreaModal';
-import { PlacementModal } from './components/PlacementModal';
-import { PersonaSelectorModal } from './components/PersonaSelectorModal';
-import { SRSFlashcardModal } from './components/SRSFlashcardModal';
-import { CustomScenarioModal } from './components/CustomScenarioModal';
-import { RapidWarmupModal } from './components/RapidWarmupModal';
 import { OnboardingModal } from './components/OnboardingModal';
-import { PricingModal } from './components/PricingModal';
 import { roleplayScenarios } from './data/mockData';
 import { getDailyLessonPlan, getLessonPlanForScenario } from './data/lessonPlans';
 import { XPToastContainer } from './components/XPToast';
-import { TierUpCelebrationModal } from './components/TierUpCelebrationModal';
-import { TierRoadmapModal } from './components/TierRoadmapModal';
+
+const JamesTestAreaModal = lazy(() => import('./components/JamesTestAreaModal').then((m) => ({ default: m.JamesTestAreaModal })));
+const PlacementModal = lazy(() => import('./components/PlacementModal').then((m) => ({ default: m.PlacementModal })));
+const PersonaSelectorModal = lazy(() => import('./components/PersonaSelectorModal').then((m) => ({ default: m.PersonaSelectorModal })));
+const SRSFlashcardModal = lazy(() => import('./components/SRSFlashcardModal').then((m) => ({ default: m.SRSFlashcardModal })));
+const CustomScenarioModal = lazy(() => import('./components/CustomScenarioModal').then((m) => ({ default: m.CustomScenarioModal })));
+const RapidWarmupModal = lazy(() => import('./components/RapidWarmupModal').then((m) => ({ default: m.RapidWarmupModal })));
+const PricingModal = lazy(() => import('./components/PricingModal').then((m) => ({ default: m.PricingModal })));
+const TierRoadmapModal = lazy(() => import('./components/TierRoadmapModal').then((m) => ({ default: m.TierRoadmapModal })));
+const TierUpCelebrationModal = lazy(() => import('./components/TierUpCelebrationModal').then((m) => ({ default: m.TierUpCelebrationModal })));
+const PWAInstallGuideModal = lazy(() => import('./components/PWAInstallGuideModal').then((m) => ({ default: m.PWAInstallGuideModal })));
+
 import type { XPCalculationResult } from './store/rewardSystem';
 import { useUserStore } from './store/userStore';
 import type {
@@ -537,95 +539,110 @@ export function App() {
       )}
 
       {/* Dynamic Multi-Persona Voice Coach Selector */}
-      {isPersonaSelectorOpen && (
-        <PersonaSelectorModal
-          isOpen={isPersonaSelectorOpen}
-          onClose={closeAllToHome}
-          activePersona={activePersona}
-          onSelectPersona={selectPersona}
-        />
-      )}
+      {/* Suspense wrapper for lazy-loaded secondary modals */}
+      <Suspense fallback={null}>
+        {/* Dynamic Multi-Persona Voice Coach Selector */}
+        {isPersonaSelectorOpen && (
+          <PersonaSelectorModal
+            isOpen={isPersonaSelectorOpen}
+            onClose={closeAllToHome}
+            activePersona={activePersona}
+            onSelectPersona={selectPersona}
+          />
+        )}
 
-      {/* Saved Phrases & Flashcards Drill Studio */}
-      {isSRSOpen && (
-        <SRSFlashcardModal
-          isOpen={isSRSOpen}
-          onClose={closeAllToHome}
-          onRewardXP={rewardXP}
-          persona={activePersona}
-        />
-      )}
+        {/* Saved Phrases & Flashcards Drill Studio */}
+        {isSRSOpen && (
+          <SRSFlashcardModal
+            isOpen={isSRSOpen}
+            onClose={closeAllToHome}
+            onRewardXP={rewardXP}
+            persona={activePersona}
+          />
+        )}
 
-      {/* AI-Powered Real-World Scenario Builder */}
-      {isCustomScenarioOpen && (
-        <CustomScenarioModal
-          isOpen={isCustomScenarioOpen}
-          onClose={closeAllToHome}
-          activePersona={activePersona}
-          userLevel={progress.level}
-          nativeLanguage={progress.nativeLanguage}
-          onLaunchScenario={handleLaunchCustomScenario}
-        />
-      )}
+        {/* AI-Powered Real-World Scenario Builder */}
+        {isCustomScenarioOpen && (
+          <CustomScenarioModal
+            isOpen={isCustomScenarioOpen}
+            onClose={closeAllToHome}
+            activePersona={activePersona}
+            userLevel={progress.level}
+            nativeLanguage={progress.nativeLanguage}
+            onLaunchScenario={handleLaunchCustomScenario}
+          />
+        )}
 
-      {/* 60-Second Rapid-Fire Spoken Warmup */}
-      {isRapidWarmupOpen && (
-        <RapidWarmupModal
-          isOpen={isRapidWarmupOpen}
-          onClose={closeAllToHome}
-          onRewardXP={rewardXP}
-          persona={activePersona}
-        />
-      )}
+        {/* 60-Second Rapid-Fire Spoken Warmup */}
+        {isRapidWarmupOpen && (
+          <RapidWarmupModal
+            isOpen={isRapidWarmupOpen}
+            onClose={closeAllToHome}
+            onRewardXP={rewardXP}
+            persona={activePersona}
+          />
+        )}
 
-      {/* Interactive CEFR Placement Assessment Modal */}
-      {isPlacementOpen && (
-        <PlacementModal
-          isOpen={isPlacementOpen}
-          onClose={closeAllToHome}
-          onCompletePlacement={handleCompletePlacement}
-          onSkipPlacement={handleDismissPlacement}
-          audioSpeed={progress.audioSpeed}
-          initialLevel={progress.level}
-        />
-      )}
+        {/* Interactive CEFR Placement Assessment Modal */}
+        {isPlacementOpen && (
+          <PlacementModal
+            isOpen={isPlacementOpen}
+            onClose={closeAllToHome}
+            onCompletePlacement={handleCompletePlacement}
+            onSkipPlacement={handleDismissPlacement}
+            audioSpeed={progress.audioSpeed}
+            initialLevel={progress.level}
+          />
+        )}
 
-      {/* Free Talk with Active Coach Modal */}
-      {isFreeTalkOpen && (
-        <JamesTestAreaModal
-          isOpen={isFreeTalkOpen}
-          onClose={closeAllToHome}
-          audioSpeed={progress.audioSpeed}
-          persona={activePersona}
-          userLevel={progress.level}
-          onOpenLessonRoleplay={() => openDailyLesson('roleplay')}
-        />
-      )}
+        {/* Free Talk with Active Coach Modal */}
+        {isFreeTalkOpen && (
+          <JamesTestAreaModal
+            isOpen={isFreeTalkOpen}
+            onClose={closeAllToHome}
+            audioSpeed={progress.audioSpeed}
+            persona={activePersona}
+            userLevel={progress.level}
+            onOpenLessonRoleplay={() => openDailyLesson('roleplay')}
+          />
+        )}
 
-      {/* PWA Installation Guide Modal */}
-      {isInstallGuideOpen && <PWAInstallGuideModal onClose={closeAllToHome} />}
+        {/* PWA Installation Guide Modal */}
+        {isInstallGuideOpen && <PWAInstallGuideModal onClose={closeAllToHome} />}
+
+        {/* Tier Promotion & Daily Goal Celebration Modal */}
+        <TierUpCelebrationModal
+          onOpenRoadmap={() => {
+            setIsRoadmapOpen(true);
+            navigationHistory.pushView('roadmap');
+          }}
+          onOpenStage2Roleplay={() => openDailyLesson('roleplay')}
+        />
+
+        {/* Full Fluency Journey & Rewards Roadmap Modal */}
+        <TierRoadmapModal
+          isOpen={isRoadmapOpen}
+          onClose={closeAllToHome}
+          onOpenStage2Roleplay={() => {
+            closeAllToHome();
+            openDailyLesson('roleplay');
+          }}
+        />
+
+        {/* Stripe Pricing & Sales Page Modal */}
+        {isPricingOpen && (
+          <PricingModal
+            isOpen={isPricingOpen}
+            onClose={closeAllToHome}
+            onSuccess={(planTier) => {
+              toast.success(`Welcome to FluencyAI ${planTier.toUpperCase()}!`, 'Plan Activated');
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* Floating Micro-Celebration XP Toast Container */}
       <XPToastContainer />
-
-      {/* Tier Promotion & Daily Goal Celebration Modal */}
-      <TierUpCelebrationModal
-        onOpenRoadmap={() => {
-          setIsRoadmapOpen(true);
-          navigationHistory.pushView('roadmap');
-        }}
-        onOpenStage2Roleplay={() => openDailyLesson('roleplay')}
-      />
-
-      {/* Full Fluency Journey & Rewards Roadmap Modal */}
-      <TierRoadmapModal
-        isOpen={isRoadmapOpen}
-        onClose={closeAllToHome}
-        onOpenStage2Roleplay={() => {
-          closeAllToHome();
-          openDailyLesson('roleplay');
-        }}
-      />
 
       {/* Ultra-Simple Onboarding Setup Flow */}
       {isOnboardingOpen && (
@@ -641,17 +658,6 @@ export function App() {
               setIsPlacementOpen(true);
               navigationHistory.pushView('placement');
             }
-          }}
-        />
-      )}
-
-      {/* Stripe Pricing & Sales Page Modal */}
-      {isPricingOpen && (
-        <PricingModal
-          isOpen={isPricingOpen}
-          onClose={closeAllToHome}
-          onSuccess={(planTier) => {
-            toast.success(`Welcome to FluencyAI ${planTier.toUpperCase()}!`, 'Plan Activated');
           }}
         />
       )}
