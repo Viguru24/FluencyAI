@@ -31,6 +31,7 @@ export class AudioVisualizerController {
         this.mediaStream.active &&
         this.mediaStream.getAudioTracks().some((t) => t.readyState === 'live')
       ) {
+        this.enableTracksSync();
         return this.mediaStream;
       }
       if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
@@ -45,9 +46,10 @@ export class AudioVisualizerController {
       });
       this.mediaStream = stream;
       this.initAudioGraph(stream);
-      // Mute tracks while idle so no background audio is processed
+      // Keep tracks enabled while in the active coaching session so AGC is stabilized
+      // and there is zero unmute fade-in clipping on the first syllable when recording starts
       stream.getAudioTracks().forEach((track) => {
-        track.enabled = false;
+        track.enabled = true;
       });
       diagnosticLogger.log('MIC', 'Microphone pre-warmed and ready for immediate capture');
       return stream;
@@ -180,9 +182,10 @@ export class AudioVisualizerController {
         this.mediaStream.getTracks().forEach((track) => track.stop());
         this.mediaStream = null;
       } else {
-        // Between turns: mute audio tracks so no background data is captured, but maintain the live hardware stream for 0ms restart
+        // Keep the hardware stream live and unmuted between turns during an active roleplay
+        // so starting the next turn never suffers from OS/browser unmute or AGC ramp-up clipping
         this.mediaStream.getAudioTracks().forEach((track) => {
-          track.enabled = false;
+          track.enabled = true;
         });
       }
     }

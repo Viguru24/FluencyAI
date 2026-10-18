@@ -4,6 +4,7 @@ import {
   startRecognition,
   isRecognitionSupported,
   deduplicateSpokenText,
+  chooseBestTranscript,
   type RecognitionHandle,
   type SpokenSegmentAnalysis,
 } from '../services/speechRecognition';
@@ -11,9 +12,6 @@ import { AudioRecorderController, type RecordedAudioClip } from '../services/aud
 import { AudioVisualizerController } from '../services/audioVisualizer';
 import { transcribeAudioWithAI, type AudioAttachment } from '../services/geminiService';
 import { toast } from '../services/toast';
-
-// Only treat a press as Push-To-Talk Hold if held for >= 1.2s while actively speaking
-const HOLD_THRESHOLD_MS = 1200;
 
 export interface UseVoiceCaptureOptions {
   lang?: 'en-GB' | 'en-US';
@@ -107,6 +105,7 @@ export function useVoiceCapture({
   }, [updateLivePreview]);
 
   useEffect(() => {
+    vizRef.current.prewarm().catch(() => {});
     return () => {
       cleanupAudio();
     };
@@ -133,50 +132,67 @@ export function useVoiceCapture({
     playChime('micStop');
 
     try {
-      let audioClip: RecordedAudioClip | null = null;
-      try {
-        audioClip = await recorderRef.current.stop();
-        if (audioClip?.base64) {
-          recordedClipsRef.current.push({
-            base64: audioClip.base64,
-            mimeType: audioClip.mimeType,
-          });
-        }
-      } catch (e) {
-        console.warn('[useVoiceCapture] Recorder stop error:', e);
+      // Allow a 320ms acoustic tail buffer before stopping recorder & recognition
+      // so the final syllable of the user's last word is never clipped
+      await new Promise((resolve) => window.setTimeout(resolve, 320));
+
+      const activeRec = recRef.current;
+      recRef.current = null;
+
+      const [audioClip, details] = await Promise.all([
+        recorderRef.current.stop().catch((e) => {
+          console.warn('[useVoiceCapture] Recorder stop error:', e);
+          return null;
+        }),
+        activeRec ? activeRec.stopWithDetails().catch(() => null) : Promise.resolve(null),
+      ]);
+
+      if (audioClip?.base64) {
+        recordedClipsRef.current.push({
+          base64: audioClip.base64,
+          mimeType: audioClip.mimeType,
+        });
       }
 
-      // Keep stream warm between turns for zero-latency restart
+      // Stop visualizer loop after recorder and speech recognition have flushed
       vizRef.current.stopMicrophone(false);
 
       let heard = '';
-      if (recRef.current) {
-        const details = await recRef.current.stopWithDetails();
-        recRef.current = null;
-        if (details) {
-          heard = details.transcript;
-          if (details.segments.length > 0) {
-            pronunciationMetadataRef.current.push(...details.segments);
-          }
+      if (details) {
+        heard = details.transcript;
+        if (details.segments.length > 0) {
+          pronunciationMetadataRef.current.push(...details.segments);
         }
       }
 
-      let finalSpoken = deduplicateSpokenText(heard.trim() || livePreviewRef.current.trim());
+      const bestRaw =
+        heard && heard.trim().length >= livePreviewRef.current.trim().length
+          ? heard.trim()
+          : livePreviewRef.current.trim() || heard.trim();
+      let finalSpoken = deduplicateSpokenText(bestRaw);
       updateLivePreview('');
 
-      // Only invoke AI audio transcription fallback if Web Speech API returned empty AND
-      // the user recorded at least 500ms of audio where voice activity was present
-      if (!finalSpoken && audioClip?.base64 && (hadVoice || (audioClip.durationMs ?? 0) >= 600)) {
+      // Multimodal AI Audio Transcription Verification & Fallback:
+      // Upgrade partial/truncated Web Speech API fragments using Gemini audio transcription
+      const webWordsCount = finalSpoken ? finalSpoken.split(/\s+/).filter(Boolean).length : 0;
+      if (
+        audioClip?.base64 &&
+        (hadVoice || (audioClip.durationMs ?? 0) >= 500) &&
+        (!finalSpoken || webWordsCount <= 8)
+      ) {
         setIsTranscribing(true);
         try {
-          const aiTranscript = await transcribeAudioWithAI({
+          const aiPromise = transcribeAudioWithAI({
             base64: audioClip.base64,
             mimeType: audioClip.mimeType,
             blob: audioClip.blob,
           });
+          const timeoutPromise = new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 2800));
+          const aiTranscript = await Promise.race([aiPromise, timeoutPromise]);
+
           if (aiTranscript && aiTranscript.trim().length > 0) {
-            finalSpoken = deduplicateSpokenText(aiTranscript.trim());
-            console.log('[useVoiceCapture] Recovered user transcript via AI:', finalSpoken);
+            finalSpoken = chooseBestTranscript(finalSpoken, aiTranscript.trim());
+            console.log('[useVoiceCapture] Verified/upgraded transcript via AI:', finalSpoken);
           }
         } catch (err) {
           console.warn('[useVoiceCapture] AI audio transcription fallback error:', err);
@@ -189,7 +205,7 @@ export function useVoiceCapture({
       // Simply reset cleanly and let the user speak when ready.
       if (!finalSpoken) {
         toast.info(
-          "Didn't catch any speech — tap the mic, speak clearly, and tap again to send.",
+          "Didn't catch any speech — tap the mic, speak clearly, and tap Send when finished.",
           'No Speech Heard'
         );
         return;
@@ -220,14 +236,22 @@ export function useVoiceCapture({
     updateLivePreview('');
     playChime('micStart');
 
-    // Synchronously unmute any prewarmed tracks before starting SpeechRecognition
+    // Synchronously unmute any prewarmed tracks and start MediaRecorder at tick 0 if stream is live
     vizRef.current.enableTracksSync();
+    const prewarmedStream = vizRef.current.getStream();
+    let recorderStartedAtTickZero = false;
+    if (prewarmedStream && prewarmedStream.active) {
+      recorderStartedAtTickZero = true;
+      recorderRef.current.start(prewarmedStream).catch(() => {
+        recorderStartedAtTickZero = false;
+      });
+    }
 
     // Start SpeechRecognition IMMEDIATELY at tick 0 on user gesture
     recRef.current = isRecognitionSupported()
       ? startRecognition({
           lang,
-          silenceTimeoutMs: 4500,
+          silenceTimeoutMs: 5000,
           initialSilenceTimeoutMs: 15000,
           onInterim: (text) => {
             if (!isRecordingRef.current) return;
@@ -236,8 +260,8 @@ export function useVoiceCapture({
             lastVoiceTimeRef.current = Date.now();
           },
           onSilenceTimeout: () => {
-            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
-              if (livePreviewRef.current.trim().length > 0) {
+            if (isRecordingRef.current) {
+              if (livePreviewRef.current.trim().length > 0 || hasDetectedVoiceRef.current) {
                 stopRecording();
               } else {
                 cancelRecording();
@@ -252,18 +276,9 @@ export function useVoiceCapture({
       if (!isRecordingRef.current) return;
       const avg = newBands.length > 0 ? newBands.reduce((a, b) => a + b, 0) / newBands.length : 0;
       const now = Date.now();
-      if (avg > 0.06) {
+      if (avg > 0.045) {
         hasDetectedVoiceRef.current = true;
         lastVoiceTimeRef.current = now;
-      } else if (
-        livePreviewRef.current.trim().length > 0 &&
-        !isPressingRef.current &&
-        !isHoldingRef.current &&
-        now - recordingStartedAtRef.current > 2500 &&
-        now - lastVoiceTimeRef.current > 4200
-      ) {
-        // User spoke recognized words and paused for >4.2s -> auto-complete turn
-        stopRecording();
       }
     });
 
@@ -285,15 +300,15 @@ export function useVoiceCapture({
       return;
     }
 
-    if (pendingStopRef.current || !isRecordingRef.current) {
-      pendingStopRef.current = false;
+    if (!isRecordingRef.current) {
       isInitializingMicRef.current = false;
-      stopRecording();
       return;
     }
 
-    const stream = vizRef.current.getStream();
-    await recorderRef.current.start(stream);
+    if (!recorderStartedAtTickZero || !recorderRef.current.isRecording()) {
+      const stream = vizRef.current.getStream();
+      await recorderRef.current.start(stream);
+    }
     isInitializingMicRef.current = false;
 
     if (pendingStopRef.current) {
@@ -308,7 +323,10 @@ export function useVoiceCapture({
       if (disabled || isStoppingRef.current) return;
 
       // If already recording, a second tap/click finishes and sends the recording!
-      if (isRecordingRef.current) {
+      if (isRecordingRef.current || isInitializingMicRef.current) {
+        if (Date.now() - recordingStartedAtRef.current < 550) {
+          return;
+        }
         isPressingRef.current = false;
         if (holdTimerRef.current) {
           window.clearTimeout(holdTimerRef.current);
@@ -320,57 +338,20 @@ export function useVoiceCapture({
 
       pressStartTimeRef.current = Date.now();
       isPressingRef.current = true;
-      try {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-
       startRecording();
-
-      if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = window.setTimeout(() => {
-        if (isPressingRef.current && isRecordingRef.current) {
-          setIsHolding(true);
-          isHoldingRef.current = true;
-        }
-      }, HOLD_THRESHOLD_MS);
     },
     [startRecording, stopRecording]
   );
 
-  const onPointerUp = useCallback(
-    (e?: React.PointerEvent) => {
-      if (holdTimerRef.current) {
-        window.clearTimeout(holdTimerRef.current);
-        holdTimerRef.current = null;
-      }
-
-      if (!isPressingRef.current) return;
-      const duration = Date.now() - pressStartTimeRef.current;
-      isPressingRef.current = false;
-      const wasLongHoldWithSpeech =
-        (isHoldingRef.current || duration >= HOLD_THRESHOLD_MS) &&
-        livePreviewRef.current.trim().length > 0;
-      setIsHolding(false);
-      isHoldingRef.current = false;
-
-      if (e) {
-        try {
-          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-        } catch {
-          /* ignore */
-        }
-      }
-
-      // Only stop on pointer release if the user intentionally held the button for >= 1.2s AND
-      // already spoke words. Otherwise keep listening in Tap-to-Talk mode!
-      if (wasLongHoldWithSpeech) {
-        stopRecording();
-      }
-    },
-    [stopRecording]
-  );
+  const onPointerUp = useCallback(() => {
+    if (holdTimerRef.current) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    isPressingRef.current = false;
+    setIsHolding(false);
+    isHoldingRef.current = false;
+  }, []);
 
   return {
     isRecording,

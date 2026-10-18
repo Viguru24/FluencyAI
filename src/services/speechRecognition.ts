@@ -209,6 +209,9 @@ export function startRecognition(
 
   let accumulatedFinalText = '';
   let latestTranscript = '';
+  let peakTranscript = '';
+  let bestUnfinalizedText = '';
+  let lastFinalCount = 0;
   let latestRawResults: any = null;
   let isStopping = false;
   let isFinalized = false;
@@ -272,6 +275,8 @@ export function startRecognition(
       rec.interimResults = true;
       rec.continuous = !isMobileDevice();
       rec.maxAlternatives = 3;
+      bestUnfinalizedText = '';
+      lastFinalCount = 0;
 
       rec.onstart = () => {
         isRecRunning = true;
@@ -284,7 +289,11 @@ export function startRecognition(
       rec.onresult = (event: any) => {
         if (isFinalized) return;
 
-        let currentCycleText = '';
+        let cycleFinalText = '';
+        let cycleInterimText = '';
+        let finalCount = 0;
+        let allFinal = true;
+
         latestRawResults = event.results;
         opts.onSpeechResults?.(event.results);
 
@@ -294,7 +303,8 @@ export function startRecognition(
 
           const topAlt = item[0];
           const transcript = (topAlt.transcript || '').trim();
-          const confidence = typeof topAlt.confidence === 'number' ? topAlt.confidence : 1.0;
+          const hasValidConf = typeof topAlt.confidence === 'number' && topAlt.confidence > 0;
+          const confidence = hasValidConf ? topAlt.confidence : 0.9;
 
           const alternatives: string[] = [];
           for (let a = 1; a < item.length; a++) {
@@ -304,13 +314,22 @@ export function startRecognition(
             }
           }
 
-          if (transcript) {
-            currentCycleText += (currentCycleText ? ' ' : '') + transcript;
+          if (item.isFinal) {
+            finalCount++;
+            if (transcript) {
+              cycleFinalText += (cycleFinalText ? ' ' : '') + transcript;
+            }
+          } else {
+            allFinal = false;
+            if (transcript) {
+              cycleInterimText += (cycleInterimText ? ' ' : '') + transcript;
+            }
           }
 
           if (item.isFinal && transcript) {
-            const isLowConfidence = confidence > 0 && confidence < 0.75;
-            const isAmbiguous = alternatives.length > 0;
+            // Only flag low confidence when the browser actually returned a positive confidence score < 0.72
+            const isLowConfidence = hasValidConf && confidence < 0.72;
+            const isAmbiguous = isLowConfidence && alternatives.length > 0;
 
             const existingIdx = recordedSegments.findIndex((s) => s.text === transcript);
             if (existingIdx >= 0) {
@@ -333,7 +352,40 @@ export function startRecognition(
           }
         }
 
-        const combined = deduplicateSpokenText(mergeTranscripts(accumulatedFinalText, currentCycleText));
+        // Protect unfinalized interim speech from being dropped when Chrome resets an uncommitted buffer
+        if (finalCount > lastFinalCount) {
+          lastFinalCount = finalCount;
+          bestUnfinalizedText = cycleInterimText;
+        } else if (cycleInterimText) {
+          if (
+            !bestUnfinalizedText ||
+            cycleInterimText.length >= bestUnfinalizedText.length ||
+            !bestUnfinalizedText.toLowerCase().startsWith(cycleInterimText.toLowerCase())
+          ) {
+            bestUnfinalizedText = cycleInterimText;
+          }
+        }
+
+        const effectiveInterim = cycleInterimText || bestUnfinalizedText;
+        const currentCycleText = mergeTranscripts(cycleFinalText, effectiveInterim);
+        let combined = deduplicateSpokenText(mergeTranscripts(accumulatedFinalText, currentCycleText));
+
+        // Never allow latestTranscript to shrink to a strict prefix of what was already heard in this turn
+        if (
+          peakTranscript &&
+          combined &&
+          peakTranscript.length > combined.length &&
+          peakTranscript.toLowerCase().startsWith(combined.toLowerCase())
+        ) {
+          combined = peakTranscript;
+        } else if (
+          combined &&
+          (!peakTranscript ||
+            combined.length >= peakTranscript.length ||
+            !peakTranscript.toLowerCase().startsWith(combined.toLowerCase()))
+        ) {
+          peakTranscript = combined;
+        }
 
         if (combined) {
           hasHeardSpeech = true;
@@ -343,6 +395,15 @@ export function startRecognition(
             onStatusChange?.('heard', combined);
             onSegmentAnalysis?.(recordedSegments);
             scheduleSilenceTimer();
+          } else if (allFinal && onEndFlushResolver) {
+            // Final result arrived during stopAndFlush -> settle promptly
+            const resolveFlush = onEndFlushResolver;
+            window.setTimeout(() => {
+              if (onEndFlushResolver === resolveFlush) {
+                onEndFlushResolver = null;
+                resolveFlush();
+              }
+            }, 150);
           }
         }
       };
@@ -409,7 +470,7 @@ export function startRecognition(
             if (!isStopping && !isFinalized && !hasFatalError) {
               initRecognition();
             }
-          }, 60);
+          }, 50);
         }
       };
 
@@ -432,20 +493,19 @@ export function startRecognition(
     const seenWords = new Set<string>();
 
     for (const segment of recordedSegments) {
+      if (!segment.isLowConfidence) continue;
       const segWords = segment.text.split(/\s+/).filter((w) => w.length > 1);
       for (const w of segWords) {
         const cleanWord = w.toLowerCase().replace(/[^a-z']/g, '');
         if (!cleanWord || seenWords.has(cleanWord)) continue;
         seenWords.add(cleanWord);
 
-        if (segment.isLowConfidence || segment.isAmbiguous) {
-          words.push({
-            word: cleanWord,
-            confidence: segment.confidence > 0 ? segment.confidence : 0.72,
-            alternatives: segment.alternatives,
-            isLowConfidence: segment.isLowConfidence,
-          });
-        }
+        words.push({
+          word: cleanWord,
+          confidence: segment.confidence > 0 ? segment.confidence : 0.7,
+          alternatives: segment.alternatives,
+          isLowConfidence: true,
+        });
       }
     }
     return words;
@@ -464,9 +524,9 @@ export function startRecognition(
 
         words.push({
           word: cleanWord,
-          confidence: segment.confidence > 0 ? segment.confidence : 0.85,
+          confidence: segment.confidence > 0 ? segment.confidence : 0.9,
           alternatives: segment.alternatives,
-          isLowConfidence: Boolean(segment.isLowConfidence || segment.isAmbiguous),
+          isLowConfidence: Boolean(segment.isLowConfidence),
         });
       }
     }
@@ -474,7 +534,7 @@ export function startRecognition(
   };
 
   const getDetails = (): RecognitionDetails => {
-    const text = deduplicateSpokenText(latestTranscript.trim());
+    const text = deduplicateSpokenText((latestTranscript || peakTranscript).trim());
     let totalConf = 0;
     let counted = 0;
 
@@ -485,7 +545,7 @@ export function startRecognition(
       }
     }
 
-    const avgConfidence = counted > 0 ? totalConf / counted : 0.85;
+    const avgConfidence = counted > 0 ? totalConf / counted : 0.88;
 
     return {
       transcript: text,
@@ -514,8 +574,8 @@ export function startRecognition(
         };
 
         onEndFlushResolver = finish;
-        // Wait up to 450ms for browser SpeechRecognition to flush final audio buffer after rec.stop()
-        window.setTimeout(finish, 450);
+        // Wait up to 1400ms for browser SpeechRecognition to finish network roundtrip and flush final words after rec.stop()
+        window.setTimeout(finish, 1400);
 
         try {
           rec.stop();
@@ -536,7 +596,7 @@ export function startRecognition(
   };
 
   return {
-    getLatestTranscript: () => deduplicateSpokenText(latestTranscript.trim()),
+    getLatestTranscript: () => deduplicateSpokenText((latestTranscript || peakTranscript).trim()),
     getPronunciationMetadata: () => [...recordedSegments],
     resetSilenceTimer: () => {
       scheduleSilenceTimer();
@@ -570,13 +630,59 @@ export function startRecognition(
     },
     stop: async () => {
       await stopAndFlush();
-      return deduplicateSpokenText(latestTranscript.trim()) || null;
+      return deduplicateSpokenText((latestTranscript || peakTranscript).trim()) || null;
     },
     stopWithDetails: async () => {
       await stopAndFlush();
       return getDetails();
     },
   };
+}
+
+/**
+ * Selects or merges the most complete transcript between browser Web Speech API
+ * and multimodal AI audio transcription so partial browser fragments (e.g. "no I'd" or "rather have")
+ * are upgraded to the full spoken sentence ("No, I'd rather have a Guinness.").
+ */
+export function chooseBestTranscript(webSpeech: string, aiSpeech: string): string {
+  const web = deduplicateSpokenText((webSpeech || '').trim());
+  const ai = deduplicateSpokenText((aiSpeech || '').trim());
+
+  if (!web) return ai;
+  if (!ai) return web;
+
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9'\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+
+  const webWords = norm(web);
+  const aiWords = norm(ai);
+
+  if (aiWords.length === 0) return web;
+  if (webWords.length === 0) return ai;
+
+  // If AI transcript has more or equal words, check if Web Speech caught a leading word before MediaRecorder started
+  if (aiWords.length >= webWords.length) {
+    const aiSet = new Set(aiWords);
+    const allWebWordsInAi = webWords.every((w) => aiSet.has(w));
+    if (allWebWordsInAi) {
+      return ai;
+    }
+    // If webSpeech starts with words not in aiSpeech, merge them at word boundaries
+    return deduplicateSpokenText(mergeTranscripts(web, ai));
+  }
+
+  // If Web Speech has more words than AI, check if AI has trailing words that Web Speech cut off
+  const webSet = new Set(webWords);
+  const allAiWordsInWeb = aiWords.every((w) => webSet.has(w));
+  if (allAiWordsInWeb) {
+    return web;
+  }
+
+  return deduplicateSpokenText(mergeTranscripts(web, ai));
 }
 
 /**
@@ -639,8 +745,9 @@ export function scorePronunciation(target: string, heard: string | null): number
 }
 
 /**
- * Extracts word-level confidence scores from SpeechRecognitionResult array.
- * If any recognized word has a confidence score below 0.75, it is flagged with isLowConfidence = true.
+ * Extracts word-level confidence scores from FINALIZED SpeechRecognitionResult items.
+ * Interim results (isFinal === false) always report confidence = 0 in Chrome and must be skipped
+ * so normal words are never falsely flagged as <75% confidence.
  */
 export function extractWordsFromSpeechResults(eventResults: any): WordConfidenceInfo[] {
   const words: WordConfidenceInfo[] = [];
@@ -648,13 +755,11 @@ export function extractWordsFromSpeechResults(eventResults: any): WordConfidence
 
   for (let i = 0; i < eventResults.length; i++) {
     const item = eventResults[i];
-    if (!item || !item[0]) continue;
+    if (!item || !item[0] || !item.isFinal) continue;
     const topAlt = item[0];
     const transcript = (topAlt.transcript || '').trim();
-    const confidence =
-      typeof topAlt.confidence === 'number' && topAlt.confidence > 0
-        ? topAlt.confidence
-        : 0.72;
+    const hasPositiveConf = typeof topAlt.confidence === 'number' && topAlt.confidence > 0;
+    const confidence = hasPositiveConf ? topAlt.confidence : 0.9;
 
     const alternatives: string[] = [];
     for (let a = 1; a < item.length; a++) {
@@ -664,11 +769,11 @@ export function extractWordsFromSpeechResults(eventResults: any): WordConfidence
       }
     }
 
-    const isLowConfidence = confidence < 0.75;
+    const isLowConfidence = hasPositiveConf && confidence < 0.72;
     const tokens = transcript.split(/\s+/).filter(Boolean);
     for (const token of tokens) {
       const cleanWord = token.toLowerCase().replace(/[^a-z']/g, '');
-      if (!cleanWord) continue;
+      if (!cleanWord || cleanWord.length <= 1) continue;
       words.push({
         word: cleanWord,
         confidence: Math.round(confidence * 100) / 100,

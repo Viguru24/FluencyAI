@@ -28,11 +28,12 @@ import {
   isRecognitionSupported,
   extractWordsFromSpeechResults,
   deduplicateSpokenText,
+  chooseBestTranscript,
   type RecognitionHandle,
   type SpokenSegmentAnalysis,
   type WordConfidenceInfo,
 } from '../../services/speechRecognition';
-import { AudioRecorderController, type RecordedAudioClip } from '../../services/audioRecorder';
+import { AudioRecorderController } from '../../services/audioRecorder';
 import { AudioVisualizerController } from '../../services/audioVisualizer';
 import { HowDoISaySheet } from './HowDoISaySheet';
 import {
@@ -156,8 +157,6 @@ interface Props {
   onMicDenied: () => void;
   onEnd: (stats: RoleplayStats) => void;
 }
-
-const HOLD_THRESHOLD_MS = 1200;
 
 export const RoleplayStage: React.FC<Props> = ({
   plan,
@@ -506,14 +505,22 @@ export const RoleplayStage: React.FC<Props> = ({
 
     diagnosticLogger.log('VOICE', 'startRecording initiated by user gesture');
 
-    // Synchronously unmute any prewarmed tracks before starting SpeechRecognition
+    // Synchronously unmute any prewarmed tracks and start MediaRecorder at tick 0 if stream is already live
     vizRef.current.enableTracksSync();
+    const prewarmedStream = vizRef.current.getStream();
+    let recorderStartedAtTickZero = false;
+    if (prewarmedStream && prewarmedStream.active) {
+      recorderStartedAtTickZero = true;
+      recorderRef.current.start(prewarmedStream).catch(() => {
+        recorderStartedAtTickZero = false;
+      });
+    }
 
     // CRITICAL: Start SpeechRecognition IMMEDIATELY at tick 0 on user gesture!
     recRef.current = isRecognitionSupported()
       ? startRecognition({
           lang: plan.persona.accent === 'UK' ? 'en-GB' : 'en-US',
-          silenceTimeoutMs: 4500,
+          silenceTimeoutMs: 5000,
           initialSilenceTimeoutMs: 15000,
           onInterim: (text) => {
             if (!isRecordingRef.current) return;
@@ -523,8 +530,8 @@ export const RoleplayStage: React.FC<Props> = ({
             lastVoiceTimeRef.current = Date.now();
           },
           onSilenceTimeout: () => {
-            if (!isPressingRef.current && !isHoldingRef.current && isRecordingRef.current) {
-              if (livePreviewRef.current.trim().length > 0) {
+            if (isRecordingRef.current) {
+              if (livePreviewRef.current.trim().length > 0 || hasDetectedVoiceRef.current) {
                 stopRecording();
               } else {
                 cancelRecording();
@@ -534,7 +541,7 @@ export const RoleplayStage: React.FC<Props> = ({
           onSpeechResults: (eventResults) => {
             const extracted = extractWordsFromSpeechResults(eventResults);
             const lowConfWords = extracted
-              .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
+              .filter((w) => w.isLowConfidence)
               .map((w) => w.word);
             if (lowConfWords.length > 0) {
               setLiveLowConfidenceWords(Array.from(new Set(lowConfWords)));
@@ -548,23 +555,12 @@ export const RoleplayStage: React.FC<Props> = ({
       if (!isRecordingRef.current) return;
       const avg = newBands.length > 0 ? newBands.reduce((a, b) => a + b, 0) / newBands.length : 0;
       const now = Date.now();
-      if (avg > 0.06) {
+      if (avg > 0.045) {
         if (!hasDetectedVoiceRef.current) {
           diagnosticLogger.log('VOICE', `Voice activity detected (amplitude: ${avg.toFixed(3)})`);
         }
         hasDetectedVoiceRef.current = true;
         lastVoiceTimeRef.current = now;
-      } else if (
-        livePreviewRef.current.trim().length > 0 &&
-        !isPressingRef.current &&
-        !isHoldingRef.current &&
-        now - recordingStartedAtRef.current > 2500 &&
-        now - lastVoiceTimeRef.current > 4200
-      ) {
-        // User spoke recognized words and paused for >4.2s -> auto-finish recording!
-        hasDetectedVoiceRef.current = false;
-        diagnosticLogger.log('VOICE', '4.2-second post-speech silence detected, auto-completing speaking turn');
-        stopRecording();
       }
     });
 
@@ -585,8 +581,10 @@ export const RoleplayStage: React.FC<Props> = ({
       return;
     }
 
-    const activeStream = vizRef.current.getStream();
-    await recorderRef.current.start(activeStream);
+    if (!recorderStartedAtTickZero || !recorderRef.current.isRecording()) {
+      const activeStream = vizRef.current.getStream();
+      await recorderRef.current.start(activeStream);
+    }
     isInitializingMicRef.current = false;
 
     if (pendingStopRef.current) {
@@ -616,55 +614,57 @@ export const RoleplayStage: React.FC<Props> = ({
     playChime('micStop');
 
     try {
-      let audioClip: RecordedAudioClip | null = null;
-      try {
-        audioClip = await recorderRef.current.stop();
-      } catch (e) {
-        console.warn('[RoleplayStage] Failed to stop audio recorder:', e);
-      }
+      // Allow a 320ms acoustic tail buffer before stopping recorder & recognition
+      // so the final syllable of the user's last word (e.g. "...Guinness") is never clipped
+      await new Promise((resolve) => window.setTimeout(resolve, 320));
 
-      // Keep stream warm between turns for zero-latency restart
+      const activeRec = recRef.current;
+      recRef.current = null;
+
+      const [audioClip, details] = await Promise.all([
+        recorderRef.current.stop().catch((e) => {
+          console.warn('[RoleplayStage] Failed to stop audio recorder:', e);
+          return null;
+        }),
+        activeRec ? activeRec.stopWithDetails().catch(() => null) : Promise.resolve(null),
+      ]);
+
+      // Stop visualizer loop after recorder and speech recognition have flushed
       vizRef.current.stopMicrophone(false);
 
       let heard: string | null = null;
       let turnLowConfidenceWords: string[] = [];
       let turnWordConfidences: WordConfidenceInfo[] = [];
 
-      if (recRef.current) {
-        const details = await recRef.current.stopWithDetails();
-        recRef.current = null;
-        if (details) {
-          heard = details.transcript;
+      if (details) {
+        heard = details.transcript;
 
-          const extractedWords = details.rawResults
-            ? extractWordsFromSpeechResults(details.rawResults)
-            : details.allWords && details.allWords.length > 0
-            ? details.allWords
-            : [];
+        const extractedWords = details.rawResults
+          ? extractWordsFromSpeechResults(details.rawResults)
+          : details.allWords && details.allWords.length > 0
+          ? details.allWords
+          : [];
 
-          turnWordConfidences = extractedWords;
+        turnWordConfidences = extractedWords;
 
-          const lowConfWordsFromResult = extractedWords
-            .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
-            .map((w) => w.word.toLowerCase());
+        const lowConfWordsFromResult = extractedWords
+          .filter((w) => w.isLowConfidence)
+          .map((w) => w.word.toLowerCase());
 
-          const lowConfWordsFromDetails = (details.lowConfidenceWords || [])
-            .filter((w) => w.isLowConfidence || (w.confidence > 0 && w.confidence < 0.75))
-            .map((w) => w.word.toLowerCase());
+        const lowConfWordsFromDetails = (details.lowConfidenceWords || [])
+          .filter((w) => w.isLowConfidence)
+          .map((w) => w.word.toLowerCase());
 
-          const flaggedSegments = details.segments.filter(
-            (s) => s.isLowConfidence || (s.confidence > 0 && s.confidence < 0.75) || s.alternatives.length > 0
-          );
-          if (flaggedSegments.length > 0) {
-            pronunciationMetadataRef.current.push(...flaggedSegments);
-          }
-
-          turnLowConfidenceWords = Array.from(
-            new Set([...lowConfWordsFromResult, ...lowConfWordsFromDetails, ...liveLowConfidenceWords])
-          );
-
-          turnLowConfidenceWords.forEach((word) => sessionLowConfidenceWordsRef.current.add(word));
+        const flaggedSegments = details.segments.filter((s) => s.isLowConfidence);
+        if (flaggedSegments.length > 0) {
+          pronunciationMetadataRef.current.push(...flaggedSegments);
         }
+
+        turnLowConfidenceWords = Array.from(
+          new Set([...lowConfWordsFromResult, ...lowConfWordsFromDetails, ...liveLowConfidenceWords])
+        );
+
+        turnLowConfidenceWords.forEach((word) => sessionLowConfidenceWordsRef.current.add(word));
       }
 
       const bestRawTranscript =
@@ -684,30 +684,43 @@ export const RoleplayStage: React.FC<Props> = ({
         };
       }
 
-      // AI Audio Transcription Fallback:
-      // Only invoke if Web Speech API returned empty AND user recorded >= 600ms or had detected voice
-      if (!finalTranscript && audioAttachment && audioAttachment.base64 && (hadVoice || (audioClip?.durationMs ?? 0) >= 600)) {
+      // Multimodal AI Audio Transcription Verification & Fallback:
+      // Browser Web Speech API frequently drops leading/trailing words (e.g. returning only "no I'd" or "rather have"
+      // when the user said "No, I'd rather have a Guinness"). Whenever we have recorded audio and Web Speech API
+      // returned fewer than 8 words (or empty), verify/upgrade the transcript using Gemini audio transcription!
+      const webWordCount = finalTranscript ? finalTranscript.split(/\s+/).filter(Boolean).length : 0;
+      const shouldVerifyWithAI =
+        audioAttachment &&
+        audioAttachment.base64 &&
+        (hadVoice || (audioClip?.durationMs ?? 0) >= 500) &&
+        (!finalTranscript || webWordCount <= 8);
+
+      if (shouldVerifyWithAI && audioAttachment) {
         diagnosticLogger.log(
           'VOICE',
-          `Web Speech API returned empty transcript. Triggering AI audio transcription fallback (${audioAttachment.mimeType}, size: ${audioAttachment.base64.length} chars)...`
+          `Verifying/upgrading transcript via AI audio transcription (webWords=${webWordCount}, duration=${audioClip?.durationMs ?? 0}ms)...`
         );
         setIsTranscribingAudio(true);
         try {
-          const aiTranscript = await transcribeAudioWithAI({
+          const aiPromise = transcribeAudioWithAI({
             base64: audioAttachment.base64,
             mimeType: audioAttachment.mimeType,
             blob: audioClip?.blob,
           });
+          const timeoutPromise = new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 2800));
+          const aiTranscript = await Promise.race([aiPromise, timeoutPromise]);
+
           if (aiTranscript && aiTranscript.trim().length > 0) {
-            finalTranscript = deduplicateSpokenText(aiTranscript.trim());
-            diagnosticLogger.log('VOICE', `AI audio fallback transcription successful: "${finalTranscript}"`);
-            console.log('[RoleplayStage] Recovered user transcript via AI:', finalTranscript);
-          } else {
-            diagnosticLogger.warn('VOICE', 'AI audio fallback returned empty or whitespace-only text');
+            const mergedBest = chooseBestTranscript(finalTranscript, aiTranscript.trim());
+            diagnosticLogger.log(
+              'VOICE',
+              `AI audio transcription result: "${aiTranscript.trim()}" | Chosen: "${mergedBest}"`
+            );
+            finalTranscript = mergedBest;
           }
         } catch (err: any) {
-          diagnosticLogger.error('VOICE', `AI audio fallback transcription error: ${err?.message || err}`);
-          console.warn('[RoleplayStage] AI audio transcription fallback error:', err);
+          diagnosticLogger.error('VOICE', `AI audio transcription error: ${err?.message || err}`);
+          console.warn('[RoleplayStage] AI audio transcription error:', err);
         } finally {
           setIsTranscribingAudio(false);
         }
@@ -735,12 +748,16 @@ export const RoleplayStage: React.FC<Props> = ({
     }
   };
 
-  // Supports both Hold-and-Release AND Quick-Tap-to-Start / Tap-Again-to-End (plus Auto-Silence Stop)
+  // Pure, deterministic Tap-to-Start / Tap-to-Send toggle (never cuts off on pointer release!)
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     if (isProcessing || isAnalyzingScorecard) return;
 
     if (isRecordingRef.current || isInitializingMicRef.current) {
+      // Ignore accidental double-tap within 550ms of starting recording
+      if (Date.now() - recordingStartedAtRef.current < 550) {
+        return;
+      }
       isPressingRef.current = false;
       stopRecording();
       return;
@@ -748,52 +765,21 @@ export const RoleplayStage: React.FC<Props> = ({
 
     pressStartTimeRef.current = Date.now();
     isPressingRef.current = true;
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore if unsupported */
-    }
-
     startRecording();
-
-    if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
-    holdTimerRef.current = window.setTimeout(() => {
-      if (isPressingRef.current) {
-        setIsHolding(true);
-        isHoldingRef.current = true;
-      }
-    }, HOLD_THRESHOLD_MS);
   };
 
-  const onPointerUp = (e?: React.PointerEvent) => {
+  const onPointerUp = () => {
     if (holdTimerRef.current) {
       window.clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     }
-
-    if (!isPressingRef.current) return;
-    const duration = Date.now() - pressStartTimeRef.current;
     isPressingRef.current = false;
-    const wasHolding = isHoldingRef.current && duration >= HOLD_THRESHOLD_MS;
     setIsHolding(false);
     isHoldingRef.current = false;
-
-    if (e) {
-      try {
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    // Only auto-stop on pointer release if held >= 1.2s AND words were actually spoken
-    if (wasHolding && livePreviewRef.current.trim().length > 0) {
-      stopRecording();
-    }
   };
 
-  const onPointerCancel = (e: React.PointerEvent) => {
-    onPointerUp(e);
+  const onPointerCancel = () => {
+    onPointerUp();
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
