@@ -32,7 +32,7 @@ export class AudioVisualizerController {
       });
       diagnosticLogger.log('MIC', 'Microphone pre-warmed and ready for immediate capture');
       return stream;
-    } catch (err) {
+    } catch {
       // Permission blocked or user hasn't interacted yet; will prompt on user gesture
       return null;
     }
