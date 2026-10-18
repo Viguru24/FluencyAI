@@ -164,3 +164,121 @@
   animation: silky-breathe 2.4s ease-in-out infinite;
 }
 
+/* Flowing Liquid Silver / Mercury Voice Button */
+@keyframes liquid-silver-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes liquid-mercury-morph {
+  0%, 100% {
+    border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+  }
+  25% {
+    border-radius: 54% 46% 48% 52% / 48% 54% 46% 52%;
+  }
+  50% {
+    border-radius: 47% 53% 54% 46% / 53% 47% 53% 47%;
+  }
+  75% {
+    border-radius: 52% 48% 46% 54% / 47% 52% 48% 53%;
+  }
+}
+
+@keyframes liquid-silver-ripple {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(0.97) rotate(0deg);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.09) rotate(180deg);
+  }
+}
+
+.liquid-silver-btn {
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    #cbd5e1 20%,
+    #f8fafc 40%,
+    #94a3b8 60%,
+    #f1f5f9 80%,
+    #ffffff 100%
+  );
+  background-size: 260% 260%;
+  animation: liquid-silver-flow 5s ease-in-out infinite;
+  border: 1.5px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 8px 22px rgba(71, 85, 105, 0.28),
+    0 2px 6px rgba(15, 23, 42, 0.14),
+    inset 0 2px 4px rgba(255, 255, 255, 0.98),
+    inset 0 -3px 6px rgba(100, 116, 139, 0.42);
+  color: #1e293b;
+}
+
+.liquid-silver-btn:hover:not(:disabled) {
+  transform: scale(1.04);
+  box-shadow:
+    0 10px 26px rgba(100, 116, 139, 0.38),
+    0 2px 8px rgba(15, 23, 42, 0.18),
+    inset 0 2px 5px rgba(255, 255, 255, 1),
+    inset 0 -3px 7px rgba(71, 85, 105, 0.45);
+}
+
+.liquid-silver-btn-active {
+  background: linear-gradient(
+    120deg,
+    #ffffff 0%,
+    #e2e8f0 18%,
+    #94a3b8 36%,
+    #ffffff 54%,
+    #cbd5e1 72%,
+    #f8fafc 90%,
+    #ffffff 100%
+  );
+  background-size: 280% 280%;
+  animation:
+    liquid-silver-flow 1.8s linear infinite,
+    liquid-mercury-morph 2.4s ease-in-out infinite;
+  border: 1.5px solid rgba(255, 255, 255, 1);
+  box-shadow:
+    0 0 28px rgba(226, 232, 240, 0.95),
+    0 0 12px rgba(148, 163, 184, 0.75),
+    inset 0 2px 6px rgba(255, 255, 255, 1),
+    inset 0 -4px 8px rgba(71, 85, 105, 0.5);
+  color: #0f172a;
+}
+
+.liquid-silver-aura {
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(148, 163, 184, 0.75),
+    rgba(241, 245, 249, 0.95),
+    rgba(100, 116, 139, 0.65),
+    rgba(226, 232, 240, 0.9),
+    rgba(255, 255, 255, 0.9)
+  );
+  animation: liquid-silver-ripple 3s linear infinite;
+}
+
+.liquid-silver-bloom {
+  background: radial-gradient(
+    circle,
+    rgba(241, 245, 249, 0.75) 0%,
+    rgba(203, 213, 225, 0.45) 45%,
+    rgba(148, 163, 184, 0.18) 70%,
+    transparent 100%
+  );
+  animation: silky-breathe 2.2s ease-in-out infinite;
+}
+
+

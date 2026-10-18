@@ -132,9 +132,8 @@ export function useVoiceCapture({
     playChime('micStop');
 
     try {
-      // Allow a 320ms acoustic tail buffer before stopping recorder & recognition
-      // so the final syllable of the user's last word is never clipped
-      await new Promise((resolve) => window.setTimeout(resolve, 320));
+      // Short 180ms acoustic tail buffer so the final syllable of the user's last word is never clipped
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
 
       const activeRec = recRef.current;
       recRef.current = null;
@@ -165,20 +164,18 @@ export function useVoiceCapture({
         }
       }
 
-      const bestRaw =
-        heard && heard.trim().length >= livePreviewRef.current.trim().length
-          ? heard.trim()
-          : livePreviewRef.current.trim() || heard.trim();
+      const bestRaw = chooseBestTranscript(livePreviewRef.current.trim(), heard.trim());
       let finalSpoken = deduplicateSpokenText(bestRaw);
-      updateLivePreview('');
 
-      // Multimodal AI Audio Transcription Verification & Fallback:
-      // Upgrade partial/truncated Web Speech API fragments using Gemini audio transcription
-      const webWordsCount = finalSpoken ? finalSpoken.split(/\s+/).filter(Boolean).length : 0;
+      if (finalSpoken) {
+        updateLivePreview(finalSpoken);
+      }
+
+      // Only invoke AI audio transcription as a fallback when Web Speech API produced nothing at all
       if (
+        !finalSpoken &&
         audioClip?.base64 &&
-        (hadVoice || (audioClip.durationMs ?? 0) >= 500) &&
-        (!finalSpoken || webWordsCount <= 8)
+        (hadVoice || (audioClip.durationMs ?? 0) >= 450)
       ) {
         setIsTranscribing(true);
         try {
@@ -192,7 +189,7 @@ export function useVoiceCapture({
 
           if (aiTranscript && aiTranscript.trim().length > 0) {
             finalSpoken = chooseBestTranscript(finalSpoken, aiTranscript.trim());
-            console.log('[useVoiceCapture] Verified/upgraded transcript via AI:', finalSpoken);
+            updateLivePreview(finalSpoken);
           }
         } catch (err) {
           console.warn('[useVoiceCapture] AI audio transcription fallback error:', err);
@@ -204,14 +201,17 @@ export function useVoiceCapture({
       // If no speech was captured, do NOT send a fake hesitation message that confuses the AI!
       // Simply reset cleanly and let the user speak when ready.
       if (!finalSpoken) {
+        updateLivePreview('');
         toast.info(
-          "Didn't catch any speech — tap the mic, speak clearly, and tap Send when finished.",
+          "Didn't catch any speech — press and hold to speak, or click once to start and click again when done.",
           'No Speech Heard'
         );
         return;
       }
 
+      // Commit the turn first, then clear livePreview in the exact same synchronous React batch!
       onCompleteCapture(finalSpoken, audioClip);
+      updateLivePreview('');
     } finally {
       isStoppingRef.current = false;
       setIsTranscribing(false);
@@ -254,7 +254,7 @@ export function useVoiceCapture({
           silenceTimeoutMs: 5000,
           initialSilenceTimeoutMs: 15000,
           onInterim: (text) => {
-            if (!isRecordingRef.current) return;
+            if (!isRecordingRef.current && !isStoppingRef.current) return;
             updateLivePreview(text);
             hasDetectedVoiceRef.current = true;
             lastVoiceTimeRef.current = Date.now();
@@ -317,41 +317,81 @@ export function useVoiceCapture({
     }
   }, [cancelRecording, lang, onBeforeStart, onMicDenied, stopRecording, updateLivePreview]);
 
+  const QUICK_CLICK_THRESHOLD_MS = 300;
+
   const onPointerDown = useCallback(
-    (e: React.PointerEvent, disabled?: boolean) => {
+    (e: React.PointerEvent<HTMLElement>, disabled?: boolean) => {
       e.preventDefault();
       if (disabled || isStoppingRef.current) return;
 
-      // If already recording, a second tap/click finishes and sends the recording!
+      // If already recording from a previous quick-click, clicking again finishes and transcribes!
       if (isRecordingRef.current || isInitializingMicRef.current) {
-        if (Date.now() - recordingStartedAtRef.current < 550) {
-          return;
-        }
-        isPressingRef.current = false;
         if (holdTimerRef.current) {
           window.clearTimeout(holdTimerRef.current);
           holdTimerRef.current = null;
         }
+        isPressingRef.current = false;
+        setIsHolding(false);
+        isHoldingRef.current = false;
         stopRecording();
         return;
       }
 
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+
       pressStartTimeRef.current = Date.now();
       isPressingRef.current = true;
+      if (holdTimerRef.current) {
+        window.clearTimeout(holdTimerRef.current);
+      }
+      holdTimerRef.current = window.setTimeout(() => {
+        holdTimerRef.current = null;
+        if (isPressingRef.current) {
+          setIsHolding(true);
+          isHoldingRef.current = true;
+        }
+      }, QUICK_CLICK_THRESHOLD_MS);
+
       startRecording();
     },
     [startRecording, stopRecording]
   );
 
-  const onPointerUp = useCallback(() => {
-    if (holdTimerRef.current) {
-      window.clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-    isPressingRef.current = false;
-    setIsHolding(false);
-    isHoldingRef.current = false;
-  }, []);
+  const onPointerUp = useCallback(
+    (e?: React.PointerEvent<HTMLElement>) => {
+      if (e) {
+        try {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (holdTimerRef.current) {
+        window.clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+
+      if (!isPressingRef.current) return;
+      const heldMs = Date.now() - pressStartTimeRef.current;
+      isPressingRef.current = false;
+      setIsHolding(false);
+      isHoldingRef.current = false;
+
+      // If held down (>= 300ms), releasing immediately stops and transcribes!
+      // If clicked quickly (< 300ms), it stays listening until clicked again.
+      if (heldMs >= QUICK_CLICK_THRESHOLD_MS && (isRecordingRef.current || isInitializingMicRef.current)) {
+        stopRecording();
+      }
+    },
+    [stopRecording]
+  );
 
   return {
     isRecording,

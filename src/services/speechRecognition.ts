@@ -390,8 +390,8 @@ export function startRecognition(
         if (combined) {
           hasHeardSpeech = true;
           latestTranscript = combined;
+          onInterim?.(combined);
           if (!isStopping) {
-            onInterim?.(combined);
             onStatusChange?.('heard', combined);
             onSegmentAnalysis?.(recordedSegments);
             scheduleSilenceTimer();
@@ -403,7 +403,7 @@ export function startRecognition(
                 onEndFlushResolver = null;
                 resolveFlush();
               }
-            }, 150);
+            }, 80);
           }
         }
       };

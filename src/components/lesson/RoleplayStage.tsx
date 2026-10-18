@@ -17,7 +17,6 @@ import {
   Lock,
   Headphones,
   Terminal,
-  X,
   Send,
   Keyboard,
 } from 'lucide-react';
@@ -430,6 +429,11 @@ export const RoleplayStage: React.FC<Props> = ({
         wordConfidences: turnWordConfidences,
       },
     ];
+    // Clear livePreview in the exact same synchronous React batch as setTurns
+    // so the user's spoken words never vanish for even a single frame!
+    livePreviewRef.current = '';
+    setLivePreview('');
+    setLiveLowConfidenceWords([]);
     setTurns(newTurns);
 
     try {
@@ -496,7 +500,7 @@ export const RoleplayStage: React.FC<Props> = ({
     lastVoiceTimeRef.current = startTs;
     handleStopSpeaking();
 
-    // Instant silky glow + warm acoustic chime on touch
+    // Instant liquid silver glow + warm acoustic chime on touch
     setIsRecording(true);
     livePreviewRef.current = '';
     setLivePreview('');
@@ -523,7 +527,7 @@ export const RoleplayStage: React.FC<Props> = ({
           silenceTimeoutMs: 5000,
           initialSilenceTimeoutMs: 15000,
           onInterim: (text) => {
-            if (!isRecordingRef.current) return;
+            if (!isRecordingRef.current && !isStoppingRef.current) return;
             livePreviewRef.current = text;
             setLivePreview(text);
             hasDetectedVoiceRef.current = true;
@@ -614,9 +618,8 @@ export const RoleplayStage: React.FC<Props> = ({
     playChime('micStop');
 
     try {
-      // Allow a 320ms acoustic tail buffer before stopping recorder & recognition
-      // so the final syllable of the user's last word (e.g. "...Guinness") is never clipped
-      await new Promise((resolve) => window.setTimeout(resolve, 320));
+      // Short 180ms acoustic tail buffer so the final syllable is never clipped
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
 
       const activeRec = recRef.current;
       recRef.current = null;
@@ -667,14 +670,17 @@ export const RoleplayStage: React.FC<Props> = ({
         turnLowConfidenceWords.forEach((word) => sessionLowConfidenceWordsRef.current.add(word));
       }
 
-      const bestRawTranscript =
-        heard && heard.trim().length >= livePreviewRef.current.trim().length
-          ? heard.trim()
-          : livePreviewRef.current.trim() || livePreview.trim() || heard?.trim() || '';
+      const bestRawTranscript = chooseBestTranscript(
+        livePreviewRef.current.trim() || livePreview.trim(),
+        heard?.trim() || ''
+      );
       let finalTranscript = deduplicateSpokenText(bestRawTranscript);
-      livePreviewRef.current = '';
-      setLivePreview('');
-      setLiveLowConfidenceWords([]);
+
+      // Keep livePreview updated with the flushed transcript so it remains visible on screen without vanishing!
+      if (finalTranscript) {
+        livePreviewRef.current = finalTranscript;
+        setLivePreview(finalTranscript);
+      }
 
       let audioAttachment: AudioAttachment | null = null;
       if (audioClip && audioClip.base64) {
@@ -684,21 +690,16 @@ export const RoleplayStage: React.FC<Props> = ({
         };
       }
 
-      // Multimodal AI Audio Transcription Verification & Fallback:
-      // Browser Web Speech API frequently drops leading/trailing words (e.g. returning only "no I'd" or "rather have"
-      // when the user said "No, I'd rather have a Guinness"). Whenever we have recorded audio and Web Speech API
-      // returned fewer than 8 words (or empty), verify/upgrade the transcript using Gemini audio transcription!
-      const webWordCount = finalTranscript ? finalTranscript.split(/\s+/).filter(Boolean).length : 0;
-      const shouldVerifyWithAI =
+      // Only invoke AI audio transcription as a fallback if Web Speech API produced nothing at all
+      if (
+        !finalTranscript &&
         audioAttachment &&
         audioAttachment.base64 &&
-        (hadVoice || (audioClip?.durationMs ?? 0) >= 500) &&
-        (!finalTranscript || webWordCount <= 8);
-
-      if (shouldVerifyWithAI && audioAttachment) {
+        (hadVoice || (audioClip?.durationMs ?? 0) >= 450)
+      ) {
         diagnosticLogger.log(
           'VOICE',
-          `Verifying/upgrading transcript via AI audio transcription (webWords=${webWordCount}, duration=${audioClip?.durationMs ?? 0}ms)...`
+          `Fallback AI audio transcription (duration=${audioClip?.durationMs ?? 0}ms)...`
         );
         setIsTranscribingAudio(true);
         try {
@@ -711,12 +712,9 @@ export const RoleplayStage: React.FC<Props> = ({
           const aiTranscript = await Promise.race([aiPromise, timeoutPromise]);
 
           if (aiTranscript && aiTranscript.trim().length > 0) {
-            const mergedBest = chooseBestTranscript(finalTranscript, aiTranscript.trim());
-            diagnosticLogger.log(
-              'VOICE',
-              `AI audio transcription result: "${aiTranscript.trim()}" | Chosen: "${mergedBest}"`
-            );
-            finalTranscript = mergedBest;
+            finalTranscript = chooseBestTranscript(finalTranscript, aiTranscript.trim());
+            livePreviewRef.current = finalTranscript;
+            setLivePreview(finalTranscript);
           }
         } catch (err: any) {
           diagnosticLogger.error('VOICE', `AI audio transcription error: ${err?.message || err}`);
@@ -728,9 +726,12 @@ export const RoleplayStage: React.FC<Props> = ({
 
       // Do NOT inject a fake "(Silence / hesitated)" turn when no speech was heard!
       if (!finalTranscript) {
+        livePreviewRef.current = '';
+        setLivePreview('');
+        setLiveLowConfidenceWords([]);
         diagnosticLogger.log('VOICE', 'No speech detected after recording stop; resetting cleanly without fake turn');
         toast.info(
-          "Didn't catch any speech — tap the mic, speak clearly, and tap Send when finished.",
+          "Didn't catch any speech — press and hold to speak, or click once to start and click again when done.",
           'No Speech Heard'
         );
         return;
@@ -748,38 +749,77 @@ export const RoleplayStage: React.FC<Props> = ({
     }
   };
 
-  // Pure, deterministic Tap-to-Start / Tap-to-Send toggle (never cuts off on pointer release!)
-  const onPointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (isProcessing || isAnalyzingScorecard) return;
+  // Push-to-Talk (press, speak, release -> transcribes) + Quick-Click Toggle (click quickly -> click again later)
+  const QUICK_CLICK_THRESHOLD_MS = 300;
 
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (isProcessing || isAnalyzingScorecard || isStoppingRef.current) return;
+
+    // If already recording from a previous quick-click, clicking again finishes and transcribes!
     if (isRecordingRef.current || isInitializingMicRef.current) {
-      // Ignore accidental double-tap within 550ms of starting recording
-      if (Date.now() - recordingStartedAtRef.current < 550) {
-        return;
+      if (holdTimerRef.current) {
+        window.clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
       }
       isPressingRef.current = false;
+      setIsHolding(false);
+      isHoldingRef.current = false;
       stopRecording();
       return;
     }
 
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore if unsupported */
+    }
+
     pressStartTimeRef.current = Date.now();
     isPressingRef.current = true;
+    if (holdTimerRef.current) {
+      window.clearTimeout(holdTimerRef.current);
+    }
+    holdTimerRef.current = window.setTimeout(() => {
+      holdTimerRef.current = null;
+      if (isPressingRef.current) {
+        setIsHolding(true);
+        isHoldingRef.current = true;
+      }
+    }, QUICK_CLICK_THRESHOLD_MS);
+
     startRecording();
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      /* ignore */
+    }
+
     if (holdTimerRef.current) {
       window.clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     }
+
+    if (!isPressingRef.current) return;
+    const heldMs = Date.now() - pressStartTimeRef.current;
     isPressingRef.current = false;
     setIsHolding(false);
     isHoldingRef.current = false;
+
+    // If the user held the button down to speak (>= 300ms), releasing immediately stops and transcribes!
+    // If they clicked once quickly (< 300ms), it stays listening until they click again.
+    if (heldMs >= QUICK_CLICK_THRESHOLD_MS && (isRecordingRef.current || isInitializingMicRef.current)) {
+      stopRecording();
+    }
   };
 
-  const onPointerCancel = () => {
-    onPointerUp();
+  const onPointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
+    onPointerUp(e);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -1192,28 +1232,30 @@ export const RoleplayStage: React.FC<Props> = ({
             );
           })}
 
-          {/* Subtle inline live speech preview inside the chat flow (no floating popup clutter) */}
-          {isRecording && (
-            <div className="flex justify-end animate-fade-in">
-              <div className="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-sm bg-indigo-600/85 text-white/95 shadow-sm backdrop-blur-xs">
+          {/* Continuous inline speech bubble that stays visible until committed to turns (never vanishes!) */}
+          {(isRecording || livePreview.trim().length > 0) && (
+            <div className="flex justify-end">
+              <div className="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed bg-brand-600 text-white rounded-br-md shadow-sm">
                 <span>{livePreview || '🎙️ Listening… speak now'}</span>
-                <span className="inline-block w-1 h-3.5 ml-1 bg-white/80 animate-pulse align-middle rounded-full" />
+                {isRecording && (
+                  <span className="inline-block w-1 h-3.5 ml-1.5 bg-white/85 animate-pulse align-middle rounded-full" />
+                )}
               </div>
             </div>
           )}
 
-          {isTranscribingAudio && !isRecording && (
+          {isTranscribingAudio && !isRecording && !livePreview.trim() && (
             <div className="flex justify-end animate-fade-in">
-              <div className="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-xs font-semibold bg-indigo-600/75 text-white/95 shadow-sm backdrop-blur-xs flex items-center gap-2">
+              <div className="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-xs font-semibold bg-brand-600/85 text-white/95 shadow-sm flex items-center gap-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                <span>Transcribing your speech…</span>
+                <span>Transcribing…</span>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Minimalist Bottom Bar with the Little Silky Glowing Voice Button */}
+      {/* Minimalist Bottom Bar with the Silver Flowing Liquid Push-to-Talk Button */}
       <div className="relative flex-shrink-0 sticky bottom-0 z-20 px-4 sm:px-6 pb-safe pt-2.5 border-t border-slate-200/70 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md space-y-2">
         {showTextInput && !isRecording && (
           <form onSubmit={handleSendTypedReply} className="max-w-xl mx-auto flex items-center gap-2 animate-fade-in">
@@ -1283,100 +1325,81 @@ export const RoleplayStage: React.FC<Props> = ({
             </button>
           </div>
 
-          {/* Center: The Little Silky Glowing Voice Button (+ Cancel when recording) */}
+          {/* Center: Single Simple Silver Flowing Liquid Push-to-Talk Button */}
           <div className="flex flex-col items-center">
-            <div className="relative flex items-center justify-center gap-3">
-              {isRecording && (
-                <button
-                  type="button"
-                  onClick={cancelRecording}
-                  className="relative z-10 w-10 h-10 rounded-full bg-slate-200/90 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-950/70 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-300 flex items-center justify-center transition active:scale-95 shadow-xs"
-                  title="Cancel recording"
-                  aria-label="Cancel recording"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+            <div className="relative flex items-center justify-center">
+              {/* Layer 1: Liquid silver breathing radial bloom */}
+              <span
+                className={`absolute -inset-5 rounded-full pointer-events-none transition-all duration-500 ease-out ${
+                  isRecording
+                    ? 'liquid-silver-bloom opacity-100'
+                    : 'bg-slate-400/20 dark:bg-slate-300/15 blur-xl silky-orb-idle'
+                }`}
+                style={
+                  isRecording
+                    ? { transform: `scale(${voiceBloomScale})` }
+                    : undefined
+                }
+              />
 
-              <div className="relative flex items-center justify-center">
-                {/* Layer 1: Ambient breathing radial bloom */}
-                <span
-                  className={`absolute -inset-5 rounded-full pointer-events-none transition-all duration-500 ease-out ${
-                    isRecording
-                      ? 'silky-orb-active-bloom opacity-100'
-                      : 'bg-indigo-500/15 dark:bg-indigo-400/15 blur-xl silky-orb-idle'
-                  }`}
-                  style={
-                    isRecording
-                      ? { transform: `scale(${voiceBloomScale})` }
-                      : undefined
-                  }
-                />
+              {/* Layer 2: Flowing liquid silver aura when speaking */}
+              <span
+                className={`absolute -inset-2 rounded-full blur-md pointer-events-none transition-all duration-500 ease-out ${
+                  isRecording
+                    ? 'liquid-silver-aura opacity-95'
+                    : 'opacity-0 scale-75'
+                }`}
+                style={
+                  isRecording
+                    ? { transform: `scale(${voiceBloomScale * 0.98})` }
+                    : undefined
+                }
+              />
 
-                {/* Layer 2: Silky rotating multi-hue aurora halo when recording */}
-                <span
-                  className={`absolute -inset-2 rounded-full blur-md pointer-events-none transition-all duration-500 ease-out ${
-                    isRecording
-                      ? 'silky-orb-active-aura opacity-95'
-                      : 'opacity-0 scale-75'
-                  }`}
-                  style={
-                    isRecording
-                      ? { transform: `scale(${voiceBloomScale * 0.98})` }
-                      : undefined
-                  }
-                />
-
-                {/* Layer 3: Soft inner luminous rim */}
-                <span
-                  className={`absolute -inset-0.5 rounded-full pointer-events-none transition-all duration-500 ${
-                    isRecording
-                      ? 'bg-gradient-to-tr from-sky-400 via-indigo-400 to-fuchsia-400 opacity-90 blur-[2px]'
-                      : 'bg-gradient-to-tr from-brand-400/40 to-indigo-400/40 opacity-50'
-                  }`}
-                />
-
-                {/* The Little Button itself */}
-                <button
-                  type="button"
-                  onPointerDown={onPointerDown}
-                  onPointerUp={onPointerUp}
-                  onPointerCancel={onPointerCancel}
-                  onKeyDown={onKeyDown}
-                  onContextMenu={(e) => e.preventDefault()}
-                  disabled={isProcessing || isAnalyzingScorecard}
-                  className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-white transition-all duration-500 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
-                    isRecording
-                      ? 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-sky-400 scale-105 shadow-[0_0_30px_rgba(16,185,129,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
-                      : 'bg-gradient-to-tr from-brand-600 via-indigo-500 to-sky-500 hover:scale-[1.04] active:scale-95 shadow-[0_6px_20px_rgba(59,130,246,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)]'
-                  }`}
-                  aria-label={
-                    isRecording
-                      ? 'Tap to send your spoken message'
-                      : 'Tap to start speaking, then tap again to send'
-                  }
-                >
-                  {isProcessing ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-white/95" />
-                  ) : isRecording ? (
-                    <Send className="w-5 h-5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
-                  ) : (
-                    <Mic className="w-6 h-6 text-white transition-transform duration-300" />
-                  )}
-                </button>
-              </div>
+              {/* The Single Simple Silver Flowing Liquid Button */}
+              <button
+                type="button"
+                onPointerDown={onPointerDown}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerCancel}
+                onKeyDown={onKeyDown}
+                onContextMenu={(e) => e.preventDefault()}
+                disabled={isProcessing || isAnalyzingScorecard}
+                className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
+                  isRecording
+                    ? 'liquid-silver-btn-active scale-105'
+                    : 'liquid-silver-btn active:scale-95'
+                }`}
+                aria-label={
+                  isRecording
+                    ? isHolding
+                      ? 'Release to finish speaking'
+                      : 'Click to finish speaking'
+                    : 'Hold to speak, or click once to start'
+                }
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-slate-700" />
+                ) : (
+                  <Mic
+                    className={`w-6 h-6 transition-transform duration-300 ${
+                      isRecording
+                        ? 'text-slate-900 scale-110 drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]'
+                        : 'text-slate-800'
+                    }`}
+                  />
+                )}
+              </button>
             </div>
 
             <span className="mt-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 select-none">
-              {isTranscribingAudio
-                ? 'Transcribing…'
-                : isProcessing
-                ? 'Thinking…'
+              {isProcessing
+                ? 'Replying…'
                 : isRecording
                 ? isHolding
-                  ? 'Release to send'
-                  : 'Tap green button to send (or ✕ to cancel)'
-                : 'Tap mic to speak'}
+                  ? 'Release to transcribe'
+                  : 'Listening… click again when done'
+                : 'Hold to talk · or click once'}
             </span>
           </div>
 

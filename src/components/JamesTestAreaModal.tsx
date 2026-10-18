@@ -336,8 +336,6 @@ export const JamesTestAreaModal: React.FC<Props> = ({
     livePreview,
     recordedClipsRef,
     pronunciationMetadataRef,
-    stopRecording,
-    cancelRecording,
     cleanupAudio,
     onPointerDown,
     onPointerUp,
@@ -856,26 +854,29 @@ export const JamesTestAreaModal: React.FC<Props> = ({
               );
             })}
 
-            {isRecording && (
-              <div className="flex justify-end animate-fade-in">
-                <div className="max-w-[85%] p-3 rounded-2xl bg-indigo-600/90 text-white text-sm border border-indigo-400/40 rounded-tr-sm shadow-md">
-                  <div className="text-[10px] font-bold text-indigo-200 mb-0.5 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
-                    <span>Listening live · tap Send when finished</span>
+            {(isRecording || livePreview.trim().length > 0) && (
+              <div className="flex items-start gap-2.5 justify-end">
+                <div className="max-w-[85%] items-end">
+                  <div className="flex items-center gap-2 mb-1 px-1 justify-end">
+                    <span className="text-[10px] font-bold text-slate-400">You</span>
                   </div>
-                  <div className="font-medium">
-                    {livePreview || 'Speak naturally at your own pace…'}
-                    <span className="inline-block w-1 h-3.5 ml-1 bg-white/80 animate-pulse align-middle rounded-full" />
+                  <div className="relative p-3.5 rounded-2xl text-sm leading-relaxed shadow-xs bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-tr-sm">
+                    <div className="whitespace-pre-wrap">
+                      {livePreview || '🎙️ Listening… speak now'}
+                      {isRecording && (
+                        <span className="inline-block w-1 h-3.5 ml-1.5 bg-white/85 animate-pulse align-middle rounded-full" />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {isTranscribing && !isRecording && (
+            {isTranscribing && !isRecording && !livePreview.trim() && (
               <div className="flex justify-end animate-fade-in">
-                <div className="max-w-[85%] px-3.5 py-2.5 rounded-2xl bg-indigo-600/80 text-white text-xs font-semibold rounded-tr-sm shadow-sm flex items-center gap-2">
+                <div className="max-w-[85%] px-3.5 py-2.5 rounded-2xl bg-brand-600/85 text-white text-xs font-semibold rounded-tr-sm shadow-sm flex items-center gap-2">
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Transcribing your speech…</span>
+                  <span>Transcribing…</span>
                 </div>
               </div>
             )}
@@ -897,16 +898,16 @@ export const JamesTestAreaModal: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Sleek Silky Voice & Text Input Bar */}
+          {/* Sleek Silver Flowing Liquid Voice & Text Input Bar */}
           <div className="px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 flex-shrink-0 space-y-2 shadow-lg">
             <div className="flex items-center gap-2.5">
               <div className="relative flex items-center justify-center flex-shrink-0">
-                {/* Ambient breathing radial bloom */}
+                {/* Liquid silver breathing radial bloom */}
                 <span
                   className={`absolute -inset-3.5 rounded-full pointer-events-none transition-all duration-500 ease-out ${
                     isRecording
-                      ? 'silky-orb-active-bloom opacity-100'
-                      : 'bg-indigo-500/15 dark:bg-indigo-400/15 blur-lg silky-orb-idle'
+                      ? 'liquid-silver-bloom opacity-100'
+                      : 'bg-slate-400/20 dark:bg-slate-300/15 blur-lg silky-orb-idle'
                   }`}
                   style={
                     isRecording
@@ -915,11 +916,11 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   }
                 />
 
-                {/* Silky rotating aurora halo */}
+                {/* Flowing liquid silver aura */}
                 <span
                   className={`absolute -inset-1.5 rounded-full blur-xs pointer-events-none transition-all duration-500 ease-out ${
                     isRecording
-                      ? 'silky-orb-active-aura opacity-95'
+                      ? 'liquid-silver-aura opacity-95'
                       : 'opacity-0 scale-75'
                   }`}
                   style={
@@ -936,76 +937,53 @@ export const JamesTestAreaModal: React.FC<Props> = ({
                   onPointerCancel={onPointerUp}
                   onContextMenu={(e) => e.preventDefault()}
                   disabled={isProcessing || isTranscribing}
-                  className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full text-white transition-all duration-300 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
+                  className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ease-out touch-none select-none cursor-pointer disabled:opacity-40 ${
                     isRecording
-                      ? 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-sky-400 scale-105 shadow-[0_0_24px_rgba(16,185,129,0.65),inset_0_1px_3px_rgba(255,255,255,0.65)]'
-                      : 'bg-gradient-to-tr from-brand-600 via-indigo-500 to-sky-500 hover:scale-[1.04] active:scale-95 shadow-[0_4px_16px_rgba(59,130,246,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)]'
+                      ? 'liquid-silver-btn-active scale-105'
+                      : 'liquid-silver-btn active:scale-95'
                   }`}
                   title={
                     isRecording
                       ? isHolding
-                        ? 'Release to send'
-                        : 'Tap to finish and send'
-                      : `Click to speak to ${coach.name}`
+                        ? 'Release to transcribe'
+                        : 'Click again to finish speaking'
+                      : `Hold to speak to ${coach.name}, or click once`
                   }
                 >
-                  {isRecording ? (
-                    <Check className="w-5 h-5 scale-110 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]" />
-                  ) : (
-                    <Mic className="w-5 h-5 text-white" />
-                  )}
+                  <Mic
+                    className={`w-5 h-5 transition-transform duration-300 ${
+                      isRecording
+                        ? 'text-slate-900 scale-110 drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]'
+                        : 'text-slate-800'
+                    }`}
+                  />
                 </button>
               </div>
 
-              {isRecording ? (
-                <div className="flex-1 flex items-center justify-between gap-2 px-3.5 py-2 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping flex-shrink-0" />
-                    <span className="text-xs sm:text-sm font-semibold text-indigo-950 dark:text-indigo-100 truncate">
-                      {livePreview ? `“${livePreview}”` : 'Listening… speak now'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={cancelRecording}
-                      className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 text-xs font-bold transition active:scale-95 flex items-center gap-1"
-                      title="Cancel recording without sending"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Cancel</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={stopRecording}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition active:scale-95 flex items-center gap-1 shadow-xs"
-                      title={`Send spoken message to ${coach.name}`}
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Send</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSendTyped} className="flex-1 flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={typedInput}
-                    onChange={(e) => setTypedInput(e.target.value)}
-                    placeholder={`Click mic to speak, or type to ${coach.name}…`}
-                    disabled={isProcessing || isTranscribing}
-                    className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 outline-none transition shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!typedInput.trim() || isProcessing || isTranscribing}
-                    className="p-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-600 shadow-sm"
-                    title={`Send message to ${coach.name}`}
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-              )}
+              <form onSubmit={handleSendTyped} className="flex-1 flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={typedInput}
+                  onChange={(e) => setTypedInput(e.target.value)}
+                  placeholder={
+                    isRecording
+                      ? isHolding
+                        ? 'Speaking… release button to transcribe'
+                        : 'Speaking… click silver button when done'
+                      : `Hold silver mic to speak, or type to ${coach.name}…`
+                  }
+                  disabled={isProcessing || isTranscribing || isRecording}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 outline-none transition shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!typedInput.trim() || isProcessing || isTranscribing || isRecording}
+                  className="p-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-600 shadow-sm"
+                  title={`Send message to ${coach.name}`}
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
             </div>
 
             {onOpenLessonRoleplay && (
