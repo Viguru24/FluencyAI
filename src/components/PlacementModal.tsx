@@ -14,6 +14,7 @@ import {
   Brain,
   ShieldCheck,
   ArrowLeft,
+  AlertCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { CEFRLevel, PlacementAssessmentResult } from '../types';
@@ -24,8 +25,9 @@ import {
   type RecognitionHandle,
 } from '../services/speechRecognition';
 import { AudioVisualizerController } from '../services/audioVisualizer';
+import { AudioRecorderController, type RecordedAudioClip } from '../services/audioRecorder';
 import { WaveformVisualizer } from './lesson/WaveformVisualizer';
-import { evaluatePlacementAssessment } from '../services/geminiService';
+import { evaluatePlacementAssessment, transcribeAudioWithAI } from '../services/geminiService';
 
 interface PlacementModalProps {
   isOpen: boolean;
@@ -120,9 +122,33 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
   const [inputMode, setInputMode] = useState<'voice' | 'type'>('voice');
   const [bands, setBands] = useState<number[]>([]);
   const [result, setResult] = useState<PlacementAssessmentResult | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const [micError, setMicError] = useState<string | null>(null);
 
   const vizRef = useRef(new AudioVisualizerController());
+  const recorderRef = useRef(new AudioRecorderController());
   const recRef = useRef<RecognitionHandle | null>(null);
+  const liveTranscriptRef = useRef<string>('');
+
+  const cleanupAudio = () => {
+    stopSpeaking();
+    setIsAiSpeaking(false);
+    try {
+      recRef.current?.stop().catch(() => {});
+    } catch {
+      /* ignore */
+    }
+    recRef.current = null;
+    try {
+      recorderRef.current.stop().catch(() => {});
+    } catch {
+      /* ignore */
+    }
+    vizRef.current.stopMicrophone();
+    setIsRecording(false);
+    setIsTranscribing(false);
+    setBands([]);
+  };
 
   // Play question audio on step change
   useEffect(() => {
@@ -144,11 +170,8 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
 
   // Clean up audio on unmount
   useEffect(() => {
-    const viz = vizRef.current;
     return () => {
-      stopSpeaking();
-      recRef.current?.stop();
-      viz.stop();
+      cleanupAudio();
     };
   }, []);
 
@@ -167,54 +190,108 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
   };
 
   const handleToggleRecord = async () => {
-    playChime('tap');
+    setMicError(null);
 
+    // If currently recording, STOP recording and finalize speech transcript
     if (isRecording) {
-      const finalTranscript = await recRef.current?.stop();
-      if (finalTranscript && finalTranscript.trim()) {
-        const existing = activeInputText.trim();
-        setActiveInputText(existing ? `${existing} ${finalTranscript.trim()}` : finalTranscript.trim());
-      }
-      vizRef.current.stop();
+      playChime('tap');
       setIsRecording(false);
+      vizRef.current.stopMicrophone();
+      setBands([]);
+
+      let audioClip: RecordedAudioClip | null = null;
+      try {
+        audioClip = await recorderRef.current.stop();
+      } catch (err) {
+        console.warn('[PlacementModal] AudioRecorder stop error:', err);
+      }
+
+      let webSpeechTranscript = '';
+      if (recRef.current) {
+        try {
+          const recText = await recRef.current.stop();
+          if (recText) webSpeechTranscript = recText.trim();
+        } catch (err) {
+          console.warn('[PlacementModal] SpeechRecognition stop error:', err);
+        }
+        recRef.current = null;
+      }
+
+      let finalSpoken = liveTranscriptRef.current.trim() || webSpeechTranscript;
+
+      // If Web Speech API was empty (e.g. Firefox, Android exclusivity, or network pause),
+      // transcribe the captured audio using Gemini Multimodal AI!
+      if (!finalSpoken && audioClip?.base64) {
+        setIsTranscribing(true);
+        try {
+          const aiText = await transcribeAudioWithAI({
+            base64: audioClip.base64,
+            mimeType: audioClip.mimeType,
+            blob: audioClip.blob,
+          });
+          if (aiText && aiText.trim()) {
+            finalSpoken = aiText.trim();
+          }
+        } catch (err) {
+          console.warn('[PlacementModal] AI transcription error:', err);
+        } finally {
+          setIsTranscribing(false);
+        }
+      }
+
+      if (finalSpoken) {
+        setActiveInputText((prev) => {
+          const existing = prev.trim();
+          if (!existing) return finalSpoken;
+          if (existing.toLowerCase().includes(finalSpoken.toLowerCase())) return existing;
+          return `${existing} ${finalSpoken}`;
+        });
+      }
+
+      liveTranscriptRef.current = '';
       return;
     }
 
+    // START recording
     stopSpeaking();
     setIsAiSpeaking(false);
+    playChime('tap');
 
-    if (!isRecognitionSupported()) {
-      setInputMode('type');
+    // 1. Request microphone and start audio visualizer
+    const ok = await vizRef.current.startMicrophone((newBands: number[]) => setBands(newBands));
+    if (!ok) {
+      setMicError('Microphone access was blocked or is unavailable. Please allow microphone permissions in your browser or switch to Type mode.');
       return;
     }
 
-    try {
-      await vizRef.current.start((newBands: number[]) => setBands(newBands));
-    } catch {
-      // Visualizer is optional
-    }
+    // 2. Start audio recording via MediaRecorder for guaranteed AI fallback
+    const stream = vizRef.current.getStream();
+    await recorderRef.current.start(stream);
 
     setIsRecording(true);
-    const existing = activeInputText.trim();
+    liveTranscriptRef.current = '';
 
-    try {
-      recRef.current = startRecognition({
-        lang: 'en-GB',
-        onInterim: (text: string) => {
-          setActiveInputText(existing ? `${existing} ${text}` : text);
-        },
-        onStatusChange: (status: 'listening' | 'heard' | 'error' | 'stopped') => {
-          if (status === 'error' || status === 'stopped') {
-            setIsRecording(false);
-            vizRef.current.stop();
-          }
-        },
-      });
-    } catch (e) {
-      console.warn('Could not start speech recognition', e);
-      setIsRecording(false);
-      vizRef.current.stop();
-      setInputMode('type');
+    // 3. Start browser Web Speech API in parallel for live instant text preview if supported
+    if (isRecognitionSupported()) {
+      try {
+        recRef.current = startRecognition({
+          lang: 'en-GB',
+          silenceTimeoutMs: 15000,
+          onInterim: (text: string) => {
+            liveTranscriptRef.current = text;
+            if (text.trim()) {
+              setActiveInputText(text.trim());
+            }
+          },
+          onStatusChange: (status: 'listening' | 'heard' | 'error' | 'stopped') => {
+            if (status === 'error') {
+              console.warn('[PlacementModal] Web Speech API status: error (AudioRecorder will use AI fallback if needed)');
+            }
+          },
+        });
+      } catch (e) {
+        console.warn('[PlacementModal] Could not start speech recognition:', e);
+      }
     }
   };
 
@@ -223,12 +300,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
     if (!trimmed) return;
 
     playChime('tap');
-    if (isRecording) {
-      recRef.current?.stop();
-      vizRef.current.stop();
-      setIsRecording(false);
-    }
-    stopSpeaking();
+    cleanupAudio();
 
     const updatedAnswers = [...answers];
     updatedAnswers[currentStep] = trimmed;
@@ -238,6 +310,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
       setCurrentStep((prev) => prev + 1);
       setActiveInputText(answers[currentStep + 1] || '');
       setIsEditingText(false);
+      setMicError(null);
     } else {
       // All 3 questions answered! Begin evaluation
       setIsAnalyzing(true);
@@ -307,7 +380,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => {
-                stopSpeaking();
+                cleanupAudio();
                 onClose();
               }}
               className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 transition active:scale-95"
@@ -319,7 +392,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
             </button>
             <button
               onClick={() => {
-                stopSpeaking();
+                cleanupAudio();
                 onClose();
               }}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition shrink-0"
@@ -427,19 +500,46 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
                   </div>
                 </div>
 
+                {/* Microphone permission or hardware error notice */}
+                {micError && (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2.5 animate-fade-in">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                    <div className="flex-1 space-y-1.5">
+                      <p className="leading-relaxed">{micError}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputMode('type');
+                          setMicError(null);
+                        }}
+                        className="font-bold underline hover:no-underline text-amber-800 dark:text-amber-200 inline-flex items-center gap-1"
+                      >
+                        Switch to Type mode &rarr;
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {inputMode === 'voice' ? (
                   <div className="space-y-3">
                     {/* Visualizer & Mic Area */}
                     <div className="relative rounded-2xl bg-slate-900 text-white p-5 flex flex-col items-center justify-center space-y-3 overflow-hidden shadow-inner">
                       <div className="absolute inset-0 bg-radial from-brand-900/40 via-transparent to-transparent pointer-events-none" />
 
-                      {isRecording ? (
+                      {isTranscribing ? (
+                        <div className="w-full space-y-2 py-2 flex flex-col items-center justify-center">
+                          <Loader2 className="w-6 h-6 text-brand-400 animate-spin" />
+                          <p className="text-xs text-brand-200 font-semibold">
+                            Transcribing your speech with AI...
+                          </p>
+                        </div>
+                      ) : isRecording ? (
                         <div className="w-full space-y-2">
                           <div className="flex items-center justify-center gap-2 text-rose-400 text-xs font-bold animate-pulse">
                             <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                            Listening... Speak clearly in English
+                            Listening... Speak clearly in English (tap mic when done)
                           </div>
-                          <WaveformVisualizer mode={isRecording ? 'user' : 'idle'} bands={bands} />
+                          <WaveformVisualizer mode="user" bands={bands} />
                         </div>
                       ) : (
                         <div className="text-center space-y-1">
@@ -451,14 +551,22 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
 
                       {/* Giant Mic Button */}
                       <button
+                        type="button"
                         onClick={handleToggleRecord}
-                        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-lg ${
+                        disabled={isTranscribing}
+                        aria-label={isRecording ? 'Finish recording answer' : 'Start speaking answer'}
+                        title={isRecording ? 'Tap to finish recording' : 'Tap to start recording'}
+                        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                           isRecording
                             ? 'bg-rose-600 hover:bg-rose-500 text-white ring-4 ring-rose-400/40 animate-pulse'
                             : 'bg-gradient-to-tr from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-brand-500/30'
                         }`}
                       >
-                        <Mic className="w-7 h-7" />
+                        {isTranscribing ? (
+                          <Loader2 className="w-7 h-7 animate-spin text-white" />
+                        ) : (
+                          <Mic className={`w-7 h-7 ${isRecording ? 'scale-110 text-white' : 'text-white'}`} />
+                        )}
                       </button>
                     </div>
 
@@ -539,7 +647,7 @@ export const PlacementModal: React.FC<PlacementModalProps> = ({
                   <button
                     onClick={() => {
                       playChime('tap');
-                      stopSpeaking();
+                      cleanupAudio();
                       onSkipPlacement();
                       onClose();
                     }}
