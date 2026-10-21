@@ -397,7 +397,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </button>
 
-            {/* Investor Pitch Deck Button */}
+            {/* Partner Vision & Briefing Button */}
             {onOpenInvestor && (
               <button
                 onClick={() => {
@@ -405,12 +405,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onOpenInvestor();
                 }}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500/15 via-indigo-500/15 to-purple-500/15 hover:from-sky-500/25 hover:to-purple-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-300/40 dark:border-indigo-500/30 text-xs font-black transition active:scale-95 shadow-2xs group shrink-0"
-                title="View Investor Pitch Deck & Financial Model"
+                title="View Partner Vision, Impact & Collaborative Growth Briefing"
               >
                 <BarChart3 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform shrink-0" />
-                <span>Investor</span>
+                <span>Partner</span>
                 <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-indigo-600 text-white leading-none">
-                  Deck
+                  Vision
                 </span>
               </button>
             )}
@@ -615,7 +615,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
 
-              {/* Investor Pitch Deck Mobile Card */}
+              {/* Partner Vision Mobile Card */}
               {onOpenInvestor && (
                 <button
                   onClick={() => {
@@ -627,17 +627,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-                      📊
+                      🤝
                     </div>
                     <div>
                       <div className="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                        <span>Investor Pitch Deck</span>
+                        <span>Partner &amp; Vision Briefing</span>
                         <span className="px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[9px] font-black uppercase tracking-wider">
-                          New
+                          Vision
                         </span>
                       </div>
                       <div className="text-[11px] font-medium text-indigo-700/80 dark:text-indigo-300/80">
-                        Why it sells, $21B market, financials &amp; app breakdown
+                        Our mission, learner impact, collaborative growth &amp; pedagogy
                       </div>
                     </div>
                   </div>

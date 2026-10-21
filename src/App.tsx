@@ -543,23 +543,23 @@ export function App() {
           }}
         />
 
-        {/* Investor & Partner Briefing Quick Card */}
+        {/* Partner & Vision Briefing Quick Card */}
         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 border border-indigo-200/80 dark:border-indigo-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-xs flex-shrink-0">
-              📊
+              🤝
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                  Investor &amp; Partner Briefing
+                  Partner &amp; Vision Briefing
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider">
-                  Pitch
+                  Vision
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
-                Explore why Fluency AI will sell, our $21B market size, 84%+ SaaS margins, SLA pedagogical architecture, and 3-year financial model.
+                Discover our mission to bridge the global fluency gap, educational architecture, sustainable business model, and long-term collaborative roadmap.
               </p>
             </div>
           </div>
@@ -571,7 +571,7 @@ export function App() {
             }}
             className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition active:scale-95 shadow-xs flex items-center justify-center gap-1.5 flex-shrink-0"
           >
-            <span>Open Investor Deck</span>
+            <span>Explore Partner Vision</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -695,7 +695,7 @@ export function App() {
           />
         )}
 
-        {/* Dedicated Full-Page Investor Pitch Deck & Briefing */}
+        {/* Dedicated Full-Page Partner Vision & Briefing */}
         {isInvestorOpen && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50 dark:bg-slate-950 animate-fade-in">
             <InvestorPitchPage

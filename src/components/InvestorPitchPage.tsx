@@ -91,12 +91,12 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
     }
     playChime('success');
     setContactSubmitted(true);
-    toast.success('Your diligence inquiry has been received! We will reach out within 24 hours.', 'Thank you!');
+    toast.success('Your message has been received! We look forward to connecting and collaborating.', 'Thank you!');
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-brand-500 selection:text-white print:bg-white print:text-black">
-      {/* Sticky Investor Deck Header Bar */}
+      {/* Sticky Partner Vision Header Bar */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 shadow-2xs print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo & Tag */}
@@ -113,12 +113,12 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
               <div className="flex flex-col">
                 <span className="text-sm font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                   Fluency AI
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs">
-                    Investor Deck
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-2xs">
+                    Partner Vision
                   </span>
                 </span>
                 <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hidden xs:inline">
-                  Confidential Investment Briefing
+                  Shared Growth &amp; Collaboration Briefing
                 </span>
               </div>
             </button>
@@ -144,7 +144,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Why It Sells &amp; Market
+              Mission &amp; Community Need
             </button>
             <button
               onClick={() => setActiveTab('product')}
@@ -164,7 +164,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Economics &amp; Projections
+              Sustainable Growth
             </button>
             <button
               onClick={() => setActiveTab('calculator')}
@@ -174,7 +174,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              🧮 Model Calculator
+              🧮 Growth Simulator
             </button>
             <button
               onClick={() => setActiveTab('contact')}
@@ -184,7 +184,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Diligence &amp; Next Steps
+              Connect &amp; Collaborate
             </button>
           </nav>
 
@@ -193,7 +193,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
             <button
               onClick={handlePrint}
               className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95 hidden sm:flex items-center gap-1.5"
-              title="Print or Save PDF Executive Memo"
+              title="Print or Save PDF Briefing Memo"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Export PDF</span>
@@ -232,7 +232,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
-            Why It Sells
+            Mission &amp; Need
           </button>
           <button
             onClick={() => setActiveTab('product')}
@@ -252,7 +252,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
-            Financials
+            Growth Model
           </button>
           <button
             onClick={() => setActiveTab('calculator')}
@@ -262,7 +262,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
-            Calculator
+            Simulator
           </button>
           <button
             onClick={() => setActiveTab('contact')}
@@ -272,7 +272,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
-            Diligence
+            Collaborate
           </button>
         </div>
       </header>
@@ -288,15 +288,15 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
           <div className="relative z-10 max-w-4xl space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-black text-amber-300">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Investment Memorandum • Series Seed / Pre-A Opportunity</span>
+              <span>Partner &amp; Vision Briefing • Empowering Global Communication</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
-              Bridging the <span className="bg-gradient-to-r from-sky-400 via-teal-300 to-indigo-300 bg-clip-text text-transparent">$21 Billion</span> Spoken Fluency Chasm with Voice-First Generative AI.
+              Bridging the <span className="bg-gradient-to-r from-sky-400 via-teal-300 to-indigo-300 bg-clip-text text-transparent">$21 Billion</span> Spoken Fluency Gap with Human-Centric Voice AI.
             </h1>
 
             <p className="text-base sm:text-lg text-slate-300 font-medium leading-relaxed max-w-3xl">
-              <strong className="text-white">1.5 Billion people</strong> study English worldwide. Yet over 90% freeze when speaking in real-world professional or social scenarios. Flashcard apps teach grammar rules in silence; private human tutors cost $300+/month. <strong>Fluency AI</strong> delivers continuous, low-latency, empathetic voice roleplays with dynamic CEFR grading at a fraction of the cost—accessible to anyone, anywhere on any device.
+              <strong className="text-white">1.5 Billion people</strong> study English worldwide. Yet over 90% freeze when speaking in real-world professional or social scenarios. Flashcard apps focus on passive grammar drills; private tutors cost $300+/month. <strong>Fluency AI</strong> delivers continuous, low-latency, empathetic voice roleplays with supportive CEFR guidance at an accessible fraction of the cost—empowering learners everywhere to speak with genuine confidence.
             </p>
 
             {/* Key Metrics Banner */}
@@ -304,7 +304,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
               <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
                 <div className="text-2xl sm:text-3xl font-black text-white">1.5B+</div>
                 <div className="text-xs font-bold text-slate-400 mt-1">Global English Learners</div>
-                <div className="text-[11px] text-brand-400 font-semibold mt-0.5">High economic intent</div>
+                <div className="text-[11px] text-brand-400 font-semibold mt-0.5">High aspiration &amp; mobility</div>
               </div>
               <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
                 <div className="text-2xl sm:text-3xl font-black text-emerald-400">84%+</div>
@@ -313,7 +313,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
               </div>
               <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
                 <div className="text-2xl sm:text-3xl font-black text-amber-400">1/20th</div>
-                <div className="text-xs font-bold text-slate-400 mt-1">Cost of Human Tutors</div>
+                <div className="text-xs font-bold text-slate-400 mt-1">Cost of Private Tutoring</div>
                 <div className="text-[11px] text-amber-400/90 font-semibold mt-0.5">$9.75 vs $250+/month</div>
               </div>
               <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
@@ -342,24 +342,24 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 className="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-sm border border-white/20 transition active:scale-95 flex items-center gap-2"
               >
                 <BarChart3 className="w-4 h-4 text-emerald-300" />
-                <span>Inspect Financial Projections</span>
+                <span>Explore Collaborative Growth Model</span>
               </button>
             </div>
           </div>
         </section>
 
-        {/* SECTION 1: WHY IT'LL SELL (THE CORE PAIN & VALUE PROPOSITION) */}
+        {/* SECTION 1: WHY IT MATTERS (THE CORE PAIN & EMPOWERMENT) */}
         <section id="why-it-sells" className="space-y-8">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 text-xs font-black uppercase tracking-wider">
               <Target className="w-3.5 h-3.5" />
-              Market Urgency &amp; Value Proposition
+              Community Need &amp; Shared Vision
             </div>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-              Why Fluency AI Will Sell: The "Silent Learner" Problem
+              Why Fluency AI Matters: Supporting the "Silent Learner"
             </h2>
             <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base font-medium">
-              English is not an entertainment hobby like learning Spanish on vacation. English is the global operating system for career advancement, remote salaries, visas, and university degrees.
+              English is far more than a classroom subject. It is the global bridge for career advancement, remote collaboration, higher education, and life-changing opportunities.
             </p>
           </div>
 
@@ -370,13 +370,13 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 <DollarSign className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
-                Direct Income Multiplier (+25% to +100%)
+                Unlocking Career Pathways (+25% to +100%)
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                In developing markets (LATAM, Southeast Asia, Eastern Europe, Middle East), fluent English is the single highest ROI skill an individual can acquire. Professional English capability doubles income potential for software engineers, nurses, hospitality managers, and customer support leaders.
+                In developing markets (LATAM, Southeast Asia, Eastern Europe, Middle East), fluent English is the single highest ROI skill an individual can acquire. Professional English capability doubles career opportunities for software engineers, nurses, hospitality managers, and customer support leaders.
               </p>
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                <span>Extreme Willingness to Pay</span>
+                <span>Transformational Value for Learners</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -393,24 +393,24 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 Most adult learners know thousands of grammar rules and vocabulary words in their head, but freeze in live conversation due to psychological fear of judgment. Fluency AI provides a compassionate, infinite, judgment-free AI partner where making mistakes is safe and celebrated.
               </p>
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs font-black text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                <span>Psychological Safety Sells</span>
+                <span>Psychological Safety at the Center</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </div>
 
-            {/* Card 3: The 1/20th Cost Disruption */}
+            {/* Card 3: The Accessible Pricing Alternative */}
             <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft hover:border-brand-500/50 transition">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
                 <Zap className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
-                1/20th Price Point vs Human Tutors
+                Democratizing Access to Fluent Speaking
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 Platforms like Cambly, Preply, and iTalki charge $25 to $60 per hour. For a learner practicing 3x/week, that totals $300–$720/month—unaffordable for 95% of the planet. Fluency AI offers unlimited 24/7 spoken roleplays for £9.75 to £14.99/month ($12–$19/mo).
               </p>
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <span>Mass Democratization</span>
+                <span>Inclusive Global Learning</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -505,7 +505,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
               Why Now? The 4 Catalysts Driving This Wave
             </h2>
             <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base font-medium">
-              Building Fluency AI three years ago was technically impossible. Today, four macro forces have aligned to create an unprecedented venture opportunity.
+              Building Fluency AI three years ago was technically impossible. Today, four macro forces have aligned to create an unprecedented opportunity to empower global learners.
             </p>
           </div>
 
@@ -789,7 +789,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
           </div>
         </section>
 
-        {/* SECTION 4: FINANCIALS, UNIT ECONOMICS & WHAT KIND OF MONEY WE CAN MAKE */}
+        {/* SECTION 4: FINANCIALS, UNIT ECONOMICS & SUSTAINABLE GROWTH */}
         <section id="financials" className="space-y-8">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase tracking-wider">
@@ -797,10 +797,10 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
               Financial Architecture &amp; Unit Economics
             </div>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-              What Kind of Money We Can Make: Financial Projections
+              Sustainable Growth: Financial Outlook &amp; Projections
             </h2>
             <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base font-medium">
-              A high-margin, sticky SaaS engine with strong negative churn potential, low server overhead, and high upfront cash flow via annual billing.
+              A resilient, high-retention model pairing mission-driven accessibility with healthy gross margins, low compute overhead, and sustainable recurring cash flows.
             </p>
             {onOpenPricing && (
               <div className="pt-2">
@@ -823,17 +823,17 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft">
               <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Blended ARPU</div>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">$12.50<span className="text-xs font-normal text-slate-500">/mo</span></div>
-              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">$150 Annual Run Rate</div>
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">$150 Annual Learner Value</div>
             </div>
 
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft">
               <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Target CAC</div>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">$18.00</div>
-              <div className="text-[11px] text-brand-600 dark:text-brand-400 font-bold mt-1">Viral CEFR &amp; Social reels</div>
+              <div className="text-[11px] text-brand-600 dark:text-brand-400 font-bold mt-1">Community, referrals &amp; CEFR reports</div>
             </div>
 
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft">
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Customer LTV</div>
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Learner LTV</div>
               <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">$175.00</div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1">14-month avg retention</div>
             </div>
@@ -850,7 +850,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
             <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-emerald-500" />
-                <span>3-Year Conservative Growth &amp; Revenue Proforma</span>
+                <span>3-Year Collaborative Growth &amp; Financial Proforma</span>
               </span>
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">All figures USD</span>
             </h3>
@@ -862,7 +862,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   <th className="py-3 px-4 font-bold">Year 1 (Foundation)</th>
                   <th className="py-3 px-4 font-bold">Year 2 (Scaling)</th>
                   <th className="py-3 px-4 font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-t-xl">
-                    Year 3 (Market Leader)
+                    Year 3 (Global Community)
                   </th>
                 </tr>
               </thead>
@@ -920,19 +920,19 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
           </div>
         </section>
 
-        {/* SECTION 5: INTERACTIVE FINANCIAL & VALUATION CALCULATOR */}
+        {/* SECTION 5: INTERACTIVE GROWTH & IMPACT CALCULATOR */}
         <section id="calculator" className="p-6 sm:p-10 rounded-3xl bg-gradient-to-br from-brand-900/10 via-indigo-900/10 to-purple-900/10 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-brand-500/20 shadow-xl space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/20 text-brand-700 dark:text-brand-300 text-xs font-black uppercase tracking-wider">
                 <BarChart3 className="w-3.5 h-3.5" />
-                Live Investor Sandbox
+                Collaborative Growth Sandbox
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
-                Interactive Revenue &amp; Valuation Simulator
+                Interactive Growth &amp; Impact Simulator
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Adjust the sensitivity sliders below to model ARR, Cash Flow, and Exit Valuations based on your own diligence thesis.
+                Adjust the sensitivity sliders below to model learner reach, ARR, and valuation scenarios based on your collaboration thesis.
               </p>
             </div>
 
@@ -972,7 +972,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 }}
                 className="px-2.5 py-1 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-500"
               >
-                Aggressive
+                High Growth
               </button>
             </div>
           </div>
@@ -998,9 +998,9 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   className="w-full accent-brand-600 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                  <span>10,000 (Seed)</span>
-                  <span>500,000 (Series A)</span>
-                  <span>2,000,000+ (Global Leader)</span>
+                  <span>10,000 (Early Community)</span>
+                  <span>500,000 (Scaling Reach)</span>
+                  <span>2,000,000+ (Global Reach)</span>
                 </div>
               </div>
 
@@ -1022,9 +1022,9 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   className="w-full accent-emerald-600 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                  <span>1.0% (Pessimistic)</span>
+                  <span>1.0% (Accessible Baseline)</span>
                   <span>5.0% (Industry Standard)</span>
-                  <span>12.0% (High-Intent B2C)</span>
+                  <span>12.0% (High-Engagement Community)</span>
                 </div>
               </div>
 
@@ -1046,7 +1046,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   className="w-full accent-indigo-600 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                  <span>$8.00 (Annual Discounted)</span>
+                  <span>$8.00 (Annual Accessible)</span>
                   <span>$15.00 (Standard Pro)</span>
                   <span>$30.00 (Enterprise/Tutor Combo)</span>
                 </div>
@@ -1070,7 +1070,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   className="w-full accent-amber-600 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                  <span>4x (Trough)</span>
+                  <span>4x (Baseline)</span>
                   <span>8x (Current Median)</span>
                   <span>15x+ (Top Decile AI SaaS)</span>
                 </div>
@@ -1087,7 +1087,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 <div className="pt-1">
                   <div className="text-xs text-slate-400">Paying Subscribers</div>
                   <div className="text-2xl font-black text-white mt-0.5">
-                    {calcSubscribers.toLocaleString()} <span className="text-xs font-bold text-slate-400">customers</span>
+                    {calcSubscribers.toLocaleString()} <span className="text-xs font-bold text-slate-400">learners</span>
                   </div>
                 </div>
 
@@ -1106,14 +1106,14 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 </div>
 
                 <div className="pt-2">
-                  <div className="text-xs text-slate-400">Est. Gross Profit (85% Margin)</div>
+                  <div className="text-xs text-slate-400">Est. Gross Contribution (85% Margin)</div>
                   <div className="text-xl font-bold text-slate-200 mt-0.5">
                     ${Math.round(calcGrossProfit).toLocaleString()} / yr
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <div className="text-xs text-amber-300 font-bold">Implied Venture Valuation ({calcMultiple}x ARR)</div>
+                  <div className="text-xs text-amber-300 font-bold">Implied Enterprise Valuation ({calcMultiple}x ARR)</div>
                   <div className="text-3xl sm:text-4xl font-black text-amber-400 mt-0.5">
                     ${(calcValuation / 1_000_000).toFixed(1)} Million
                   </div>
@@ -1125,7 +1125,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   onClick={() => setActiveTab('contact')}
                   className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs transition active:scale-95 flex items-center justify-center gap-1.5 shadow-md"
                 >
-                  <span>Request Full Financial Model (.xlsx)</span>
+                  <span>Connect &amp; Request Full Financial Model (.xlsx)</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1139,13 +1139,13 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-black uppercase tracking-wider">
                 <Calendar className="w-3.5 h-3.5" />
-                Next Steps &amp; Founder Access
+                Partner Collaboration &amp; Next Steps
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                Investor Onboarding &amp; Diligence Room
+                Partner Collaboration &amp; Vision Hub
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                Ready to review the cap table, product roadmap, tech stack audit, or schedule a 1-on-1 diligence session with the founders?
+                Interested in connecting as an early partner, advisor, community builder, or value-aligned investor? We’d love to explore how we can build together.
               </p>
             </div>
 
@@ -1155,10 +1155,10 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   ✓
                 </div>
                 <h3 className="text-base font-black text-emerald-900 dark:text-emerald-200">
-                  Diligence Request Received
+                  Collaboration Inquiry Received
                 </h3>
                 <p className="text-xs text-emerald-700 dark:text-emerald-400 max-w-md mx-auto">
-                  Thank you, {contactName}. We have logged your request from {contactFund || 'your fund'}. Our founding team will provide access to the confidential data room shortly.
+                  Thank you, {contactName}. We have received your note from {contactFund || 'your organization'}. Our team looks forward to connecting with you shortly.
                 </p>
                 <div className="pt-2">
                   <button
@@ -1174,7 +1174,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Investor / Diligence Name *
+                      Your Name / Organization Contact *
                     </label>
                     <input
                       type="text"
@@ -1187,12 +1187,12 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Work / Fund Email *
+                      Work / Organization Email *
                     </label>
                     <input
                       type="email"
                       required
-                      placeholder="s.jenkins@venturefund.com"
+                      placeholder="s.jenkins@organization.com"
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
@@ -1203,11 +1203,11 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Fund / Entity Name
+                      Organization / Fund / Group Name
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Apex Ventures / Angel Syndicate"
+                      placeholder="e.g. Apex Partners / Education Collective"
                       value={contactFund}
                       onChange={(e) => setContactFund(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
@@ -1215,26 +1215,27 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Check Size / Target Allocation
+                      Partnership or Collaboration Focus
                     </label>
                     <select
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
                     >
-                      <option>$25k - $50k (Angel / Scout)</option>
-                      <option>$50k - $250k (Syndicate / Micro-VC)</option>
-                      <option>$250k - $1M+ (Lead / Major Check)</option>
-                      <option>Strategic / Commercial Partnership</option>
+                      <option>Strategic / Academic / Commercial Partnership</option>
+                      <option>Co-Building / Advisory / Pilot Deployment</option>
+                      <option>$25k - $50k (Angel / Community Partner)</option>
+                      <option>$50k - $250k (Syndicate / Fund Allocation)</option>
+                      <option>$250k - $1M+ (Lead / Growth Investment)</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Specific Questions or Meeting Availability
+                    Shared Goals, Questions, or Availability
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="We'd like to dive into cohort retention curves, LLM inference unit economics, and test the speech recognition stack..."
+                    placeholder="We'd love to discuss pedagogical alignment, international distribution partnerships, or test the speech technology..."
                     value={contactMessage}
                     onChange={(e) => setContactMessage(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
@@ -1244,7 +1245,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                   <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    <span>All inquiries handled under mutual NDA upon request.</span>
+                    <span>We treat all discussions with mutual respect and confidentiality.</span>
                   </div>
 
                   <button
@@ -1252,7 +1253,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
                     className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold text-xs transition active:scale-95 shadow-md flex items-center justify-center gap-2"
                   >
                     <Mail className="w-3.5 h-3.5" />
-                    <span>Submit Diligence Inquiry</span>
+                    <span>Start a Conversation</span>
                   </button>
                 </div>
               </form>
