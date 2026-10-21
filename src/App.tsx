@@ -18,6 +18,7 @@ const PricingModal = lazy(() => import('./components/PricingModal').then((m) => 
 const TierRoadmapModal = lazy(() => import('./components/TierRoadmapModal').then((m) => ({ default: m.TierRoadmapModal })));
 const TierUpCelebrationModal = lazy(() => import('./components/TierUpCelebrationModal').then((m) => ({ default: m.TierUpCelebrationModal })));
 const PWAInstallGuideModal = lazy(() => import('./components/PWAInstallGuideModal').then((m) => ({ default: m.PWAInstallGuideModal })));
+const InvestorPitchPage = lazy(() => import('./components/InvestorPitchPage').then((m) => ({ default: m.InvestorPitchPage })));
 
 import type { XPCalculationResult } from './store/rewardSystem';
 import { useUserStore } from './store/userStore';
@@ -35,7 +36,7 @@ import {
   flushKeyVaultBeforeUpdate,
 } from './services/persistentKeyVault';
 import { getLLMConfig } from './services/llmConfig';
-import { RefreshCw, Sparkles, BookmarkCheck, RotateCcw, X, EyeOff, Eye } from 'lucide-react';
+import { RefreshCw, Sparkles, BookmarkCheck, RotateCcw, X, EyeOff, Eye, ArrowRight } from 'lucide-react';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './services/toast';
 import { playChime, stopSpeaking } from './services/speech';
@@ -74,6 +75,19 @@ export function App() {
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(!isOnboardingCompleted);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isInvestorOpen, setIsInvestorOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    const pathname = window.location.pathname.toLowerCase();
+    return (
+      urlParams.get('view') === 'investor' ||
+      urlParams.get('page') === 'investor' ||
+      hash === 'investor' ||
+      pathname.endsWith('/investor') ||
+      pathname.endsWith('/investor/')
+    );
+  });
   const [pendingLessonCallback, setPendingLessonCallback] = useState<(() => void) | null>(null);
   const [hasUpdate, setHasUpdate] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -92,7 +106,8 @@ export function App() {
       isPlacementOpen ||
       isRoadmapOpen ||
       isOnboardingOpen ||
-      isPricingOpen
+      isPricingOpen ||
+      isInvestorOpen
   );
 
   const closeAllToHome = () => {
@@ -117,8 +132,11 @@ export function App() {
         setIsRoadmapOpen(false);
         setIsPricingOpen(false);
         setIsOnboardingOpen(false);
+        setIsInvestorOpen(false);
         setPendingLessonCallback(null);
         window.dispatchEvent(new CustomEvent('fluency_close_nav_modals'));
+      } else if (view === 'investor') {
+        setIsInvestorOpen(true);
       }
     });
 
@@ -364,6 +382,10 @@ export function App() {
           setIsPricingOpen(true);
           navigationHistory.pushView('pricing');
         }}
+        onOpenInvestor={() => {
+          setIsInvestorOpen(true);
+          navigationHistory.pushView('investor');
+        }}
         onOpenOnboarding={handleRestartOnboarding}
       />
 
@@ -520,6 +542,39 @@ export function App() {
             navigationHistory.pushView('custom-scenario');
           }}
         />
+
+        {/* Investor & Partner Briefing Quick Card */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 border border-indigo-200/80 dark:border-indigo-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-xs flex-shrink-0">
+              📊
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                  Investor &amp; Partner Briefing
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider">
+                  Pitch
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Explore why Fluency AI will sell, our $21B market size, 84%+ SaaS margins, SLA pedagogical architecture, and 3-year financial model.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              playChime('tap');
+              setIsInvestorOpen(true);
+              navigationHistory.pushView('investor');
+            }}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition active:scale-95 shadow-xs flex items-center justify-center gap-1.5 flex-shrink-0"
+          >
+            <span>Open Investor Deck</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </main>
 
       {/* 3-stage lesson flow: Prep → Live Roleplay → Scorecard */}
@@ -638,6 +693,37 @@ export function App() {
               toast.success(`Welcome to FluencyAI ${planTier.toUpperCase()}!`, 'Plan Activated');
             }}
           />
+        )}
+
+        {/* Dedicated Full-Page Investor Pitch Deck & Briefing */}
+        {isInvestorOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50 dark:bg-slate-950 animate-fade-in">
+            <InvestorPitchPage
+              onBackToApp={() => {
+                setIsInvestorOpen(false);
+                closeAllToHome();
+              }}
+              onLaunchRoleplay={() => {
+                setIsInvestorOpen(false);
+                openDailyLesson('roleplay');
+              }}
+              onLaunchPlacement={() => {
+                setIsInvestorOpen(false);
+                setIsPlacementOpen(true);
+                navigationHistory.pushView('placement');
+              }}
+              onLaunchWarmup={() => {
+                setIsInvestorOpen(false);
+                setIsRapidWarmupOpen(true);
+                navigationHistory.pushView('warmup');
+              }}
+              onOpenPricing={() => {
+                setIsInvestorOpen(false);
+                setIsPricingOpen(true);
+                navigationHistory.pushView('pricing');
+              }}
+            />
+          </div>
         )}
       </Suspense>
 

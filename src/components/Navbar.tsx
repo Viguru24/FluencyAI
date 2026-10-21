@@ -12,6 +12,7 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Terminal,
+  BarChart3,
 } from 'lucide-react';
 import type { UserProgress, CEFRLevel, NativeLanguage, AuthSession, AIPersona } from '../types';
 import { promptPWAInstall, subscribeToInstallPrompt } from '../pwa';
@@ -39,6 +40,7 @@ interface NavbarProps {
   onOpenRoadmap?: () => void;
   onOpenPricing?: () => void;
   onOpenOnboarding?: () => void;
+  onOpenInvestor?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -51,6 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenRoadmap,
   onOpenPricing,
   onOpenOnboarding,
+  onOpenInvestor,
 }) => {
   const {
     currentTier,
@@ -394,6 +397,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </button>
 
+            {/* Investor Pitch Deck Button */}
+            {onOpenInvestor && (
+              <button
+                onClick={() => {
+                  playChime('tap');
+                  onOpenInvestor();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500/15 via-indigo-500/15 to-purple-500/15 hover:from-sky-500/25 hover:to-purple-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-300/40 dark:border-indigo-500/30 text-xs font-black transition active:scale-95 shadow-2xs group shrink-0"
+                title="View Investor Pitch Deck & Financial Model"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform shrink-0" />
+                <span>Investor</span>
+                <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-indigo-600 text-white leading-none">
+                  Deck
+                </span>
+              </button>
+            )}
+
             {/* Pricing / Pro Upgrade Button */}
             {onOpenPricing && (
               <button
@@ -593,6 +614,36 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 </button>
               </div>
+
+              {/* Investor Pitch Deck Mobile Card */}
+              {onOpenInvestor && (
+                <button
+                  onClick={() => {
+                    playChime('tap');
+                    setShowMobileMenu(false);
+                    onOpenInvestor();
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-sky-50 via-indigo-50 to-purple-50 dark:from-indigo-950/70 dark:via-slate-900 dark:to-purple-950/70 border border-indigo-200/80 dark:border-indigo-800/80 text-left transition active:scale-98 shadow-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                      📊
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                        <span>Investor Pitch Deck</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[9px] font-black uppercase tracking-wider">
+                          New
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-medium text-indigo-700/80 dark:text-indigo-300/80">
+                        Why it sells, $21B market, financials &amp; app breakdown
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronDown className="w-4 h-4 -rotate-90 text-indigo-500 shrink-0" />
+                </button>
+              )}
 
               {/* Target CEFR Level Selection */}
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800">

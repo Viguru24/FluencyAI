@@ -15,7 +15,8 @@ export type FluencyView =
   | 'install-guide'
   | 'onboarding'
   | 'gateway'
-  | 'profile';
+  | 'profile'
+  | 'investor';
 
 type ViewChangeHandler = (view: FluencyView) => void;
 
