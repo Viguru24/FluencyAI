@@ -1,8 +1,9 @@
-# Fluency AI One-Click VPS Production Deploy Script
-# Deploys built static PWA to Ra Server (/opt/fluencyai/dist)
+# English Tutor (Eng Tutor) One-Click VPS Production Deploy Script
+# NOTE: English Tutor and Fluency are separate projects. Do not target /opt/fluencyai.
+# Deploys built static bundle to Ra Server (/opt/eng-tutor/dist)
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host " Building Fluency AI Production Bundle    " -ForegroundColor Cyan
+Write-Host " Building English Tutor Production Bundle " -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
 $ErrorActionPreference = "Stop"
@@ -24,7 +25,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # 3. Upload archive to Ra VPS
 Write-Host "[2/3] Uploading archive to Ra VPS (192.168.1.28)..." -ForegroundColor Yellow
-scp -o BatchMode=yes dist.tar.gz viguru@192.168.1.28:/tmp/fluencyai_dist.tar.gz
+scp -o BatchMode=yes dist.tar.gz viguru@192.168.1.28:/tmp/eng_tutor_dist.tar.gz
 if ($LASTEXITCODE -ne 0) {
     Remove-Item dist.tar.gz -Force -ErrorAction SilentlyContinue
     Write-Error "SCP upload failed! Check SSH connectivity to Ra server."
@@ -32,14 +33,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 Remove-Item dist.tar.gz -Force -ErrorAction SilentlyContinue
 
-# 4. Extract on server, fix permissions and reload Nginx
-Write-Host "[3/3] Extracting on server and reloading Nginx..." -ForegroundColor Yellow
-ssh viguru@192.168.1.28 "rm -rf /opt/fluencyai/dist/* && tar -xzf /tmp/fluencyai_dist.tar.gz -C /opt/fluencyai/dist/ && rm /tmp/fluencyai_dist.tar.gz && sudo chmod -R 755 /opt/fluencyai && sudo systemctl reload nginx"
+# 4. Extract on server into /opt/eng-tutor/dist, fix permissions
+Write-Host "[3/3] Extracting on server into /opt/eng-tutor/dist..." -ForegroundColor Yellow
+ssh viguru@192.168.1.28 "sudo mkdir -p /opt/eng-tutor/dist && sudo chown -R viguru:viguru /opt/eng-tutor && rm -rf /opt/eng-tutor/dist/* && tar -xzf /tmp/eng_tutor_dist.tar.gz -C /opt/eng-tutor/dist/ && rm /tmp/eng_tutor_dist.tar.gz && sudo chmod -R 755 /opt/eng-tutor"
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Remote extraction or Nginx reload failed!"
+    Write-Error "Remote extraction failed!"
     exit 1
 }
 
-Write-Host "`n[OK] DEPLOYMENT COMPLETE!" -ForegroundColor Green
-Write-Host "Live Global URL: https://api.cosmowhisper.com/fluency/" -ForegroundColor Green
-Write-Host "Subdomain:       https://fluency.cosmowhisper.com" -ForegroundColor Green
+Write-Host "`n[OK] ENGLISH TUTOR DEPLOYMENT COMPLETE!" -ForegroundColor Green
+Write-Host "Server directory: /opt/eng-tutor/dist" -ForegroundColor Green

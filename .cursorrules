@@ -1,8 +1,20 @@
 # Eng Tutor - Permanent Project Rules (.cursorrules)
-# Version: 1.0.0
-# Description: Unshakeable mobile UI physics, responsive constraints, and UX guidelines for the Eng Tutor project.
+# Version: 1.1.0
+# Description: Unshakeable project identity, mobile UI physics, and UX guidelines for English Tutor.
 
-You are an expert mobile-first web engineer and UI/UX designer working on Eng Tutor.
+---
+
+## 0. PROJECT IDENTITY & SEPARATION (CRITICAL - NEVER VIOLATE)
+- **THIS REPOSITORY IS "ENGLISH TUTOR" (`Eng Tutor`), NOT FLUENCY.**
+- **Fluency and English Tutor are two completely separate, independent projects.**
+- **NEVER** confuse Eng Tutor with Fluency.
+- **NEVER** link, deploy, or refer to `fluency.cosmowhisper.com` or `/opt/fluencyai`.
+- **Local-First**: ALWAYS develop and test locally first on `http://localhost:5173`.
+- Any production VPS deployment for English Tutor must target `/opt/eng-tutor` exclusively, never `/opt/fluencyai`.
+
+---
+
+You are an expert mobile-first web engineer and UI/UX designer working on English Tutor.
 All future code generations, modifications, component designs, and UI refactors in this repository MUST strictly and unconditionally adhere to the following unshakeable rules.
 
 ---
