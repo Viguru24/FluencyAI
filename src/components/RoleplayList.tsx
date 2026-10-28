@@ -11,6 +11,7 @@ import {
 import type { RoleplayScenario, UserProgress } from '../types';
 import { speakEnglish, playChime } from '../services/speech';
 import { useGamificationStore } from '../store/rewardSystem';
+import { getSubjectTheme } from '../services/subjectTheme';
 
 interface RoleplayListProps {
   scenarios: RoleplayScenario[];
@@ -30,7 +31,16 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
   const [expandedVocabId, setExpandedVocabId] = useState<string | null>(null);
   const [playingWord, setPlayingWord] = useState<string | null>(null);
 
-  const categories = ['All', 'Daily Life', 'Career & Tech', 'Travel', 'Social', 'Healthcare'];
+  const categories = [
+    'All',
+    'Daily Life',
+    'Career & Tech',
+    'Mathematics',
+    'Literature',
+    'Travel',
+    'Social',
+    'Healthcare',
+  ];
 
   const filteredScenarios = scenarios.filter((s) => {
     if (selectedCategory !== 'All' && s.category !== selectedCategory) return false;
@@ -68,22 +78,26 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
 
       {/* Category Filter Pills (Wrapped cleanly so all categories are visible on mobile without scrolling right) */}
       <div className="flex items-center flex-wrap gap-1.5 py-0.5">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => {
-              playChime('tap');
-              setSelectedCategory(cat);
-            }}
-            className={`px-3 sm:px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition-all active:scale-95 ${
-              selectedCategory === cat
-                ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/20'
-                : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+        {categories.map((cat) => {
+          const theme = cat !== 'All' ? getSubjectTheme(cat) : null;
+          return (
+            <button
+              key={cat}
+              onClick={() => {
+                playChime('tap');
+                setSelectedCategory(cat);
+              }}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition-all active:scale-95 flex items-center gap-1 ${
+                selectedCategory === cat
+                  ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/20'
+                  : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800'
+              }`}
+            >
+              {theme && <span className="opacity-80 text-[11px]">{theme.symbol}</span>}
+              <span>{theme ? theme.shortLabel : cat}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* AI Custom Situation Builder Card */}
@@ -129,6 +143,7 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
         {filteredScenarios.map((scenario) => {
           const isCompleted = progress.completedScenarioIds.includes(scenario.id);
           const isVocabOpen = expandedVocabId === scenario.id;
+          const subjectTheme = getSubjectTheme(scenario.category);
 
           return (
             <div
@@ -137,13 +152,18 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                 playChime('tap');
                 onSelectScenario(scenario);
               }}
-              className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer hover:border-brand-300 dark:hover:border-brand-500 ${
-                isCompleted ? 'border-emerald-200/90 dark:border-emerald-800/80' : ''
+              className={`group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border ${subjectTheme.borderAccent} ${subjectTheme.borderHover} shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer ${
+                isCompleted ? 'border-emerald-300/90 dark:border-emerald-700/80' : ''
               }`}
             >
+              {/* Subtle top hairline accent */}
+              <div
+                className={`absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r ${subjectTheme.hairlineGradient}`}
+              />
+
               {/* Subtle top background tint */}
               <div
-                className={`absolute inset-0 h-28 bg-gradient-to-br ${scenario.gradient} pointer-events-none`}
+                className={`absolute inset-0 h-28 bg-gradient-to-br ${subjectTheme.cardGradient} pointer-events-none`}
               />
 
               <div className="relative z-10 p-4 sm:p-5 space-y-3">
@@ -166,6 +186,15 @@ export const RoleplayList: React.FC<RoleplayListProps> = ({
                   </div>
 
                   <div className="flex items-center flex-wrap gap-1.5">
+                    {/* Subject Identity Pill */}
+                    <span
+                      className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition ${subjectTheme.badgeClasses}`}
+                      title={`Subject: ${subjectTheme.name}`}
+                    >
+                      <span className="text-xs">{subjectTheme.symbol}</span>
+                      <span>{subjectTheme.shortLabel}</span>
+                    </span>
+
                     {/* CEFR Level Badge */}
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${scenario.badgeColor}`}

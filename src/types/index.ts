@@ -176,6 +176,7 @@ export interface LessonPlan {
   id: string;
   title: string;
   contextLabel: string; // e.g. "UK Hospitality"
+  category?: string;
   persona: AIPersona;
   xpReward: number;
   minutes: number;
@@ -239,11 +240,23 @@ export interface DialogueStep {
   grammarNotes?: string;
 }
 
+export type ScenarioCategory =
+  | 'Daily Life'
+  | 'Career & Tech'
+  | 'Travel'
+  | 'Social'
+  | 'Healthcare'
+  | 'Mathematics'
+  | 'Literature'
+  | 'Science'
+  | 'History'
+  | string;
+
 export interface RoleplayScenario {
   id: string;
   title: string;
   tagline: string;
-  category: 'Daily Life' | 'Career & Tech' | 'Travel' | 'Social' | 'Healthcare';
+  category: ScenarioCategory;
   cefrLevel: CEFRLevel;
   durationMinutes: number;
   aiPersona: AIPersona;

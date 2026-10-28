@@ -7,6 +7,7 @@ import { ScaffoldingStage } from './ScaffoldingStage';
 import { RoleplayStage, type RoleplayStats } from './RoleplayStage';
 import { ScorecardStage } from './ScorecardStage';
 import { ThemeToggle } from '../ThemeToggle';
+import { getSubjectTheme } from '../../services/subjectTheme';
 
 interface Props {
   plan: LessonPlan;
@@ -44,6 +45,7 @@ export const LessonFlow: React.FC<Props> = ({
   const [confirmExit, setConfirmExit] = useState(false);
 
   const stageIndex = STAGES.findIndex((s) => s.key === stage);
+  const subjectTheme = getSubjectTheme(plan.category || plan.contextLabel || plan.title);
 
   const handleClose = () => {
     if (stage === 'scorecard') return onExit();
@@ -61,9 +63,12 @@ export const LessonFlow: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-fade-in">
-      <div className="relative w-full max-w-5xl h-[100dvh] max-h-[100dvh] sm:h-[88dvh] sm:max-h-[88dvh] bg-white dark:bg-slate-900 rounded-none sm:rounded-3xl shadow-2xl border border-transparent sm:border-slate-200/80 dark:border-slate-800 flex flex-col overflow-hidden">
+      <div className={`relative w-full max-w-5xl h-[100dvh] max-h-[100dvh] sm:h-[88dvh] sm:max-h-[88dvh] bg-white dark:bg-slate-900 rounded-none sm:rounded-3xl shadow-2xl border border-transparent sm:${subjectTheme.borderAccent} flex flex-col overflow-hidden`}>
         {/* Header with interactive stage stepper */}
-        <header className="px-3.5 sm:px-6 pt-safe pb-2.5 sm:py-3 bg-gradient-to-r from-brand-600 via-sky-600 to-emerald-600 text-white flex-shrink-0">
+        <header className={`px-3.5 sm:px-6 pt-safe pb-2.5 sm:py-3 bg-gradient-to-r ${subjectTheme.headerGradient} text-white flex-shrink-0 relative overflow-hidden transition-all duration-500`}>
+          {/* Subtle top hairline accent */}
+          <div className={`absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r ${subjectTheme.hairlineGradient}`} />
+
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
               <button
@@ -80,8 +85,13 @@ export const LessonFlow: React.FC<Props> = ({
                 <span className="font-extrabold">Home</span>
               </button>
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100 truncate">
-                  {plan.contextLabel}
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-white/90 truncate">
+                  <span className="px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-xs text-[10px] font-black border border-white/20 flex items-center gap-1">
+                    <span>{subjectTheme.symbol}</span>
+                    <span>{subjectTheme.shortLabel}</span>
+                  </span>
+                  <span className="text-white/60">•</span>
+                  <span className="truncate">{plan.contextLabel}</span>
                 </div>
                 <h1 className="text-xs sm:text-sm font-extrabold truncate">{plan.title}</h1>
               </div>
@@ -152,7 +162,9 @@ export const LessonFlow: React.FC<Props> = ({
           </div>
         )}
 
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+          {/* Ambient subject glow */}
+          <div className={`absolute top-0 inset-x-0 h-48 pointer-events-none ${subjectTheme.ambientGlow} transition-all duration-700`} />
           {stage === 'scaffolding' && (
             <ScaffoldingStage
               plan={plan}
