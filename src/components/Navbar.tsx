@@ -26,7 +26,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { authService } from '../services/authService';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { useGamificationStore, getAvailableAudioSpeeds } from '../store/rewardSystem';
-import { FluencyLogo } from './FluencyLogo';
+import { EnglishTutorLogo } from './EnglishTutorLogo';
 import { isDevMode } from '../utils/devMode';
 import { navigationHistory } from '../services/navigationHistory';
 
@@ -224,7 +224,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-2 flex items-center justify-between gap-1.5 sm:gap-3 min-w-0">
           {/* Official Brand Logo */}
           <div className="shrink-0 flex items-center">
-            <FluencyLogo size="sm" />
+            <EnglishTutorLogo size="sm" />
           </div>
 
           {/* Desktop Controls (lg and up: >= 1024px) */}

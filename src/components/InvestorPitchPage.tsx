@@ -21,7 +21,7 @@ import {
   ExternalLink,
   Crown,
 } from 'lucide-react';
-import { FluencyLogo } from './FluencyLogo';
+import { EnglishTutorLogo } from './EnglishTutorLogo';
 import { playChime } from '../services/speech';
 import { toast } from '../services/toast';
 
@@ -109,7 +109,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
               className="flex items-center gap-2 group transition active:scale-95 text-left"
               title="Return to the live Fluency AI application"
             >
-              <FluencyLogo size="sm" />
+              <EnglishTutorLogo size="sm" />
               <div className="flex flex-col">
                 <span className="text-sm font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                   Fluency AI
@@ -1286,7 +1286,7 @@ export const InvestorPitchPage: React.FC<InvestorPitchPageProps> = ({
       <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500 dark:text-slate-400 print:hidden">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <FluencyLogo size="sm" />
+            <EnglishTutorLogo size="sm" />
             <span className="font-extrabold text-slate-900 dark:text-white">Fluency AI</span>
             <span>— The Voice-First English Tutoring Platform</span>
           </div>

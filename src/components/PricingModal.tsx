@@ -20,7 +20,7 @@ import {
   formatCardNumberInput,
   formatExpiryInput,
 } from '../services/stripeService';
-import logoMark from '../assets/logo-mark.png';
+import { EnglishTutorEmblem } from './EnglishTutorLogo';
 import type {
   SubscriptionPlanTier,
   SubscriptionBillingCycle,
@@ -193,8 +193,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-850">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white dark:bg-gradient-to-b dark:from-[#1e293b] dark:to-[#0f172a] p-1 border border-slate-200/90 dark:border-cyan-500/30 shadow-md shadow-slate-200/80 dark:shadow-cyan-950/40 flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src={logoMark} alt="English Tutor" className="w-full h-full object-contain drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]" />
+            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+              <EnglishTutorEmblem className="w-9 h-9" />
             </div>
             <div>
               <span className="font-extrabold text-sm text-slate-900 dark:text-white">
