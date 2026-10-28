@@ -79,7 +79,7 @@ export const TierRoadmapModal: React.FC<TierRoadmapModalProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-                  My Fluency Journey &amp; Rewards
+                  My English Journey &amp; Rewards
                 </h2>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${currentTierConfig.badgeAccent.pillBg}`}

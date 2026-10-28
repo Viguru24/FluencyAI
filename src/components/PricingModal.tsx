@@ -75,10 +75,10 @@ const FAQS = [
   },
   {
     q: 'What is included in the Lifetime Mastery tier?',
-    a: 'Lifetime Mastery gives you permanent, unlimited access to all FluencyAI Pro features forever, plus priority AI gateway tokens and all upcoming future coaches.',
+    a: 'Lifetime Mastery gives you permanent, unlimited access to all English Tutor Pro features forever, plus priority AI gateway tokens and all upcoming future coaches.',
   },
   {
-    q: 'Does FluencyAI work offline?',
+    q: 'Does English Tutor work offline?',
     a: 'Yes! Pro users have full offline access to cached roleplay scenarios, pronunciation drills, and saved phrasebook review decks.',
   },
 ];
@@ -169,7 +169,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
 
       playChime('success');
       toast.success(
-        `Welcome to FluencyAI ${selectedPlan === 'pro' ? 'Pro' : 'Lifetime'}! Your subscription is active.`,
+        `Welcome to English Tutor ${selectedPlan === 'pro' ? 'Pro' : 'Lifetime'}! Your subscription is active.`,
         'Payment Succeeded'
       );
 
@@ -194,11 +194,11 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-850">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-white dark:bg-gradient-to-b dark:from-[#1e293b] dark:to-[#0f172a] p-1 border border-slate-200/90 dark:border-cyan-500/30 shadow-md shadow-slate-200/80 dark:shadow-cyan-950/40 flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src={logoMark} alt="Fluency AI" className="w-full h-full object-contain drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]" />
+              <img src={logoMark} alt="English Tutor" className="w-full h-full object-contain drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]" />
             </div>
             <div>
               <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                Fluency AI Membership Plans
+                English Tutor Membership Plans
               </span>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Accelerate your English speaking with real-time AI speech feedback
@@ -356,7 +356,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-brand-700 dark:text-brand-300 text-sm">
-                    Fluency Pro
+                    Tutor Pro
                   </span>
                   <span className="text-xl">⚡</span>
                 </div>
@@ -600,7 +600,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onS
                       Stripe Checkout
                     </span>
                     <p className="text-[10px] text-slate-500">
-                      FluencyAI {selectedPlan === 'pro' ? 'Pro' : 'Lifetime'} Membership
+                      English Tutor {selectedPlan === 'pro' ? 'Pro' : 'Lifetime'} Membership
                     </p>
                   </div>
                 </div>

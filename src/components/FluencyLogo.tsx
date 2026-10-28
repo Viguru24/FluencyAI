@@ -49,7 +49,7 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
   size = 'md',
   showText = true,
   showSubtitle = true,
-  subtitleText = 'English Speaking Companion',
+  subtitleText = 'Personal Spoken English Mentor',
   className = '',
   onClick,
 }) => {
@@ -66,10 +66,10 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
       <div
         className={`relative ${cfg.iconSize} flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105`}
       >
-        {/* Authentic Stylized F & Waveform Emblem (Cutout) */}
+        {/* Authentic Stylized Emblem */}
         <img
           src={logoMark}
-          alt="Fluency AI Emblem"
+          alt="English Tutor Emblem"
           className="w-full h-full object-contain relative z-10 drop-shadow-[0_2px_8px_rgba(6,182,212,0.35)]"
           loading="eager"
         />
@@ -80,24 +80,24 @@ export const FluencyLogo: React.FC<FluencyLogoProps> = ({
         </div>
       </div>
 
-      {/* Typography: FLUENCY AI */}
+      {/* Typography: ENGLISH TUTOR AI */}
       {showText && (
         <div className="flex flex-col justify-center shrink-0">
           <div className="flex items-center gap-1 sm:gap-1.5 leading-none shrink-0">
             <span
               className={`font-black tracking-tight ${cfg.textSize} text-slate-900 dark:text-white transition-colors shrink-0`}
             >
-              FLUENCY
+              ENGLISH
             </span>
             <span
-              className={`font-black tracking-tight ${cfg.textSize} bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 bg-clip-text text-transparent shrink-0`}
+              className={`font-black tracking-tight ${cfg.textSize} bg-gradient-to-r from-brand-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent shrink-0`}
             >
-              AI
+              TUTOR
             </span>
             <span
               className={`hidden sm:inline-flex items-center font-black uppercase tracking-wider rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/60 dark:border-slate-700 flex-shrink-0 ${cfg.tagPadding}`}
             >
-              Tutor
+              AI
             </span>
           </div>
 

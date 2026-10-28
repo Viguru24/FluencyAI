@@ -25,7 +25,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({ onCl
         <div className="px-5 py-4 bg-gradient-to-r from-brand-600 to-sky-600 text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-amber-300" />
-            <h3 className="font-extrabold text-base">Install FluencyAI App</h3>
+            <h3 className="font-extrabold text-base">Install English Tutor App</h3>
           </div>
           <button
             onClick={onClose}

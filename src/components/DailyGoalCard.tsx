@@ -121,7 +121,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
                 {currentTierConfig.shortName}
               </div>
               <div className="text-[9px] font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider mt-0.5">
-                Fluency Tier
+                Mastery Tier
               </div>
             </div>
           </button>
@@ -296,7 +296,7 @@ export const DailyGoalCard: React.FC<DailyGoalCardProps> = ({
 
           <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center flex flex-col justify-between shadow-2xs min-w-0">
             <div className="text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider truncate">
-              Fluency CEFR
+              CEFR Level
             </div>
             <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-300 my-0.5 truncate">
               Level {progress.level}

@@ -338,7 +338,7 @@ export const AIGatewaySettingsModal: React.FC<Props> = ({ isOpen, onClose, onCon
                   <div className="space-y-1">
                     <p className="font-semibold">Cloud Production Environment Detected</p>
                     <p className="text-[11px] leading-relaxed opacity-90">
-                      You are viewing FluencyAI on HTTPS ({window.location.hostname}). Web browsers strictly block HTTPS websites from accessing insecure local servers (127.0.0.1:31415).
+                      You are viewing English Tutor on HTTPS ({window.location.hostname}). Web browsers strictly block HTTPS websites from accessing insecure local servers (127.0.0.1:31415).
                     </p>
                     <div className="pt-1 flex items-center gap-3">
                       <a

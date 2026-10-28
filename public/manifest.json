@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Fluency AI - AI English Language Tutor",
-  "short_name": "Fluency AI",
-  "description": "Mobile-first AI English tutoring platform with interactive voice roleplays, daily fluency goals, and pronunciation coaching.",
+  "name": "English Tutor - AI English Language Tutor",
+  "short_name": "English Tutor",
+  "description": "Mobile-first AI English tutoring platform with interactive voice roleplays, daily learning goals, and pronunciation coaching.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
